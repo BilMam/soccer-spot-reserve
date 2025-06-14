@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,7 +37,6 @@ const FieldDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [showBookingForm, setShowBookingForm] = useState(false);
 
   const { data: field, isLoading } = useQuery({
     queryKey: ['field', id],
@@ -73,19 +72,6 @@ const FieldDetail = () => {
       default:
         return null;
     }
-  };
-
-  const handleBookingClick = () => {
-    if (!user) {
-      toast({
-        title: "Connexion requise",
-        description: "Vous devez être connecté pour réserver un terrain",
-        variant: "destructive"
-      });
-      navigate('/auth');
-      return;
-    }
-    setShowBookingForm(true);
   };
 
   if (isLoading) {
@@ -202,42 +188,7 @@ const FieldDetail = () => {
           {/* Sidebar - Booking */}
           <div className="lg:col-span-1">
             <div className="sticky top-8">
-              {showBookingForm ? (
-                <BookingForm 
-                  field={field} 
-                  onCancel={() => setShowBookingForm(false)}
-                  onSuccess={() => {
-                    setShowBookingForm(false);
-                    toast({
-                      title: "Réservation créée",
-                      description: "Votre demande de réservation a été envoyée"
-                    });
-                  }}
-                />
-              ) : (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="text-center mb-6">
-                      <div className="text-3xl font-bold text-gray-900">
-                        {field.price_per_hour}€
-                      </div>
-                      <div className="text-gray-500">par heure</div>
-                    </div>
-
-                    <Button 
-                      onClick={handleBookingClick}
-                      className="w-full bg-green-600 hover:bg-green-700 mb-4"
-                      size="lg"
-                    >
-                      Réserver maintenant
-                    </Button>
-
-                    <div className="text-xs text-gray-500 text-center">
-                      Annulation gratuite jusqu'à 2h avant
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              <BookingForm field={field} />
             </div>
           </div>
         </div>
