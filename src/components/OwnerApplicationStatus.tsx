@@ -10,24 +10,38 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle, AlertCircle, XCircle } from 'lucide-react';
 
+interface OwnerApplication {
+  id: string;
+  user_id: string;
+  full_name: string;
+  phone: string;
+  experience?: string;
+  motivation?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'under_review';
+  admin_notes?: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const OwnerApplicationStatus = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const { data: application, isLoading } = useQuery({
     queryKey: ['owner-application', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<OwnerApplication | null> => {
       if (!user) return null;
       
       const { data, error } = await supabase
-        .from('owner_applications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .rpc('get_user_owner_application', { user_uuid: user.id });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching owner application:', error);
+        return null;
+      }
+      
       return data;
     },
     enabled: !!user

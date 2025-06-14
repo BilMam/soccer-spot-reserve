@@ -13,11 +13,45 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CheckCircle, XCircle, Eye, Clock, Users, MapPin } from 'lucide-react';
 
+interface OwnerApplication {
+  id: string;
+  user_id: string;
+  full_name: string;
+  phone: string;
+  experience?: string;
+  motivation?: string;
+  status: string;
+  admin_notes?: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
+  created_at: string;
+  updated_at: string;
+  profiles?: {
+    full_name: string;
+    email: string;
+  };
+}
+
+interface PendingField {
+  id: string;
+  name: string;
+  location: string;
+  field_type: string;
+  capacity: number;
+  price_per_hour: number;
+  description?: string;
+  created_at: string;
+  profiles?: {
+    full_name: string;
+    email: string;
+  };
+}
+
 const AdminDashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedApplication, setSelectedApplication] = useState<any>(null);
+  const [selectedApplication, setSelectedApplication] = useState<OwnerApplication | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
 
   // Vérifier si l'utilisateur est admin
@@ -36,19 +70,18 @@ const AdminDashboard = () => {
     enabled: !!user
   });
 
-  // Récupérer les demandes de propriétaires
+  // Récupérer les demandes de propriétaires via une requête RPC
   const { data: applications, isLoading: loadingApplications } = useQuery({
     queryKey: ['owner-applications-admin'],
-    queryFn: async () => {
+    queryFn: async (): Promise<OwnerApplication[]> => {
       const { data, error } = await supabase
-        .from('owner_applications')
-        .select(`
-          *,
-          profiles!owner_applications_user_id_fkey(full_name, email)
-        `)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
+        .rpc('get_all_owner_applications');
+
+      if (error) {
+        console.error('Error fetching applications:', error);
+        return [];
+      }
+      return data || [];
     },
     enabled: profile?.user_type === 'admin'
   });
@@ -56,7 +89,7 @@ const AdminDashboard = () => {
   // Récupérer les terrains en attente
   const { data: pendingFields, isLoading: loadingFields } = useQuery({
     queryKey: ['pending-fields-admin'],
-    queryFn: async () => {
+    queryFn: async (): Promise<PendingField[]> => {
       const { data, error } = await supabase
         .from('fields')
         .select(`
@@ -65,8 +98,12 @@ const AdminDashboard = () => {
         `)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
+
+      if (error) {
+        console.error('Error fetching pending fields:', error);
+        return [];
+      }
+      return data || [];
     },
     enabled: profile?.user_type === 'admin'
   });
@@ -86,7 +123,8 @@ const AdminDashboard = () => {
       });
       queryClient.invalidateQueries({ queryKey: ['owner-applications-admin'] });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Error approving application:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'approuver la demande.",
@@ -113,7 +151,8 @@ const AdminDashboard = () => {
       setSelectedApplication(null);
       setReviewNotes('');
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Error rejecting application:', error);
       toast({
         title: "Erreur",
         description: "Impossible de rejeter la demande.",
@@ -138,7 +177,8 @@ const AdminDashboard = () => {
       });
       queryClient.invalidateQueries({ queryKey: ['pending-fields-admin'] });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Error approving field:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'approuver le terrain.",

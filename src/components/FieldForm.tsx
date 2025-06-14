@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
@@ -9,9 +10,9 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader } from 'lucide-react';
 import ImageUpload from '@/components/ImageUpload';
-import FieldBasicInfoForm from './FieldBasicInfoForm';
-import FieldScheduleForm from './FieldScheduleForm';
-import FieldAmenitiesForm from './FieldAmenitiesForm';
+import FieldBasicInfoForm from '@/components/forms/FieldBasicInfoForm';
+import FieldScheduleForm from '@/components/forms/FieldScheduleForm';
+import FieldAmenitiesForm from '@/components/forms/FieldAmenitiesForm';
 
 interface FieldFormProps {
   // You can add specific props here if needed
