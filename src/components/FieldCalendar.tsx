@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Clock, Euro, AlertCircle } from 'lucide-react';
@@ -104,6 +104,13 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
     enabled: !!selectedDate
   });
 
+  // Fonction pour afficher les créneaux occupés de manière claire
+  const getOccupiedSlots = (): string[] => {
+    return availableSlots
+      .filter(slot => !slot.is_available)
+      .map(slot => `${slot.start_time}-${slot.end_time}`);
+  };
+
   // Vérifier si une plage horaire est entièrement disponible
   const isRangeAvailable = (startTime: string, endTime: string): boolean => {
     if (!startTime || !endTime) return false;
@@ -198,6 +205,7 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
   const rangeIsAvailable = isRangeAvailable(selectedStartTime, selectedEndTime);
   const totalPrice = calculateTotalPrice(selectedStartTime, selectedEndTime);
   const duration = calculateDuration(selectedStartTime, selectedEndTime);
+  const occupiedSlots = getOccupiedSlots();
 
   return (
     <div className="space-y-6">
@@ -235,6 +243,20 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
               </div>
             ) : (
               <>
+                {/* Affichage des créneaux occupés */}
+                {occupiedSlots.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-3 border">
+                    <p className="text-sm text-gray-600 mb-2">Créneaux déjà réservés :</p>
+                    <div className="flex flex-wrap gap-1">
+                      {occupiedSlots.map((slot, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs bg-gray-200 text-gray-700">
+                          {slot}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -257,8 +279,14 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
                               key={time} 
                               value={time}
                               disabled={!isSlotAvailable}
+                              className="flex items-center justify-between"
                             >
-                              {time} {!isSlotAvailable && '(Occupé)'}
+                              <span>{time}</span>
+                              {!isSlotAvailable && (
+                                <Badge variant="secondary" className="ml-2 text-xs bg-gray-200 text-gray-600">
+                                  Occupé
+                                </Badge>
+                              )}
                             </SelectItem>
                           );
                         })}
