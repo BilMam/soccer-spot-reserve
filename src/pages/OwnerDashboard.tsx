@@ -5,15 +5,13 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
-import DashboardMetrics from '@/components/DashboardMetrics';
-import QuickActions from '@/components/QuickActions';
-import RecentActivity from '@/components/RecentActivity';
 import OwnerStats from '@/components/OwnerStats';
 import OwnerBookings from '@/components/OwnerBookings';
 import OwnerFields from '@/components/OwnerFields';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, BarChart3, Calendar, MapPin } from 'lucide-react';
 
 interface OwnerField {
   id: string;
@@ -76,10 +74,8 @@ const OwnerDashboard = () => {
   }
 
   const totalFields = fields?.length || 0;
-  const activeFields = fields?.filter(f => f.is_active).length || 0;
   const totalRevenue = stats?.reduce((sum, stat) => sum + Number(stat.total_revenue), 0) || 0;
-  const totalBookings = stats?.reduce((sum, stat) => sum + stat.confirmed_bookings, 0) || 0;
-  const pendingBookings = stats?.reduce((sum, stat) => sum + stat.pending_bookings, 0) || 0;
+  const totalBookings = stats?.reduce((sum, stat) => sum + stat.total_bookings, 0) || 0;
   const avgRating = stats?.length ? 
     stats.reduce((sum, stat) => sum + Number(stat.avg_rating), 0) / stats.length : 0;
 
@@ -102,16 +98,53 @@ const OwnerDashboard = () => {
           </Button>
         </div>
 
-        {/* Métriques principales */}
-        <div className="mb-8">
-          <DashboardMetrics
-            totalFields={totalFields}
-            activeFields={activeFields}
-            totalRevenue={totalRevenue}
-            totalBookings={totalBookings}
-            avgRating={avgRating}
-            pendingBookings={pendingBookings}
-          />
+        {/* Vue d'ensemble des métriques */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Terrains actifs</CardTitle>
+              <MapPin className="w-4 h-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalFields}</div>
+              <p className="text-xs text-gray-600">
+                {fields?.filter(f => f.is_active).length || 0} actifs
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Chiffre d'affaires</CardTitle>
+              <BarChart3 className="w-4 h-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalRevenue.toFixed(0)}€</div>
+              <p className="text-xs text-gray-600">Ce mois</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Réservations</CardTitle>
+              <Calendar className="w-4 h-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalBookings}</div>
+              <p className="text-xs text-gray-600">Total</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Note moyenne</CardTitle>
+              <div className="text-yellow-500">★</div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{avgRating.toFixed(1)}</div>
+              <p className="text-xs text-gray-600">Sur 5 étoiles</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Onglets de navigation */}
@@ -123,15 +156,7 @@ const OwnerDashboard = () => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <OwnerStats stats={stats} isLoading={statsLoading} />
-              </div>
-              <div className="space-y-6">
-                <QuickActions />
-                <RecentActivity ownerId={user.id} />
-              </div>
-            </div>
+            <OwnerStats stats={stats} isLoading={statsLoading} />
           </TabsContent>
 
           <TabsContent value="bookings" className="space-y-6">
