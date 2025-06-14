@@ -1,8 +1,10 @@
-
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import FieldCard from './FieldCard';
 
 const FeaturedFields = () => {
+  const navigate = useNavigate();
+
   const featuredFields = [
     {
       id: '1',
@@ -97,7 +99,10 @@ const FeaturedFields = () => {
         </div>
 
         <div className="text-center mt-12">
-          <button className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium transition-colors">
+          <button 
+            onClick={() => navigate('/search')}
+            className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium transition-colors"
+          >
             Voir tous les terrains
           </button>
         </div>

@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Star, MapPin, Users, Clock, Wifi, Car } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,8 @@ interface FieldCardProps {
 }
 
 const FieldCard: React.FC<FieldCardProps> = ({ field }) => {
+  const navigate = useNavigate();
+
   const getFeatureIcon = (feature: string) => {
     switch (feature.toLowerCase()) {
       case 'wifi':
@@ -35,8 +38,15 @@ const FieldCard: React.FC<FieldCardProps> = ({ field }) => {
     }
   };
 
+  const handleClick = () => {
+    navigate(`/field/${field.id}`);
+  };
+
   return (
-    <Card className="group cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 shadow-md">
+    <Card 
+      className="group cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 shadow-md"
+      onClick={handleClick}
+    >
       <div className="relative overflow-hidden rounded-t-lg">
         <img
           src={field.image}
