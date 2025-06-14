@@ -143,6 +143,60 @@ export type Database = {
           },
         ]
       }
+      owner_stats: {
+        Row: {
+          avg_rating: number | null
+          confirmed_bookings: number | null
+          field_id: string
+          field_name: string
+          owner_id: string
+          pending_bookings: number | null
+          total_bookings: number | null
+          total_revenue: number | null
+          total_reviews: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          avg_rating?: number | null
+          confirmed_bookings?: number | null
+          field_id: string
+          field_name: string
+          owner_id: string
+          pending_bookings?: number | null
+          total_bookings?: number | null
+          total_revenue?: number | null
+          total_reviews?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          avg_rating?: number | null
+          confirmed_bookings?: number | null
+          field_id?: string
+          field_name?: string
+          owner_id?: string
+          pending_bookings?: number | null
+          total_bookings?: number | null
+          total_revenue?: number | null
+          total_reviews?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "owner_stats_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "owner_stats_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -233,7 +287,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_owner_recent_bookings: {
+        Args: { owner_uuid: string }
+        Returns: {
+          booking_id: string
+          field_name: string
+          user_name: string
+          booking_date: string
+          start_time: string
+          end_time: string
+          status: string
+          total_price: number
+          player_count: number
+        }[]
+      }
+      update_owner_stats_for_field: {
+        Args: { field_uuid: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
