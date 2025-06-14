@@ -1,115 +1,152 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
+import FieldForm from '@/components/FieldForm';
+import ErrorAlert from '@/components/ErrorAlert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface FieldFormData {
+  name: string;
+  description: string;
+  location: string;
+  address: string;
+  city: string;
+  price_per_hour: number;
+  capacity: number;
+  field_type: 'natural_grass' | 'synthetic' | 'indoor' | 'street';
+  availability_start: string;
+  availability_end: string;
+  amenities: string[];
+  images: string[];
+}
 
 const AddField = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    location: '',
-    address: '',
-    city: '',
-    field_type: '',
-    capacity: '',
-    price_per_hour: '',
-    availability_start: '08:00',
-    availability_end: '22:00',
-    amenities: [] as string[]
-  });
-  
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const fieldTypes = [
-    { value: 'football', label: 'Football' },
-    { value: 'basketball', label: 'Basketball' },
-    { value: 'tennis', label: 'Tennis' },
-    { value: 'volleyball', label: 'Volleyball' },
-    { value: 'badminton', label: 'Badminton' },
-    { value: 'futsal', label: 'Futsal' }
-  ];
+  const createFieldMutation = useMutation({
+    mutationFn: async (fieldData: FieldFormData) => {
+      console.log('Creating field with data:', fieldData);
+      
+      if (!user) {
+        throw new Error('Utilisateur non connecté');
+      }
 
-  const availableAmenities = [
-    'Parking gratuit',
-    'Vestiaires',
-    'Douches',
-    'Éclairage',
-    'Matériel fourni',
-    'Boissons disponibles',
-    'Restauration',
-    'WiFi',
-    'Climatisation'
-  ];
+      // Vérifier que l'utilisateur a un profil
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+      if (profileError || !profile) {
+        console.error('Profile error:', profileError);
+        
+        // Créer le profil s'il n'existe pas
+        const { error: createProfileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.full_name || 'Propriétaire',
+            user_type: 'owner'
+          });
 
-  const handleAmenityChange = (amenity: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      amenities: checked 
-        ? [...prev.amenities, amenity]
-        : prev.amenities.filter(a => a !== amenity)
-    }));
-  };
+        if (createProfileError) {
+          console.error('Create profile error:', createProfileError);
+          throw new Error('Impossible de créer le profil utilisateur');
+        }
+      } else if (profile.user_type !== 'owner') {
+        // Mettre à jour le type d'utilisateur en propriétaire
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ user_type: 'owner' })
+          .eq('id', user.id);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    
-    setIsSubmitting(true);
-    
-    try {
-      const { error } = await supabase
+        if (updateError) {
+          console.error('Update user type error:', updateError);
+        }
+      }
+
+      // Créer le terrain
+      const { data, error } = await supabase
         .from('fields')
         .insert({
           owner_id: user.id,
-          name: formData.name,
-          description: formData.description,
-          location: formData.location,
-          address: formData.address,
-          city: formData.city,
-          field_type: formData.field_type,
-          capacity: parseInt(formData.capacity),
-          price_per_hour: parseFloat(formData.price_per_hour),
-          availability_start: formData.availability_start,
-          availability_end: formData.availability_end,
-          amenities: formData.amenities
-        });
+          name: fieldData.name,
+          description: fieldData.description,
+          location: fieldData.location,
+          address: fieldData.address,
+          city: fieldData.city,
+          price_per_hour: fieldData.price_per_hour,
+          capacity: fieldData.capacity,
+          field_type: fieldData.field_type,
+          amenities: fieldData.amenities,
+          images: fieldData.images,
+          availability_start: fieldData.availability_start,
+          availability_end: fieldData.availability_end,
+          is_active: true,
+          rating: 0,
+          total_reviews: 0
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Field creation error:', error);
+        throw error;
+      }
 
-      toast({
-        title: "Terrain créé avec succès",
-        description: "Votre terrain a été ajouté et est maintenant disponible à la réservation.",
-      });
-
-      navigate('/owner/dashboard');
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de créer le terrain. Veuillez réessayer.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmitting(false);
+      console.log('Field created successfully:', data);
+      return data;
+    },
+    onSuccess: (data) => {
+      console.log('Field created successfully:', data);
+      setSuccess(true);
+      setError(null);
+      toast.success('Terrain créé avec succès !');
+      
+      // Rediriger vers le dashboard après 2 secondes
+      setTimeout(() => {
+        navigate('/owner-dashboard');
+      }, 2000);
+    },
+    onError: (error: any) => {
+      console.error('Mutation error:', error);
+      
+      let errorMessage = 'Une erreur inattendue s\'est produite';
+      
+      if (error?.message) {
+        if (error.message.includes('violates row-level security')) {
+          errorMessage = 'Vous n\'avez pas les permissions pour créer un terrain. Veuillez vous connecter en tant que propriétaire.';
+        } else if (error.message.includes('duplicate key value')) {
+          errorMessage = 'Un terrain avec ces informations existe déjà.';
+        } else if (error.message.includes('invalid input syntax')) {
+          errorMessage = 'Certaines données sont invalides. Vérifiez les champs numériques et les heures.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setError(errorMessage);
+      setSuccess(false);
+      toast.error('Échec de la création du terrain');
     }
+  });
+
+  const handleSubmit = async (fieldData: FieldFormData) => {
+    setError(null);
+    setSuccess(false);
+    createFieldMutation.mutate(fieldData);
   };
 
   if (!user) {
@@ -118,7 +155,35 @@ const AddField = () => {
         <Navbar />
         <div className="container mx-auto px-4 py-8 text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Accès non autorisé</h1>
-          <p className="text-gray-600">Vous devez être connecté pour accéder à cette page.</p>
+          <p className="text-gray-600">Vous devez être connecté pour ajouter un terrain.</p>
+          <Button 
+            className="mt-4" 
+            onClick={() => navigate('/auth')}
+          >
+            Se connecter
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <Card className="max-w-md mx-auto">
+            <CardContent className="text-center py-8">
+              <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Terrain créé !</h2>
+              <p className="text-gray-600 mb-4">
+                Votre terrain a été créé avec succès. Redirection vers votre dashboard...
+              </p>
+              <Button onClick={() => navigate('/owner-dashboard')}>
+                Aller au dashboard
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -129,186 +194,35 @@ const AddField = () => {
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center mb-8">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate('/owner/dashboard')}
-            className="mr-4"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Retour au dashboard
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Ajouter un terrain</h1>
-            <p className="text-gray-600 mt-1">Créez un nouveau terrain disponible à la réservation</p>
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center space-x-4 mb-8">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate(-1)}
+              className="flex items-center space-x-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Retour</span>
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Ajouter un terrain</h1>
+              <p className="text-gray-600">Créez votre annonce de terrain de football</p>
+            </div>
           </div>
+
+          {error && (
+            <ErrorAlert 
+              title="Erreur lors de la création"
+              message={error}
+              onDismiss={() => setError(null)}
+            />
+          )}
+
+          <FieldForm 
+            onSubmit={handleSubmit}
+            isLoading={createFieldMutation.isPending}
+          />
         </div>
-
-        <Card className="max-w-4xl mx-auto">
-          <CardHeader>
-            <CardTitle>Informations du terrain</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nom du terrain *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    placeholder="Ex: Terrain de football Central"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="field_type">Type de terrain *</Label>
-                  <Select 
-                    value={formData.field_type} 
-                    onValueChange={(value) => handleInputChange('field_type', value)}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fieldTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="capacity">Capacité (nombre de joueurs) *</Label>
-                  <Input
-                    id="capacity"
-                    type="number"
-                    min="1"
-                    value={formData.capacity}
-                    onChange={(e) => handleInputChange('capacity', e.target.value)}
-                    placeholder="Ex: 22"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="price_per_hour">Prix par heure (€) *</Label>
-                  <Input
-                    id="price_per_hour"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.price_per_hour}
-                    onChange={(e) => handleInputChange('price_per_hour', e.target.value)}
-                    placeholder="Ex: 50.00"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="location">Quartier/Zone *</Label>
-                  <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) => handleInputChange('location', e.target.value)}
-                    placeholder="Ex: Centre-ville"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="city">Ville *</Label>
-                  <Input
-                    id="city"
-                    value={formData.city}
-                    onChange={(e) => handleInputChange('city', e.target.value)}
-                    placeholder="Ex: Paris"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="availability_start">Heure d'ouverture</Label>
-                  <Input
-                    id="availability_start"
-                    type="time"
-                    value={formData.availability_start}
-                    onChange={(e) => handleInputChange('availability_start', e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="availability_end">Heure de fermeture</Label>
-                  <Input
-                    id="availability_end"
-                    type="time"
-                    value={formData.availability_end}
-                    onChange={(e) => handleInputChange('availability_end', e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="address">Adresse complète *</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
-                  placeholder="Ex: 123 Rue du Sport, 75001 Paris"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  placeholder="Décrivez votre terrain, ses spécificités, les équipements disponibles..."
-                  rows={4}
-                />
-              </div>
-
-              <div className="space-y-4">
-                <Label>Équipements disponibles</Label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {availableAmenities.map((amenity) => (
-                    <div key={amenity} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={amenity}
-                        checked={formData.amenities.includes(amenity)}
-                        onCheckedChange={(checked) => handleAmenityChange(amenity, checked as boolean)}
-                      />
-                      <Label htmlFor={amenity} className="text-sm">{amenity}</Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-4 pt-6">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => navigate('/owner/dashboard')}
-                >
-                  Annuler
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {isSubmitting ? 'Création...' : 'Créer le terrain'}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
