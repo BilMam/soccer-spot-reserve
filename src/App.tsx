@@ -12,6 +12,7 @@ import FieldDetail from "./pages/FieldDetail";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import AddField from "./pages/AddField";
 import EditField from "./pages/EditField";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/owner/dashboard" element={<OwnerDashboard />} />
             <Route path="/add-field" element={<AddField />} />
             <Route path="/edit-field/:id" element={<EditField />} />
+            <Route path="/profile" element={<Profile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

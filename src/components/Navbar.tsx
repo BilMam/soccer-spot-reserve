@@ -35,11 +35,11 @@ const Navbar = () => {
 
           {/* Navigation Links - Hidden on mobile */}
           <div className="hidden md:flex items-center space-x-8">
-            <a href="#" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
+            <a href="/search" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
               Découvrir
             </a>
             {user && (
-              <a href="#" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
+              <a href="/profile" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
                 Mes réservations
               </a>
             )}
@@ -59,14 +59,14 @@ const Navbar = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
                     <User className="w-4 h-4 mr-2" />
                     Mon profil
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
                     Mes réservations
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/owner/dashboard')}>
                     Mes terrains
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
