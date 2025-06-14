@@ -9,13 +9,59 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      booking_notifications: {
+        Row: {
+          booking_id: string
+          created_at: string | null
+          error_message: string | null
+          id: string
+          notification_type: string
+          recipient_email: string
+          sent_at: string | null
+          status: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          notification_type: string
+          recipient_email: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          notification_type?: string
+          recipient_email?: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           booking_date: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          confirmation_email_sent: boolean | null
           created_at: string | null
           end_time: string
           field_id: string
           id: string
+          payment_intent_id: string | null
+          payment_status: string | null
           player_count: number | null
           special_requests: string | null
           start_time: string
@@ -26,10 +72,15 @@ export type Database = {
         }
         Insert: {
           booking_date: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          confirmation_email_sent?: boolean | null
           created_at?: string | null
           end_time: string
           field_id: string
           id?: string
+          payment_intent_id?: string | null
+          payment_status?: string | null
           player_count?: number | null
           special_requests?: string | null
           start_time: string
@@ -40,10 +91,15 @@ export type Database = {
         }
         Update: {
           booking_date?: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          confirmation_email_sent?: boolean | null
           created_at?: string | null
           end_time?: string
           field_id?: string
           id?: string
+          payment_intent_id?: string | null
+          payment_status?: string | null
           player_count?: number | null
           special_requests?: string | null
           start_time?: string
@@ -65,6 +121,50 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      field_availability: {
+        Row: {
+          created_at: string | null
+          date: string
+          end_time: string
+          field_id: string
+          id: string
+          is_available: boolean | null
+          price_override: number | null
+          start_time: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          end_time: string
+          field_id: string
+          id?: string
+          is_available?: boolean | null
+          price_override?: number | null
+          start_time: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          end_time?: string
+          field_id?: string
+          id?: string
+          is_available?: boolean | null
+          price_override?: number | null
+          start_time?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "field_availability_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields"
             referencedColumns: ["id"]
           },
         ]
@@ -287,6 +387,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_booking_conflict: {
+        Args: {
+          p_field_id: string
+          p_booking_date: string
+          p_start_time: string
+          p_end_time: string
+          p_booking_id?: string
+        }
+        Returns: boolean
+      }
       get_owner_recent_bookings: {
         Args: { owner_uuid: string }
         Returns: {
