@@ -33,7 +33,7 @@ const Search = () => {
   const [filters, setFilters] = useState({
     priceMin: '',
     priceMax: '',
-    fieldType: '',
+    fieldType: 'all',
     capacity: '',
     sortBy: 'rating'
   });
@@ -63,7 +63,7 @@ const Search = () => {
         query = query.lte('price_per_hour', parseFloat(filters.priceMax));
       }
 
-      if (filters.fieldType) {
+      if (filters.fieldType && filters.fieldType !== 'all') {
         query = query.eq('field_type', filters.fieldType);
       }
 
@@ -147,7 +147,7 @@ const Search = () => {
                         <SelectValue placeholder="Tous les types" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Tous les types</SelectItem>
+                        <SelectItem value="all">Tous les types</SelectItem>
                         <SelectItem value="natural_grass">Gazon naturel</SelectItem>
                         <SelectItem value="synthetic">Synthétique</SelectItem>
                         <SelectItem value="indoor">Indoor</SelectItem>
@@ -187,7 +187,7 @@ const Search = () => {
                     onClick={() => setFilters({
                       priceMin: '',
                       priceMax: '',
-                      fieldType: '',
+                      fieldType: 'all',
                       capacity: '',
                       sortBy: 'rating'
                     })}
