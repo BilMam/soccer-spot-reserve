@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader } from 'lucide-react';
+import ImageUpload from '@/components/ImageUpload';
 
 const EditField = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,7 +32,8 @@ const EditField = () => {
     price_per_hour: '',
     availability_start: '08:00',
     availability_end: '22:00',
-    amenities: [] as string[]
+    amenities: [] as string[],
+    images: [] as string[]
   });
   
   const [isLoading, setIsLoading] = useState(true);
@@ -83,7 +86,8 @@ const EditField = () => {
             price_per_hour: data.price_per_hour.toString(),
             availability_start: data.availability_start || '08:00',
             availability_end: data.availability_end || '22:00',
-            amenities: data.amenities || []
+            amenities: data.amenities || [],
+            images: data.images || []
           });
         }
       } catch (error) {
@@ -114,6 +118,10 @@ const EditField = () => {
     }));
   };
 
+  const handleImagesChange = (images: string[]) => {
+    setFormData(prev => ({ ...prev, images }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !id) return;
@@ -135,6 +143,7 @@ const EditField = () => {
           availability_start: formData.availability_start,
           availability_end: formData.availability_end,
           amenities: formData.amenities,
+          images: formData.images,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
@@ -350,6 +359,16 @@ const EditField = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Images Section */}
+              <div className="space-y-4">
+                <Label>Photos du terrain</Label>
+                <ImageUpload
+                  images={formData.images}
+                  onImagesChange={handleImagesChange}
+                  maxImages={10}
+                />
               </div>
 
               <div className="flex justify-end space-x-4 pt-6">
