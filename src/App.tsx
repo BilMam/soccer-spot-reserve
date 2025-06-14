@@ -13,6 +13,7 @@ import OwnerDashboard from "./pages/OwnerDashboard";
 import AddField from "./pages/AddField";
 import EditField from "./pages/EditField";
 import Profile from "./pages/Profile";
+import BecomeOwner from "./pages/BecomeOwner";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/add-field" element={<AddField />} />
             <Route path="/edit-field/:id" element={<EditField />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/become-owner" element={<BecomeOwner />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const Navbar = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -43,7 +43,7 @@ const Navbar = () => {
                 Mes réservations
               </a>
             )}
-            <a href="#" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
+            <a href="/become-owner" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
               Devenir propriétaire
             </a>
           </div>
