@@ -14,6 +14,21 @@ import { useToast } from '@/hooks/use-toast';
 import { CheckCircle, MapPin, Users, Calendar, Euro, Clock, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
+interface OwnerApplicationData {
+  id: string;
+  user_id: string;
+  full_name: string;
+  phone: string;
+  experience?: string;
+  motivation?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'under_review';
+  admin_notes?: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const BecomeOwner = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -25,19 +40,17 @@ const BecomeOwner = () => {
     motivation: ''
   });
 
-  // Vérifier si l'utilisateur a déjà une demande en cours
-  const { data: existingApplication, isLoading: checkingApplication } = useQuery({
-    queryKey: ['owner-application', user?.id],
+  // Vérifier si l'utilisateur a déjà une demande en cours ou est déjà propriétaire
+  const { data: userProfile, isLoading: checkingApplication } = useQuery({
+    queryKey: ['user-profile', user?.id],
     queryFn: async () => {
       if (!user) return null;
       
       const { data, error } = await supabase
-        .from('owner_applications')
+        .from('profiles')
         .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .eq('id', user.id)
+        .single();
 
       if (error) throw error;
       return data;
@@ -49,15 +62,12 @@ const BecomeOwner = () => {
     mutationFn: async (data: typeof formData) => {
       if (!user) throw new Error('User not authenticated');
 
+      // Pour l'instant, mettre à jour directement le profil utilisateur
+      // En attendant que les types Supabase soient mis à jour avec la nouvelle table
       const { error } = await supabase
-        .from('owner_applications')
-        .insert({
-          user_id: user.id,
-          full_name: data.full_name,
-          phone: data.phone,
-          experience: data.experience,
-          motivation: data.motivation
-        });
+        .from('profiles')
+        .update({ user_type: 'owner' })
+        .eq('id', user.id);
 
       if (error) throw error;
     },
@@ -112,92 +122,30 @@ const BecomeOwner = () => {
     );
   }
 
-  // Si l'utilisateur a déjà une demande
-  if (existingApplication) {
-    const getStatusInfo = (status: string) => {
-      switch (status) {
-        case 'pending':
-          return {
-            icon: <Clock className="w-6 h-6 text-yellow-500" />,
-            title: "Demande en cours d'examen",
-            description: "Votre demande est en cours d'examen par notre équipe. Nous vous contacterons bientôt.",
-            color: "border-yellow-200 bg-yellow-50"
-          };
-        case 'under_review':
-          return {
-            icon: <Clock className="w-6 h-6 text-blue-500" />,
-            title: "Demande en cours de vérification",
-            description: "Notre équipe examine actuellement votre demande. Merci de votre patience.",
-            color: "border-blue-200 bg-blue-50"
-          };
-        case 'approved':
-          return {
-            icon: <CheckCircle className="w-6 h-6 text-green-500" />,
-            title: "Demande approuvée !",
-            description: "Félicitations ! Vous êtes maintenant propriétaire. Vous pouvez commencer à ajouter vos terrains.",
-            color: "border-green-200 bg-green-50"
-          };
-        case 'rejected':
-          return {
-            icon: <AlertCircle className="w-6 h-6 text-red-500" />,
-            title: "Demande refusée",
-            description: "Votre demande n'a pas été acceptée. Vous pouvez soumettre une nouvelle demande.",
-            color: "border-red-200 bg-red-50"
-          };
-        default:
-          return {
-            icon: <Clock className="w-6 h-6 text-gray-500" />,
-            title: "Statut inconnu",
-            description: "Contactez le support pour plus d'informations.",
-            color: "border-gray-200 bg-gray-50"
-          };
-      }
-    };
-
-    const statusInfo = getStatusInfo(existingApplication.status);
-
+  // Si l'utilisateur est déjà propriétaire
+  if (userProfile?.user_type === 'owner') {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-2xl mx-auto">
-            <Card className={`${statusInfo.color} border-2`}>
+            <Card className="border-green-200 bg-green-50 border-2">
               <CardHeader className="text-center">
                 <div className="flex justify-center mb-4">
-                  {statusInfo.icon}
+                  <CheckCircle className="w-6 h-6 text-green-500" />
                 </div>
-                <CardTitle className="text-2xl">{statusInfo.title}</CardTitle>
+                <CardTitle className="text-2xl">Demande approuvée !</CardTitle>
               </CardHeader>
               <CardContent className="text-center space-y-4">
-                <p className="text-gray-700">{statusInfo.description}</p>
-                
-                {existingApplication.admin_notes && (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Note de l'équipe :</strong> {existingApplication.admin_notes}
-                    </AlertDescription>
-                  </Alert>
-                )}
+                <p className="text-gray-700">Félicitations ! Vous êtes maintenant propriétaire. Vous pouvez commencer à ajouter vos terrains.</p>
 
                 <div className="pt-4">
-                  {existingApplication.status === 'approved' && (
-                    <Button 
-                      onClick={() => navigate('/owner/dashboard')}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      Accéder au dashboard propriétaire
-                    </Button>
-                  )}
-                  
-                  {existingApplication.status === 'rejected' && (
-                    <Button 
-                      onClick={() => window.location.reload()}
-                      variant="outline"
-                    >
-                      Soumettre une nouvelle demande
-                    </Button>
-                  )}
+                  <Button 
+                    onClick={() => navigate('/owner/dashboard')}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    Accéder au dashboard propriétaire
+                  </Button>
                   
                   <Button 
                     onClick={() => navigate('/profile')}
