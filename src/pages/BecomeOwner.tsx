@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, MapPin, Users, Calendar, Euro } from 'lucide-react';
+import { CheckCircle, MapPin, Users, Calendar, Euro, Clock, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const BecomeOwner = () => {
   const { user } = useAuth();
@@ -24,34 +25,53 @@ const BecomeOwner = () => {
     motivation: ''
   });
 
-  const becomeOwnerMutation = useMutation({
+  // Vérifier si l'utilisateur a déjà une demande en cours
+  const { data: existingApplication, isLoading: checkingApplication } = useQuery({
+    queryKey: ['owner-application', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      
+      const { data, error } = await supabase
+        .from('owner_applications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user
+  });
+
+  const createApplicationMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       if (!user) throw new Error('User not authenticated');
 
-      // Mettre à jour le profil pour devenir propriétaire
       const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          email: user.email,
+        .from('owner_applications')
+        .insert({
+          user_id: user.id,
           full_name: data.full_name,
           phone: data.phone,
-          user_type: 'owner'
+          experience: data.experience,
+          motivation: data.motivation
         });
 
       if (error) throw error;
     },
     onSuccess: () => {
       toast({
-        title: "Félicitations !",
-        description: "Vous êtes maintenant propriétaire. Vous pouvez ajouter vos terrains.",
+        title: "Demande envoyée !",
+        description: "Votre demande a été soumise avec succès. Nous l'examinerons dans les plus brefs délais.",
       });
-      navigate('/owner/dashboard');
+      navigate('/profile');
     },
     onError: () => {
       toast({
         title: "Erreur",
-        description: "Impossible de vous inscrire comme propriétaire.",
+        description: "Impossible d'envoyer votre demande. Veuillez réessayer.",
         variant: "destructive",
       });
     }
@@ -59,7 +79,7 @@ const BecomeOwner = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    becomeOwnerMutation.mutate(formData);
+    createApplicationMutation.mutate(formData);
   };
 
   const handleInputChange = (field: keyof typeof formData, value: string) => {
@@ -76,6 +96,120 @@ const BecomeOwner = () => {
           <Button onClick={() => navigate('/auth')} className="bg-green-600 hover:bg-green-700">
             Se connecter
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (checkingApplication) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8 text-center">
+          <div className="animate-pulse">Chargement...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Si l'utilisateur a déjà une demande
+  if (existingApplication) {
+    const getStatusInfo = (status: string) => {
+      switch (status) {
+        case 'pending':
+          return {
+            icon: <Clock className="w-6 h-6 text-yellow-500" />,
+            title: "Demande en cours d'examen",
+            description: "Votre demande est en cours d'examen par notre équipe. Nous vous contacterons bientôt.",
+            color: "border-yellow-200 bg-yellow-50"
+          };
+        case 'under_review':
+          return {
+            icon: <Clock className="w-6 h-6 text-blue-500" />,
+            title: "Demande en cours de vérification",
+            description: "Notre équipe examine actuellement votre demande. Merci de votre patience.",
+            color: "border-blue-200 bg-blue-50"
+          };
+        case 'approved':
+          return {
+            icon: <CheckCircle className="w-6 h-6 text-green-500" />,
+            title: "Demande approuvée !",
+            description: "Félicitations ! Vous êtes maintenant propriétaire. Vous pouvez commencer à ajouter vos terrains.",
+            color: "border-green-200 bg-green-50"
+          };
+        case 'rejected':
+          return {
+            icon: <AlertCircle className="w-6 h-6 text-red-500" />,
+            title: "Demande refusée",
+            description: "Votre demande n'a pas été acceptée. Vous pouvez soumettre une nouvelle demande.",
+            color: "border-red-200 bg-red-50"
+          };
+        default:
+          return {
+            icon: <Clock className="w-6 h-6 text-gray-500" />,
+            title: "Statut inconnu",
+            description: "Contactez le support pour plus d'informations.",
+            color: "border-gray-200 bg-gray-50"
+          };
+      }
+    };
+
+    const statusInfo = getStatusInfo(existingApplication.status);
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto">
+            <Card className={`${statusInfo.color} border-2`}>
+              <CardHeader className="text-center">
+                <div className="flex justify-center mb-4">
+                  {statusInfo.icon}
+                </div>
+                <CardTitle className="text-2xl">{statusInfo.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center space-y-4">
+                <p className="text-gray-700">{statusInfo.description}</p>
+                
+                {existingApplication.admin_notes && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Note de l'équipe :</strong> {existingApplication.admin_notes}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="pt-4">
+                  {existingApplication.status === 'approved' && (
+                    <Button 
+                      onClick={() => navigate('/owner/dashboard')}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      Accéder au dashboard propriétaire
+                    </Button>
+                  )}
+                  
+                  {existingApplication.status === 'rejected' && (
+                    <Button 
+                      onClick={() => window.location.reload()}
+                      variant="outline"
+                    >
+                      Soumettre une nouvelle demande
+                    </Button>
+                  )}
+                  
+                  <Button 
+                    onClick={() => navigate('/profile')}
+                    variant="outline"
+                    className="ml-4"
+                  >
+                    Retour au profil
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
@@ -174,15 +308,15 @@ const BecomeOwner = () => {
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-gray-700">Inscrivez-vous comme propriétaire</span>
+                  <span className="text-gray-700">Soumettez votre demande de propriétaire</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-gray-700">Ajoutez vos terrains avec photos et détails</span>
+                  <span className="text-gray-700">Notre équipe examine votre profil</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-gray-700">Définissez vos tarifs et disponibilités</span>
+                  <span className="text-gray-700">Une fois approuvé, ajoutez vos terrains</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
@@ -192,13 +326,16 @@ const BecomeOwner = () => {
             </div>
           </div>
 
-          {/* Formulaire d'inscription */}
+          {/* Formulaire de demande */}
           <div>
             <Card>
               <CardHeader>
                 <CardTitle className="text-2xl text-center">
-                  Rejoignez-nous maintenant
+                  Soumettre votre demande
                 </CardTitle>
+                <p className="text-center text-gray-600">
+                  Remplissez ce formulaire pour devenir propriétaire. Notre équipe examinera votre demande.
+                </p>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -232,7 +369,7 @@ const BecomeOwner = () => {
                       id="experience"
                       value={formData.experience}
                       onChange={(e) => handleInputChange('experience', e.target.value)}
-                      placeholder="Décrivez votre expérience (optionnel)"
+                      placeholder="Décrivez votre expérience avec la gestion de terrains de sport (optionnel)"
                       rows={3}
                     />
                   </div>
@@ -243,7 +380,7 @@ const BecomeOwner = () => {
                       id="motivation"
                       value={formData.motivation}
                       onChange={(e) => handleInputChange('motivation', e.target.value)}
-                      placeholder="Parlez-nous de votre motivation (optionnel)"
+                      placeholder="Parlez-nous de votre motivation et de vos objectifs (optionnel)"
                       rows={3}
                     />
                   </div>
@@ -251,14 +388,15 @@ const BecomeOwner = () => {
                   <Button 
                     type="submit" 
                     className="w-full bg-green-600 hover:bg-green-700"
-                    disabled={becomeOwnerMutation.isPending}
+                    disabled={createApplicationMutation.isPending}
                   >
-                    {becomeOwnerMutation.isPending ? "Inscription..." : "Devenir propriétaire"}
+                    {createApplicationMutation.isPending ? "Envoi en cours..." : "Soumettre ma demande"}
                   </Button>
 
                   <p className="text-sm text-gray-500 text-center">
-                    En vous inscrivant, vous acceptez nos conditions d'utilisation 
-                    et notre politique de confidentialité.
+                    En soumettant cette demande, vous acceptez nos conditions d'utilisation 
+                    et notre politique de confidentialité. Notre équipe examinera votre demande 
+                    dans un délai de 2-3 jours ouvrables.
                   </p>
                 </form>
               </CardContent>

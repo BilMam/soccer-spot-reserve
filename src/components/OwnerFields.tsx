@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Star, Euro, Edit, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
+import { MapPin, Star, Euro, Edit, Eye, ToggleLeft, ToggleRight, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -16,6 +16,8 @@ interface Field {
   is_active: boolean;
   rating: number;
   total_reviews: number;
+  status: string;
+  admin_notes?: string;
 }
 
 interface OwnerFieldsProps {
@@ -41,7 +43,6 @@ const OwnerFields = ({ fields, isLoading }: OwnerFieldsProps) => {
         description: `Le terrain a été ${!currentStatus ? 'activé' : 'désactivé'}`,
       });
 
-      // Recharger la page pour voir les changements
       window.location.reload();
     } catch (error) {
       toast({
@@ -49,6 +50,41 @@ const OwnerFields = ({ fields, isLoading }: OwnerFieldsProps) => {
         description: "Impossible de mettre à jour le statut du terrain",
         variant: "destructive"
       });
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return (
+          <Badge variant="secondary" className="flex items-center space-x-1">
+            <Clock className="w-3 h-3" />
+            <span>En attente</span>
+          </Badge>
+        );
+      case 'approved':
+        return (
+          <Badge variant="default" className="flex items-center space-x-1 bg-green-600">
+            <CheckCircle className="w-3 h-3" />
+            <span>Approuvé</span>
+          </Badge>
+        );
+      case 'rejected':
+        return (
+          <Badge variant="destructive" className="flex items-center space-x-1">
+            <XCircle className="w-3 h-3" />
+            <span>Rejeté</span>
+          </Badge>
+        );
+      case 'suspended':
+        return (
+          <Badge variant="secondary" className="flex items-center space-x-1">
+            <XCircle className="w-3 h-3" />
+            <span>Suspendu</span>
+          </Badge>
+        );
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
@@ -92,7 +128,7 @@ const OwnerFields = ({ fields, isLoading }: OwnerFieldsProps) => {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {fields.map((field) => (
-          <Card key={field.id} className={`${!field.is_active ? 'opacity-60' : ''}`}>
+          <Card key={field.id} className={`${(!field.is_active || field.status !== 'approved') ? 'opacity-60' : ''}`}>
             <CardHeader>
               <div className="flex justify-between items-start">
                 <div>
@@ -102,7 +138,8 @@ const OwnerFields = ({ fields, isLoading }: OwnerFieldsProps) => {
                     <span className="text-sm">{field.location}</span>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-col items-end space-y-2">
+                  {getStatusBadge(field.status)}
                   <Badge variant={field.is_active ? "default" : "secondary"}>
                     {field.is_active ? "Actif" : "Inactif"}
                   </Badge>
@@ -110,6 +147,22 @@ const OwnerFields = ({ fields, isLoading }: OwnerFieldsProps) => {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {field.status === 'pending' && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm">
+                  <p className="text-yellow-800">
+                    <strong>En attente de validation :</strong> Votre terrain sera visible publiquement une fois approuvé par notre équipe.
+                  </p>
+                </div>
+              )}
+
+              {field.status === 'rejected' && field.admin_notes && (
+                <div className="bg-red-50 border border-red-200 rounded p-3 text-sm">
+                  <p className="text-red-800">
+                    <strong>Raison du rejet :</strong> {field.admin_notes}
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center space-x-2">
                   <Euro className="w-4 h-4 text-green-600" />
@@ -137,21 +190,24 @@ const OwnerFields = ({ fields, isLoading }: OwnerFieldsProps) => {
                   variant="outline" 
                   className="flex-1"
                   onClick={() => navigate(`/edit-field/${field.id}`)}
+                  disabled={field.status === 'rejected'}
                 >
                   <Edit className="w-4 h-4 mr-2" />
                   Modifier
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => toggleFieldStatus(field.id, field.is_active)}
-                >
-                  {field.is_active ? (
-                    <ToggleRight className="w-4 h-4 text-green-600" />
-                  ) : (
-                    <ToggleLeft className="w-4 h-4 text-gray-400" />
-                  )}
-                </Button>
+                {field.status === 'approved' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => toggleFieldStatus(field.id, field.is_active)}
+                  >
+                    {field.is_active ? (
+                      <ToggleRight className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <ToggleLeft className="w-4 h-4 text-gray-400" />
+                    )}
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
