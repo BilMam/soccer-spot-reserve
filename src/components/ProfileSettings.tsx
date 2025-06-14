@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,17 +39,19 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ user }) => {
 
       if (error && error.code !== 'PGRST116') throw error;
       return data as Profile;
-    },
-    onSuccess: (data) => {
-      if (data) {
-        setFormData({
-          full_name: data.full_name || '',
-          phone: data.phone || '',
-          email: user.email || ''
-        });
-      }
     }
   });
+
+  // Use useEffect to handle data loading instead of onSuccess
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        full_name: profile.full_name || '',
+        phone: profile.phone || '',
+        email: user.email || ''
+      });
+    }
+  }, [profile, user.email]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { full_name: string; phone: string }) => {
