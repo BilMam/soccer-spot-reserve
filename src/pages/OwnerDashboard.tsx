@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
@@ -11,7 +12,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, BarChart3, Calendar, MapPin } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 
 interface OwnerField {
   id: string;
@@ -25,7 +25,7 @@ interface OwnerField {
 
 const OwnerDashboard = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
 
   const { data: fields, isLoading: fieldsLoading } = useQuery({
@@ -89,7 +89,10 @@ const OwnerDashboard = () => {
             <h1 className="text-3xl font-bold text-gray-900">Dashboard Propriétaire</h1>
             <p className="text-gray-600 mt-1">Gérez vos terrains et suivez vos performances</p>
           </div>
-          <Button className="bg-green-600 hover:bg-green-700">
+          <Button 
+            className="bg-green-600 hover:bg-green-700"
+            onClick={() => navigate('/add-field')}
+          >
             <PlusCircle className="w-4 h-4 mr-2" />
             Ajouter un terrain
           </Button>

@@ -10,6 +10,8 @@ import Auth from "./pages/Auth";
 import Search from "./pages/Search";
 import FieldDetail from "./pages/FieldDetail";
 import OwnerDashboard from "./pages/OwnerDashboard";
+import AddField from "./pages/AddField";
+import EditField from "./pages/EditField";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +29,8 @@ const App = () => (
             <Route path="/search" element={<Search />} />
             <Route path="/field/:id" element={<FieldDetail />} />
             <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+            <Route path="/add-field" element={<AddField />} />
+            <Route path="/edit-field/:id" element={<EditField />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
