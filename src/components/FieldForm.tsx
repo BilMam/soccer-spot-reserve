@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { X, Plus, MapPin, Clock, Euro, Users } from 'lucide-react';
+import ImageUpload from './ImageUpload';
 
 const fieldSchema = z.object({
   name: z.string().min(3, 'Le nom doit contenir au moins 3 caractères'),
@@ -68,7 +69,6 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading = false, init
   });
 
   const [newAmenity, setNewAmenity] = React.useState('');
-  const [newImageUrl, setNewImageUrl] = React.useState('');
 
   const watchedAmenities = form.watch('amenities');
   const watchedImages = form.watch('images');
@@ -84,26 +84,6 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading = false, init
   const removeAmenity = (amenityToRemove: string) => {
     const currentAmenities = form.getValues('amenities');
     form.setValue('amenities', currentAmenities.filter(a => a !== amenityToRemove));
-  };
-
-  const addImage = () => {
-    if (newImageUrl) {
-      try {
-        new URL(newImageUrl); // Valider l'URL
-        const currentImages = form.getValues('images');
-        if (!currentImages.includes(newImageUrl)) {
-          form.setValue('images', [...currentImages, newImageUrl]);
-        }
-        setNewImageUrl('');
-      } catch {
-        form.setError('images', { message: 'URL d\'image invalide' });
-      }
-    }
-  };
-
-  const removeImage = (imageToRemove: string) => {
-    const currentImages = form.getValues('images');
-    form.setValue('images', currentImages.filter(img => img !== imageToRemove));
   };
 
   const validateTimeRange = (data: FieldFormData) => {
@@ -411,46 +391,23 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading = false, init
           <CardHeader>
             <CardTitle>Photos du terrain</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex space-x-2">
-              <Input
-                placeholder="URL de l'image"
-                value={newImageUrl}
-                onChange={(e) => setNewImageUrl(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addImage())}
-              />
-              <Button type="button" variant="outline" onClick={addImage}>
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {watchedImages.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {watchedImages.map((imageUrl, index) => (
-                  <div key={index} className="relative">
-                    <img 
-                      src={imageUrl} 
-                      alt={`Image ${index + 1}`}
-                      className="w-full h-32 object-cover rounded border"
-                      onError={(e) => {
-                        e.currentTarget.src = '/placeholder.svg';
-                      }}
+          <CardContent>
+            <FormField
+              control={form.control}
+              name="images"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <ImageUpload
+                      images={field.value}
+                      onImagesChange={field.onChange}
+                      maxImages={10}
                     />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="absolute top-1 right-1"
-                      onClick={() => removeImage(imageUrl)}
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <FormMessage>{form.formState.errors.images?.message}</FormMessage>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </CardContent>
         </Card>
 
