@@ -1,24 +1,35 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
 import { Loader } from 'lucide-react';
 import ImageUpload from '@/components/ImageUpload';
 
-const FieldForm: React.FC = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
+interface FieldFormData {
+  name: string;
+  description: string;
+  location: string;
+  address: string;
+  city: string;
+  price_per_hour: number;
+  capacity: number;
+  field_type: 'natural_grass' | 'synthetic' | 'indoor' | 'street';
+  availability_start: string;
+  availability_end: string;
+  amenities: string[];
+  images: string[];
+}
 
+interface FieldFormProps {
+  onSubmit: (fieldData: FieldFormData) => Promise<void>;
+  isLoading: boolean;
+}
+
+const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -33,8 +44,6 @@ const FieldForm: React.FC = () => {
     amenities: [] as string[],
     images: [] as string[]
   });
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -53,56 +62,16 @@ const FieldForm: React.FC = () => {
     setFormData(prev => ({ ...prev, images }));
   };
 
-  const createFieldMutation = useMutation({
-    mutationFn: async (fieldData: any) => {
-      if (!user) {
-        throw new Error('Utilisateur non connecté');
-      }
-
-      const { data, error } = await supabase
-        .from('fields')
-        .insert({
-          ...fieldData,
-          owner_id: user.id
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Erreur lors de la création:', error);
-        throw error;
-      }
-
-      return data;
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Terrain ajouté avec succès",
-        description: "Votre terrain a été créé et est maintenant disponible.",
-      });
-      navigate('/owner/dashboard');
-    },
-    onError: (error: any) => {
-      console.error('Erreur lors de la création du terrain:', error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible d'ajouter le terrain",
-        variant: "destructive",
-      });
-    }
-  });
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
-    const fieldData = {
+    
+    const fieldData: FieldFormData = {
       name: formData.name,
       description: formData.description,
       location: formData.location,
       address: formData.address,
       city: formData.city,
-      field_type: formData.field_type,
+      field_type: formData.field_type as 'natural_grass' | 'synthetic' | 'indoor' | 'street',
       capacity: parseInt(formData.capacity),
       price_per_hour: parseFloat(formData.price_per_hour),
       availability_start: formData.availability_start,
@@ -111,19 +80,14 @@ const FieldForm: React.FC = () => {
       images: formData.images,
     };
 
-    createFieldMutation.mutate(fieldData);
-    setIsSubmitting(false);
+    await onSubmit(fieldData);
   };
 
   const fieldTypes = [
-    'Football',
-    'Tennis',
-    'Basketball',
-    'Volleyball',
-    'Badminton',
-    'Padel',
-    'Rugby',
-    'Hockey'
+    { value: 'natural_grass', label: 'Pelouse naturelle' },
+    { value: 'synthetic', label: 'Synthétique' },
+    { value: 'indoor', label: 'Couvert' },
+    { value: 'street', label: 'Street' }
   ];
 
   const amenitiesList = [
@@ -165,8 +129,8 @@ const FieldForm: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {fieldTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -303,15 +267,15 @@ const FieldForm: React.FC = () => {
           </div>
 
           <div className="flex justify-end space-x-4 pt-6">
-            <Button type="button" variant="outline" onClick={() => navigate('/owner/dashboard')}>
+            <Button type="button" variant="outline">
               Annuler
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isLoading}
               className="bg-green-600 hover:bg-green-700"
             >
-              {isSubmitting ? (
+              {isLoading ? (
                 <>
                   <Loader className="mr-2 h-4 w-4 animate-spin" />
                   Ajout en cours...
