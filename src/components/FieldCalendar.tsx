@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Clock, Euro, Users } from 'lucide-react';
+import { Clock, Euro, AlertCircle } from 'lucide-react';
 import { format, addDays, startOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -29,7 +29,17 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
   onTimeSlotSelect 
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
+  const [selectedStartTime, setSelectedStartTime] = useState<string>('');
+  const [selectedEndTime, setSelectedEndTime] = useState<string>('');
+
+  // Générer les heures disponibles (8h-22h)
+  const generateTimeOptions = (): string[] => {
+    const times: string[] = [];
+    for (let hour = 8; hour <= 22; hour++) {
+      times.push(`${hour.toString().padStart(2, '0')}:00`);
+    }
+    return times;
+  };
 
   // Générer les créneaux par défaut (8h-22h, créneaux d'1h)
   const generateDefaultTimeSlots = (): TimeSlot[] => {
@@ -94,18 +104,100 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
     enabled: !!selectedDate
   });
 
-  const handleTimeSlotClick = (slot: TimeSlot) => {
-    if (!slot.is_available || !selectedDate) return;
+  // Vérifier si une plage horaire est entièrement disponible
+  const isRangeAvailable = (startTime: string, endTime: string): boolean => {
+    if (!startTime || !endTime) return false;
     
-    const slotKey = `${slot.start_time}-${slot.end_time}`;
-    setSelectedTimeSlot(slotKey);
-    onTimeSlotSelect(selectedDate, slot.start_time, slot.end_time, slot.price);
+    const startHour = parseInt(startTime.split(':')[0]);
+    const endHour = parseInt(endTime.split(':')[0]);
+    
+    // Vérifier chaque créneau horaire dans la plage
+    for (let hour = startHour; hour < endHour; hour++) {
+      const slotStartTime = `${hour.toString().padStart(2, '0')}:00`;
+      const slotEndTime = `${(hour + 1).toString().padStart(2, '0')}:00`;
+      
+      const slot = availableSlots.find(s => s.start_time === slotStartTime && s.end_time === slotEndTime);
+      if (!slot || !slot.is_available) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // Calculer le prix total pour une plage horaire
+  const calculateTotalPrice = (startTime: string, endTime: string): number => {
+    if (!startTime || !endTime) return 0;
+    
+    const startHour = parseInt(startTime.split(':')[0]);
+    const endHour = parseInt(endTime.split(':')[0]);
+    let totalPrice = 0;
+    
+    for (let hour = startHour; hour < endHour; hour++) {
+      const slotStartTime = `${hour.toString().padStart(2, '0')}:00`;
+      const slotEndTime = `${(hour + 1).toString().padStart(2, '0')}:00`;
+      
+      const slot = availableSlots.find(s => s.start_time === slotStartTime && s.end_time === slotEndTime);
+      totalPrice += slot?.price || fieldPrice;
+    }
+    return totalPrice;
+  };
+
+  // Calculer la durée en heures
+  const calculateDuration = (startTime: string, endTime: string): number => {
+    if (!startTime || !endTime) return 0;
+    return parseInt(endTime.split(':')[0]) - parseInt(startTime.split(':')[0]);
+  };
+
+  // Obtenir les heures de fin disponibles selon l'heure de début
+  const getAvailableEndTimes = (startTime: string): string[] => {
+    if (!startTime) return [];
+    
+    const startHour = parseInt(startTime.split(':')[0]);
+    const availableEndTimes: string[] = [];
+    
+    // Vérifier chaque heure possible après l'heure de début
+    for (let hour = startHour + 1; hour <= 22; hour++) {
+      const endTime = `${hour.toString().padStart(2, '0')}:00`;
+      
+      // Vérifier si la plage est disponible
+      if (isRangeAvailable(startTime, endTime)) {
+        availableEndTimes.push(endTime);
+      } else {
+        // Si on trouve un créneau non disponible, on s'arrête
+        break;
+      }
+    }
+    
+    return availableEndTimes;
+  };
+
+  // Réinitialiser l'heure de fin quand l'heure de début change
+  useEffect(() => {
+    if (selectedStartTime) {
+      const availableEndTimes = getAvailableEndTimes(selectedStartTime);
+      if (!availableEndTimes.includes(selectedEndTime)) {
+        setSelectedEndTime('');
+      }
+    }
+  }, [selectedStartTime, availableSlots]);
+
+  const handleConfirmBooking = () => {
+    if (!selectedDate || !selectedStartTime || !selectedEndTime) return;
+    
+    const totalPrice = calculateTotalPrice(selectedStartTime, selectedEndTime);
+    onTimeSlotSelect(selectedDate, selectedStartTime, selectedEndTime, totalPrice);
   };
 
   const disabledDays = {
     before: startOfDay(new Date()),
-    after: addDays(new Date(), 30) // Limite à 30 jours dans le futur
+    after: addDays(new Date(), 30)
   };
+
+  const timeOptions = generateTimeOptions();
+  const availableEndTimes = getAvailableEndTimes(selectedStartTime);
+  const rangeIsAvailable = isRangeAvailable(selectedStartTime, selectedEndTime);
+  const totalPrice = calculateTotalPrice(selectedStartTime, selectedEndTime);
+  const duration = calculateDuration(selectedStartTime, selectedEndTime);
 
   return (
     <div className="space-y-6">
@@ -132,48 +224,111 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
         <Card>
           <CardHeader>
             <CardTitle>
-              Créneaux disponibles - {format(selectedDate, 'EEEE dd MMMM yyyy', { locale: fr })}
+              Sélectionner les heures - {format(selectedDate, 'EEEE dd MMMM yyyy', { locale: fr })}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {isLoading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {Array(12).fill(0).map((_, i) => (
-                  <div key={i} className="h-16 bg-gray-200 rounded animate-pulse" />
-                ))}
+              <div className="space-y-4">
+                <div className="h-10 bg-gray-200 rounded animate-pulse" />
+                <div className="h-10 bg-gray-200 rounded animate-pulse" />
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {availableSlots.map((slot) => {
-                  const slotKey = `${slot.start_time}-${slot.end_time}`;
-                  const isSelected = selectedTimeSlot === slotKey;
-                  
-                  return (
-                    <Button
-                      key={slotKey}
-                      variant={isSelected ? "default" : slot.is_available ? "outline" : "secondary"}
-                      disabled={!slot.is_available}
-                      onClick={() => handleTimeSlotClick(slot)}
-                      className={`h-16 flex flex-col justify-center space-y-1 ${
-                        isSelected ? 'bg-green-600 hover:bg-green-700' : ''
-                      } ${!slot.is_available ? 'opacity-50 cursor-not-allowed' : ''}`}
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Heure de début
+                    </label>
+                    <Select value={selectedStartTime} onValueChange={setSelectedStartTime}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choisir l'heure" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeOptions.slice(0, -1).map((time) => {
+                          const hour = parseInt(time.split(':')[0]);
+                          const nextTime = `${(hour + 1).toString().padStart(2, '0')}:00`;
+                          const isSlotAvailable = availableSlots.find(s => 
+                            s.start_time === time && s.end_time === nextTime
+                          )?.is_available;
+                          
+                          return (
+                            <SelectItem 
+                              key={time} 
+                              value={time}
+                              disabled={!isSlotAvailable}
+                            >
+                              {time} {!isSlotAvailable && '(Occupé)'}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Heure de fin
+                    </label>
+                    <Select 
+                      value={selectedEndTime} 
+                      onValueChange={setSelectedEndTime}
+                      disabled={!selectedStartTime}
                     >
-                      <div className="font-medium">
-                        {slot.start_time} - {slot.end_time}
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choisir l'heure" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableEndTimes.map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {time}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {selectedStartTime && selectedEndTime && (
+                  <Card className="bg-gray-50">
+                    <CardContent className="p-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Durée :</span>
+                          <span className="font-medium">{duration} heure{duration > 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Créneau :</span>
+                          <span className="font-medium">{selectedStartTime} - {selectedEndTime}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-t pt-2">
+                          <span className="text-sm text-gray-600">Prix total :</span>
+                          <span className="text-lg font-bold text-green-600 flex items-center">
+                            <Euro className="w-4 h-4 mr-1" />
+                            {totalPrice}€
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-xs flex items-center space-x-1">
-                        <Euro className="w-3 h-3" />
-                        <span>{slot.price}€</span>
-                      </div>
-                      {!slot.is_available && (
-                        <Badge variant="destructive" className="text-xs">
-                          Réservé
-                        </Badge>
+
+                      {!rangeIsAvailable && (
+                        <div className="flex items-center space-x-2 text-red-600 text-sm mt-3 p-2 bg-red-50 rounded">
+                          <AlertCircle className="w-4 h-4" />
+                          <span>Certains créneaux dans cette plage ne sont pas disponibles</span>
+                        </div>
                       )}
-                    </Button>
-                  );
-                })}
-              </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Button
+                  onClick={handleConfirmBooking}
+                  disabled={!selectedStartTime || !selectedEndTime || !rangeIsAvailable}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  size="lg"
+                >
+                  Réserver {selectedStartTime && selectedEndTime && `(${totalPrice}€)`}
+                </Button>
+              </>
             )}
           </CardContent>
         </Card>
