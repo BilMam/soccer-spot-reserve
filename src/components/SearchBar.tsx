@@ -3,12 +3,24 @@ import React, { useState } from 'react';
 import { Search, MapPin, Calendar, Users, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useNavigate } from 'react-router-dom';
 
 const SearchBar = () => {
   const [location, setLocation] = useState('');
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
   const [players, setPlayers] = useState('');
+  const navigate = useNavigate();
+
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (location) params.append('location', location);
+    if (dateStart) params.append('dateStart', dateStart);
+    if (dateEnd) params.append('dateEnd', dateEnd);
+    if (players) params.append('players', players);
+    
+    navigate(`/search?${params.toString()}`);
+  };
 
   return (
     <div className="bg-white rounded-2xl shadow-lg border p-6 max-w-5xl mx-auto">
@@ -76,7 +88,10 @@ const SearchBar = () => {
           <span>Filtres</span>
         </Button>
         
-        <Button className="bg-green-600 hover:bg-green-700 px-8 flex items-center space-x-2">
+        <Button 
+          className="bg-green-600 hover:bg-green-700 px-8 flex items-center space-x-2"
+          onClick={handleSearch}
+        >
           <Search className="w-4 h-4" />
           <span>Rechercher</span>
         </Button>
