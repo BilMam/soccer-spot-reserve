@@ -12,14 +12,28 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
     queryKey: ['owner-applications-admin'],
     queryFn: async (): Promise<OwnerApplication[]> => {
       try {
-        const { data, error } = await supabase.rpc('get_all_owner_applications');
+        // Utiliser directement une requête sur la table avec les politiques RLS
+        const { data, error } = await supabase
+          .from('owner_applications')
+          .select(`
+            *,
+            profiles!inner(email)
+          `);
+          
         if (error) {
           console.error('Error fetching applications:', error);
           return [];
         }
-        return data || [];
+        
+        // Transformer les données pour inclure l'email utilisateur
+        const transformedData = data?.map(app => ({
+          ...app,
+          user_email: app.profiles?.email
+        })) || [];
+        
+        return transformedData;
       } catch (error) {
-        console.error('Error in RPC call:', error);
+        console.error('Error in fetching applications:', error);
         return [];
       }
     },
