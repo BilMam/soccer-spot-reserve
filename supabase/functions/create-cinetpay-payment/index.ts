@@ -21,7 +21,6 @@ serve(async (req) => {
   }
 
   try {
-    // Utiliser la clé de service pour avoir accès complet à la base de données
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -34,47 +33,29 @@ serve(async (req) => {
       throw new Error('Utilisateur non authentifié')
     }
 
-    // Lire le body de la requête
-    const requestBody = await req.text()
-    console.log('Body brut reçu:', requestBody)
-    
-    let paymentData: PaymentRequest
-    try {
-      paymentData = JSON.parse(requestBody)
-    } catch (parseError) {
-      console.error('Erreur parsing JSON:', parseError)
-      throw new Error('Format de données invalide')
-    }
+    const paymentData: PaymentRequest = await req.json()
+    console.log('Données reçues:', paymentData)
 
     const { booking_id, amount, field_name, date, time } = paymentData
 
-    console.log('Données parsées:', { booking_id, amount, field_name, date, time })
-    console.log('Types des données:', {
-      booking_id_type: typeof booking_id,
-      amount_type: typeof amount,
-      field_name_type: typeof field_name,
-      date_type: typeof date,
-      time_type: typeof time
-    })
-
-    // Validation améliorée des données
-    if (!booking_id || booking_id === '' || booking_id === 'undefined') {
-      throw new Error('booking_id manquant ou invalide')
+    // Validation des données
+    if (!booking_id) {
+      throw new Error('booking_id manquant')
     }
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+    if (!amount || amount <= 0) {
       throw new Error('amount manquant ou invalide')
     }
-    if (!field_name || field_name === '' || field_name === 'undefined') {
-      throw new Error('field_name manquant ou invalide')
+    if (!field_name) {
+      throw new Error('field_name manquant')
     }
-    if (!date || date === '' || date === 'undefined') {
-      throw new Error('date manquante ou invalide')
+    if (!date) {
+      throw new Error('date manquante')
     }
-    if (!time || time === '' || time === 'undefined') {
-      throw new Error('time manquant ou invalide')
+    if (!time) {
+      throw new Error('time manquant')
     }
 
-    console.log('✅ Toutes les validations passées - Traitement paiement CinetPay escrow pour:', { booking_id, amount, field_name, date, time })
+    console.log('✅ Validation réussie - Traitement paiement CinetPay pour:', { booking_id, amount, field_name, date, time })
 
     // Récupérer les informations de la réservation
     const { data: booking, error: bookingError } = await supabaseClient
@@ -97,12 +78,6 @@ serve(async (req) => {
     const cinetpayApiKey = Deno.env.get('CINETPAY_API_KEY')
     const cinetpaySiteId = Deno.env.get('CINETPAY_SITE_ID')
 
-    console.log('Vérification clés API:', { 
-      hasApiKey: !!cinetpayApiKey, 
-      hasSiteId: !!cinetpaySiteId,
-      siteId: cinetpaySiteId 
-    })
-
     if (!cinetpayApiKey || !cinetpaySiteId) {
       throw new Error('Clés API CinetPay non configurées')
     }
@@ -113,19 +88,16 @@ serve(async (req) => {
 
     console.log('Montants calculés:', { amount, platformFee, ownerAmount })
 
-    // Créer la transaction CinetPay - TOUT VA VERS LE COMPTE PLATEFORME
+    // Créer la transaction CinetPay
     const transactionId = `escrow_${booking_id}_${Date.now()}`
     
-    // Construire l'URL de retour correctement
     const baseUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com')
     const returnUrl = `${baseUrl}/booking-success?session_id=booking_${booking_id}`
     const notifyUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/cinetpay-escrow-webhook`
 
-    console.log('URLs configurées:', { returnUrl, notifyUrl })
-
     const cinetpayPaymentData = {
       apikey: cinetpayApiKey,
-      site_id: parseInt(cinetpaySiteId), // S'assurer que c'est un nombre
+      site_id: parseInt(cinetpaySiteId),
       transaction_id: transactionId,
       amount: amount,
       currency: 'XOF',
@@ -135,10 +107,9 @@ serve(async (req) => {
       customer_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Client',
       customer_email: user.email,
       channels: 'ALL',
-      // PAS DE SPLIT PAYMENT - Tout va vers la plateforme en escrow
     }
 
-    console.log('Données paiement CinetPay (Escrow centralisé):', cinetpayPaymentData)
+    console.log('Données paiement CinetPay:', cinetpayPaymentData)
 
     const response = await fetch('https://api-checkout.cinetpay.com/v2/payment', {
       method: 'POST',
@@ -150,19 +121,13 @@ serve(async (req) => {
 
     const result = await response.json()
     console.log('Réponse CinetPay:', result)
-    console.log('Status HTTP:', response.status)
 
-    if (!response.ok) {
-      console.error('Erreur HTTP CinetPay:', response.status, result)
-      throw new Error(`Erreur HTTP ${response.status}: ${result.message || 'Erreur inconnue'}`)
-    }
-
-    if (result.code !== '201') {
+    if (!response.ok || result.code !== '201') {
       console.error('Erreur CinetPay:', result)
       throw new Error(`Erreur CinetPay (${result.code}): ${result.message || result.description || 'Erreur inconnue'}`)
     }
 
-    // Mettre à jour la réservation avec les informations d'escrow
+    // Mettre à jour la réservation
     const { error: updateError } = await supabaseClient
       .from('bookings')
       .update({
@@ -171,8 +136,8 @@ serve(async (req) => {
         platform_fee: platformFee,
         owner_amount: ownerAmount,
         payment_status: 'pending',
-        escrow_status: 'none', // Sera mis à jour par le webhook après paiement
-        status: 'pending_payment' // Nouveau statut pour indiquer qu'on attend le paiement
+        escrow_status: 'none',
+        status: 'pending_payment'
       })
       .eq('id', booking_id)
 
@@ -181,7 +146,7 @@ serve(async (req) => {
       throw updateError
     }
 
-    console.log('✅ Paiement CinetPay escrow créé avec succès')
+    console.log('✅ Paiement CinetPay créé avec succès')
 
     return new Response(
       JSON.stringify({
@@ -197,7 +162,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('❌ Erreur création paiement CinetPay escrow:', error)
+    console.error('❌ Erreur création paiement CinetPay:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       {
