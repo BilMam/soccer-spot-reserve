@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { Database } from '@/integrations/supabase/types';
@@ -32,6 +33,22 @@ interface UserEditDialogProps {
   isLoading: boolean;
 }
 
+const userTypes = [
+  { value: 'player', label: 'Joueur' },
+  { value: 'owner', label: 'Propriétaire' },
+  { value: 'admin', label: 'Admin' }
+];
+
+const roleTypes: { value: UserRoleType; label: string }[] = [
+  { value: 'super_admin', label: 'Super Admin' },
+  { value: 'admin_general', label: 'Admin Général' },
+  { value: 'admin_fields', label: 'Admin Terrains' },
+  { value: 'admin_users', label: 'Admin Utilisateurs' },
+  { value: 'moderator', label: 'Modérateur' },
+  { value: 'owner', label: 'Propriétaire' },
+  { value: 'player', label: 'Joueur' }
+];
+
 export const UserEditDialog: React.FC<UserEditDialogProps> = ({
   user,
   open,
@@ -50,76 +67,74 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Modifier l'utilisateur: {user.full_name}</DialogTitle>
+          <DialogTitle>Modifier l'utilisateur</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Nouveau type d'utilisateur
-            </label>
-            <Select value={newUserType} onValueChange={setNewUserType}>
+        
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Utilisateur</Label>
+            <p className="text-sm text-gray-600">{user.full_name} ({user.email})</p>
+            <p className="text-xs text-gray-500">Type actuel: {user.user_type}</p>
+            <p className="text-xs text-gray-500">Rôles: {user.roles.join(', ') || 'Aucun'}</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="userType">Nouveau type d'utilisateur</Label>
+            <Select value={newUserType || undefined} onValueChange={setNewUserType}>
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionner un type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="player">Joueur</SelectItem>
-                <SelectItem value="owner">Propriétaire</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="super_admin">Super Admin</SelectItem>
+                {userTypes.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Nouveau rôle (optionnel)
-            </label>
-            <Select value={newRole} onValueChange={(value) => setNewRole(value as UserRoleType | '')}>
+          <div className="space-y-2">
+            <Label htmlFor="role">Nouveau rôle (optionnel)</Label>
+            <Select value={newRole || undefined} onValueChange={(value) => setNewRole(value as UserRoleType)}>
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionner un rôle" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Aucun rôle</SelectItem>
-                <SelectItem value="player">Joueur</SelectItem>
-                <SelectItem value="owner">Propriétaire</SelectItem>
-                <SelectItem value="moderator">Modérateur</SelectItem>
-                <SelectItem value="admin_users">Admin Utilisateurs</SelectItem>
-                <SelectItem value="admin_fields">Admin Terrains</SelectItem>
-                <SelectItem value="admin_general">Admin Général</SelectItem>
-                <SelectItem value="super_admin">Super Admin</SelectItem>
+                {roleTypes.map((role) => (
+                  <SelectItem key={role.value} value={role.value}>
+                    {role.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Raison du changement
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="reason">Raison du changement *</Label>
             <Textarea
-              placeholder="Expliquer la raison du changement..."
+              id="reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
+              placeholder="Expliquez pourquoi vous effectuez ce changement..."
+              required
             />
           </div>
-
-          <div className="flex space-x-2">
-            <Button 
-              onClick={onSave}
-              disabled={!newUserType || !reason || isLoading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Appliquer les changements
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={onCancel}
-            >
-              Annuler
-            </Button>
-          </div>
         </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel} disabled={isLoading}>
+            Annuler
+          </Button>
+          <Button 
+            onClick={onSave} 
+            disabled={isLoading || !newUserType || !reason.trim()}
+          >
+            {isLoading ? 'Modification...' : 'Modifier'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
