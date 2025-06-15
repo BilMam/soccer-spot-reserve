@@ -36,7 +36,7 @@ serve(async (req) => {
 
     const { booking_id, amount, field_name, date, time }: PaymentRequest = await req.json()
 
-    console.log('Traitement paiement CinetPay pour:', { booking_id, amount, field_name, date, time })
+    console.log('Traitement paiement CinetPay escrow pour:', { booking_id, amount, field_name, date, time })
 
     // Récupérer les informations de la réservation
     const { data: booking, error: bookingError } = await supabaseClient
@@ -55,16 +55,6 @@ serve(async (req) => {
 
     console.log('Réservation trouvée:', booking)
 
-    // Essayer de récupérer le compte CinetPay du propriétaire (optionnel)
-    const { data: paymentAccount } = await supabaseClient
-      .from('payment_accounts')
-      .select('*')
-      .eq('owner_id', booking.fields.owner_id)
-      .eq('payment_provider', 'cinetpay')
-      .maybeSingle()
-
-    console.log('Compte paiement propriétaire:', paymentAccount)
-
     // Vérifier les clés API CinetPay
     const cinetpayApiKey = Deno.env.get('CINETPAY_API_KEY')
     const cinetpaySiteId = Deno.env.get('CINETPAY_SITE_ID')
@@ -73,14 +63,14 @@ serve(async (req) => {
       throw new Error('Clés API CinetPay non configurées')
     }
 
-    // Calculer les montants
-    const platformFee = Math.round(amount * 0.05) // 5% de commission
+    // Calculer les montants (commission de 5%)
+    const platformFee = Math.round(amount * 0.05)
     const ownerAmount = amount - platformFee
 
     console.log('Montants calculés:', { amount, platformFee, ownerAmount })
 
-    // Créer la transaction CinetPay
-    const transactionId = `booking_${booking_id}_${Date.now()}`
+    // Créer la transaction CinetPay - TOUT VA VERS LE COMPTE PLATEFORME
+    const transactionId = `escrow_${booking_id}_${Date.now()}`
     const paymentData = {
       apikey: cinetpayApiKey,
       site_id: cinetpaySiteId,
@@ -92,21 +82,11 @@ serve(async (req) => {
       notify_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/cinetpay-webhook`,
       customer_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Client',
       customer_email: user.email,
-      channels: 'ALL', // Support tous les moyens de paiement
+      channels: 'ALL',
+      // PAS DE SPLIT PAYMENT - Tout va vers la plateforme en escrow
     }
 
-    // Si le propriétaire a un compte marchand CinetPay, utiliser le split payment
-    if (paymentAccount?.merchant_id) {
-      paymentData.split = [
-        {
-          merchant_id: paymentAccount.merchant_id,
-          amount: ownerAmount,
-          description: `Paiement propriétaire pour ${field_name}`
-        }
-      ]
-    }
-
-    console.log('Données paiement CinetPay:', paymentData)
+    console.log('Données paiement CinetPay (Escrow centralisé):', paymentData)
 
     const response = await fetch('https://api-checkout.cinetpay.com/v2/payment', {
       method: 'POST',
@@ -123,7 +103,7 @@ serve(async (req) => {
       throw new Error(result.message || 'Erreur lors de la création du paiement CinetPay')
     }
 
-    // Mettre à jour la réservation avec les informations CinetPay
+    // Mettre à jour la réservation avec les informations d'escrow
     const { error: updateError } = await supabaseClient
       .from('bookings')
       .update({
@@ -131,7 +111,9 @@ serve(async (req) => {
         payment_provider: 'cinetpay',
         platform_fee: platformFee,
         owner_amount: ownerAmount,
-        payment_status: 'pending'
+        payment_status: 'pending',
+        escrow_status: 'none', // Sera mis à jour par le webhook après paiement
+        status: 'pending_payment' // Nouveau statut pour indiquer qu'on attend le paiement
       })
       .eq('id', booking_id)
 
@@ -140,12 +122,14 @@ serve(async (req) => {
       throw updateError
     }
 
-    console.log('Paiement CinetPay créé avec succès')
+    console.log('Paiement CinetPay escrow créé avec succès')
 
     return new Response(
       JSON.stringify({
         url: result.data.payment_url,
-        transaction_id: transactionId
+        transaction_id: transactionId,
+        escrow_mode: true,
+        confirmation_deadline: '24 heures après paiement'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -154,7 +138,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Erreur création paiement CinetPay:', error)
+    console.error('Erreur création paiement CinetPay escrow:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       {

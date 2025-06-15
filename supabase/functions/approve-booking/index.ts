@@ -31,7 +31,7 @@ serve(async (req) => {
 
     const { booking_id }: ApproveBookingRequest = await req.json()
 
-    console.log('Approbation réservation par propriétaire:', { booking_id, user_id: user.id })
+    console.log('Approbation réservation par propriétaire (Escrow):', { booking_id, user_id: user.id })
 
     // Vérifier que la réservation existe et appartient à un terrain du propriétaire
     const { data: booking, error: bookingError } = await supabaseClient
@@ -81,24 +81,29 @@ serve(async (req) => {
       throw linkError
     }
 
-    // Envoyer email de notification au client avec le lien de paiement
+    // Envoyer email de notification au client avec le lien de paiement escrow
     const paymentUrl = `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com')}/payment/${paymentToken}`
     
     await supabaseClient.functions.invoke('send-booking-email', {
       body: {
         booking_id: booking.id,
-        notification_type: 'booking_approved',
-        payment_url: paymentUrl
+        notification_type: 'booking_approved_escrow',
+        payment_url: paymentUrl,
+        escrow_info: {
+          protection: 'Vos fonds sont protégés et ne seront transférés qu\'après confirmation de votre réservation',
+          refund_policy: 'Remboursement automatique si le propriétaire ne confirme pas sous 24h'
+        }
       }
     })
 
-    console.log('Réservation approuvée avec succès')
+    console.log('Réservation approuvée avec système escrow')
 
     return new Response(
       JSON.stringify({ 
         success: true,
         payment_url: paymentUrl,
-        expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+        expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+        escrow_protection: true
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -107,7 +112,7 @@ serve(async (req) => {
     )
 
   } catch (error: any) {
-    console.error('Erreur approbation réservation:', error)
+    console.error('Erreur approbation réservation escrow:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       {

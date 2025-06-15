@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,12 +45,15 @@ const PaymentPage = () => {
       }
 
       try {
-        // Utiliser la fonction PostgreSQL pour valider le lien de paiement
-        const { data: validationData, error: validationError } = await supabase
-          .rpc('validate_payment_link', { p_token: token });
+        // Vérifier directement la validité du lien
+        const { data: linkData, error: linkError } = await supabase
+          .from('payment_links')
+          .select('booking_id, expires_at, is_active, used_at')
+          .eq('token', token)
+          .maybeSingle();
 
-        if (validationError || !validationData) {
-          console.error('Erreur validation lien:', validationError);
+        if (linkError || !linkData) {
+          console.error('Erreur validation lien:', linkError);
           toast({
             title: "Lien invalide",
             description: "Ce lien de paiement n'existe pas ou a expiré.",
@@ -62,8 +64,12 @@ const PaymentPage = () => {
           return;
         }
 
-        // Le booking_id est retourné par la fonction validate_payment_link
-        const bookingId = validationData;
+        // Vérifier si le lien est encore valide
+        if (!linkData.is_active || linkData.used_at || new Date(linkData.expires_at) < new Date()) {
+          setLinkExpired(true);
+          setIsLoading(false);
+          return;
+        }
 
         // Charger les détails de la réservation
         const { data: bookingData, error: bookingError } = await supabase
@@ -73,7 +79,7 @@ const PaymentPage = () => {
             fields!inner(name, location),
             profiles!inner(full_name, email)
           `)
-          .eq('id', bookingId)
+          .eq('id', linkData.booking_id)
           .eq('status', 'approved')
           .single();
 
@@ -125,7 +131,7 @@ const PaymentPage = () => {
       if (error) throw error;
 
       if (data.url) {
-        // Marquer le lien comme utilisé via une requête directe
+        // Marquer le lien comme utilisé
         await supabase
           .from('payment_links')
           .update({ used_at: new Date().toISOString() })
