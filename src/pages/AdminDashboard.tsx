@@ -20,19 +20,16 @@ interface OwnerApplication {
   phone: string;
   experience?: string;
   motivation?: string;
-  status: string;
+  status: 'pending' | 'approved' | 'rejected' | 'under_review';
   admin_notes?: string;
   reviewed_by?: string;
   reviewed_at?: string;
   created_at: string;
   updated_at: string;
-  profiles?: {
-    full_name: string;
-    email: string;
-  };
+  user_email?: string;
 }
 
-interface PendingField {
+interface Field {
   id: string;
   name: string;
   location: string;
@@ -70,20 +67,24 @@ const AdminDashboard = () => {
     enabled: !!user
   });
 
-  // Pour l'instant, simuler des données en attendant que les types soient mis à jour
+  // Récupérer les demandes de propriétaires
   const { data: applications, isLoading: loadingApplications } = useQuery({
     queryKey: ['owner-applications-admin'],
     queryFn: async (): Promise<OwnerApplication[]> => {
-      // Simuler des demandes de propriétaires pour la démo
-      return [];
+      const { data, error } = await supabase.rpc('get_all_owner_applications');
+      if (error) {
+        console.error('Error fetching applications:', error);
+        return [];
+      }
+      return data || [];
     },
     enabled: profile?.user_type === 'admin'
   });
 
-  // Récupérer les terrains en attente
-  const { data: pendingFields, isLoading: loadingFields } = useQuery({
-    queryKey: ['pending-fields-admin'],
-    queryFn: async (): Promise<PendingField[]> => {
+  // Récupérer les terrains
+  const { data: fields, isLoading: loadingFields } = useQuery({
+    queryKey: ['fields-admin'],
+    queryFn: async (): Promise<Field[]> => {
       const { data, error } = await supabase
         .from('fields')
         .select(`
@@ -104,8 +105,10 @@ const AdminDashboard = () => {
   // Mutation pour approuver une demande
   const approveApplicationMutation = useMutation({
     mutationFn: async (applicationId: string) => {
-      // Simuler l'approbation pour l'instant
-      console.log('Approving application:', applicationId);
+      const { error } = await supabase.rpc('approve_owner_application', {
+        application_id: applicationId
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
       toast({
@@ -127,8 +130,11 @@ const AdminDashboard = () => {
   // Mutation pour rejeter une demande
   const rejectApplicationMutation = useMutation({
     mutationFn: async ({ applicationId, notes }: { applicationId: string, notes: string }) => {
-      // Simuler le rejet pour l'instant
-      console.log('Rejecting application:', applicationId, notes);
+      const { error } = await supabase.rpc('reject_owner_application', {
+        application_id: applicationId,
+        notes: notes
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
       toast({
@@ -151,16 +157,18 @@ const AdminDashboard = () => {
 
   // Mutation pour approuver un terrain
   const approveFieldMutation = useMutation({
-    mutationFn: async ({ fieldId, notes }: { fieldId: string, notes?: string }) => {
-      // Simuler l'approbation pour l'instant
-      console.log('Approving field:', fieldId, notes);
+    mutationFn: async ({ fieldId }: { fieldId: string }) => {
+      const { error } = await supabase.rpc('approve_field', {
+        field_id: fieldId
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
       toast({
         title: "Terrain approuvé",
         description: "Le terrain est maintenant visible publiquement.",
       });
-      queryClient.invalidateQueries({ queryKey: ['pending-fields-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['fields-admin'] });
     },
     onError: (error: any) => {
       console.error('Error approving field:', error);
@@ -250,7 +258,7 @@ const AdminDashboard = () => {
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="font-semibold text-lg">{application.full_name}</h3>
-                            <p className="text-gray-600">{application.profiles?.email}</p>
+                            <p className="text-gray-600">{application.user_email}</p>
                             <p className="text-sm text-gray-500">
                               Demande soumise le {new Date(application.created_at).toLocaleDateString('fr-FR')}
                             </p>
@@ -348,13 +356,13 @@ const AdminDashboard = () => {
               <CardContent>
                 {loadingFields ? (
                   <div className="text-center py-8">Chargement...</div>
-                ) : !pendingFields || pendingFields.length === 0 ? (
+                ) : !fields || fields.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     Aucun terrain trouvé
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {pendingFields.map((field) => (
+                    {fields.map((field) => (
                       <div key={field.id} className="border rounded-lg p-4 space-y-3">
                         <div className="flex justify-between items-start">
                           <div>

@@ -11,23 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, MapPin, Users, Calendar, Euro, Clock, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-
-interface OwnerApplicationData {
-  id: string;
-  user_id: string;
-  full_name: string;
-  phone: string;
-  experience?: string;
-  motivation?: string;
-  status: 'pending' | 'approved' | 'rejected' | 'under_review';
-  admin_notes?: string;
-  reviewed_by?: string;
-  reviewed_at?: string;
-  created_at: string;
-  updated_at: string;
-}
+import { CheckCircle, MapPin, Users, Calendar, Euro } from 'lucide-react';
 
 const BecomeOwner = () => {
   const { user } = useAuth();
@@ -40,8 +24,28 @@ const BecomeOwner = () => {
     motivation: ''
   });
 
-  // Vérifier si l'utilisateur a déjà une demande en cours ou est déjà propriétaire
-  const { data: userProfile, isLoading: checkingApplication } = useQuery({
+  // Vérifier si l'utilisateur a déjà une demande ou est déjà propriétaire
+  const { data: existingApplication, isLoading: checkingApplication } = useQuery({
+    queryKey: ['user-owner-application', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      
+      const { data, error } = await supabase.rpc('get_user_owner_application', {
+        p_user_id: user.id
+      });
+
+      if (error) {
+        console.error('Error fetching application:', error);
+        return null;
+      }
+
+      return data && data.length > 0 ? data[0] : null;
+    },
+    enabled: !!user
+  });
+
+  // Vérifier le profil utilisateur
+  const { data: userProfile } = useQuery({
     queryKey: ['user-profile', user?.id],
     queryFn: async () => {
       if (!user) return null;
@@ -62,12 +66,16 @@ const BecomeOwner = () => {
     mutationFn: async (data: typeof formData) => {
       if (!user) throw new Error('User not authenticated');
 
-      // Pour l'instant, mettre à jour directement le profil utilisateur
-      // En attendant que les types Supabase soient mis à jour avec la nouvelle table
       const { error } = await supabase
-        .from('profiles')
-        .update({ user_type: 'owner' })
-        .eq('id', user.id);
+        .from('owner_applications')
+        .insert({
+          user_id: user.id,
+          full_name: data.full_name,
+          phone: data.phone,
+          experience: data.experience || null,
+          motivation: data.motivation || null,
+          status: 'pending'
+        });
 
       if (error) throw error;
     },
@@ -78,7 +86,8 @@ const BecomeOwner = () => {
       });
       navigate('/profile');
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Error creating application:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'envoyer votre demande. Veuillez réessayer.",
@@ -153,6 +162,41 @@ const BecomeOwner = () => {
                     className="ml-4"
                   >
                     Retour au profil
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Si l'utilisateur a déjà une demande en cours
+  if (existingApplication) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto">
+            <Card>
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl">Demande en cours</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center space-y-4">
+                <p className="text-gray-700">
+                  Vous avez déjà soumis une demande pour devenir propriétaire. 
+                  Notre équipe l'examine actuellement.
+                </p>
+                <p className="text-sm text-gray-500">
+                  Statut actuel: <strong>{existingApplication.status}</strong>
+                </p>
+                <div className="pt-4">
+                  <Button 
+                    onClick={() => navigate('/profile')}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    Voir le statut de ma demande
                   </Button>
                 </div>
               </CardContent>

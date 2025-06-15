@@ -1,8 +1,11 @@
+
 import React from 'react';
-import { Search, User, Menu, MapPin, LogOut } from 'lucide-react';
+import { Search, User, Menu, MapPin, LogOut, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +17,22 @@ import {
 const Navbar = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+
+  // Vérifier si l'utilisateur est admin
+  const { data: profile } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_type')
+        .eq('id', user.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user
+  });
 
   const handleSignOut = async () => {
     await signOut();
@@ -68,6 +87,15 @@ const Navbar = () => {
                   <DropdownMenuItem onClick={() => navigate('/owner/dashboard')}>
                     Mes terrains
                   </DropdownMenuItem>
+                  {profile?.user_type === 'admin' && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate('/admin/dashboard')}>
+                        <Shield className="w-4 h-4 mr-2" />
+                        Dashboard Admin
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="w-4 h-4 mr-2" />

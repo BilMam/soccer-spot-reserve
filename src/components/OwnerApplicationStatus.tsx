@@ -34,32 +34,32 @@ const OwnerApplicationStatus = () => {
     queryFn: async (): Promise<OwnerApplication | null> => {
       if (!user) return null;
       
-      // Utiliser une requête SQL brute au lieu de RPC pour éviter les erreurs de types
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      const { data, error } = await supabase.rpc('get_user_owner_application', {
+        p_user_id: user.id
+      });
 
       if (error) {
-        console.error('Error fetching user profile:', error);
+        console.error('Error fetching user application:', error);
         return null;
       }
 
-      // Pour l'instant, simuler une application basée sur le user_type
-      if (data.user_type === 'owner') {
-        return {
-          id: 'temp-id',
-          user_id: user.id,
-          full_name: data.full_name || 'Utilisateur',
-          phone: data.phone || '',
-          status: 'approved',
-          created_at: data.created_at || new Date().toISOString(),
-          updated_at: data.updated_at || new Date().toISOString()
-        } as OwnerApplication;
-      }
+      return data && data.length > 0 ? data[0] : null;
+    },
+    enabled: !!user
+  });
 
-      return null;
+  // Vérifier aussi le statut dans le profil
+  const { data: profile } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_type')
+        .eq('id', user.id)
+        .single();
+      if (error) throw error;
+      return data;
     },
     enabled: !!user
   });
@@ -69,6 +69,44 @@ const OwnerApplicationStatus = () => {
       <Card>
         <CardContent className="p-6">
           <div className="animate-pulse">Chargement du statut de votre demande...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Si l'utilisateur est déjà propriétaire (approuvé)
+  if (profile?.user_type === 'owner') {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <CheckCircle className="w-5 h-5 text-green-600" />
+            <span>Statut propriétaire</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Badge variant="default" className="flex items-center space-x-1">
+              <CheckCircle className="w-4 h-4" />
+              <span>Approuvée</span>
+            </Badge>
+          </div>
+          <p className="text-green-600 font-medium">
+            Félicitations ! Vous êtes maintenant propriétaire.
+          </p>
+          {application?.reviewed_at && (
+            <p className="text-sm text-gray-600">
+              <strong>Approuvée le :</strong> {new Date(application.reviewed_at).toLocaleDateString('fr-FR')}
+            </p>
+          )}
+          <div className="flex space-x-2">
+            <Button 
+              onClick={() => navigate('/owner/dashboard')}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Accéder au dashboard
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );

@@ -243,6 +243,51 @@ export type Database = {
           },
         ]
       }
+      owner_applications: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          experience: string | null
+          full_name: string
+          id: string
+          motivation: string | null
+          phone: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          experience?: string | null
+          full_name: string
+          id?: string
+          motivation?: string | null
+          phone: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          experience?: string | null
+          full_name?: string
+          id?: string
+          motivation?: string | null
+          phone?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       owner_stats: {
         Row: {
           avg_rating: number | null
@@ -387,6 +432,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_field: {
+        Args: { field_id: string; notes?: string }
+        Returns: undefined
+      }
+      approve_owner_application: {
+        Args: { application_id: string; notes?: string }
+        Returns: undefined
+      }
       check_booking_conflict: {
         Args: {
           p_field_id: string
@@ -396,6 +449,24 @@ export type Database = {
           p_booking_id?: string
         }
         Returns: boolean
+      }
+      get_all_owner_applications: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          user_id: string
+          full_name: string
+          phone: string
+          experience: string
+          motivation: string
+          status: string
+          admin_notes: string
+          reviewed_by: string
+          reviewed_at: string
+          created_at: string
+          updated_at: string
+          user_email: string
+        }[]
       }
       get_owner_recent_bookings: {
         Args: { owner_uuid: string }
@@ -410,6 +481,27 @@ export type Database = {
           total_price: number
           player_count: number
         }[]
+      }
+      get_user_owner_application: {
+        Args: { p_user_id: string }
+        Returns: {
+          id: string
+          user_id: string
+          full_name: string
+          phone: string
+          experience: string
+          motivation: string
+          status: string
+          admin_notes: string
+          reviewed_by: string
+          reviewed_at: string
+          created_at: string
+          updated_at: string
+        }[]
+      }
+      reject_owner_application: {
+        Args: { application_id: string; notes: string }
+        Returns: undefined
       }
       update_owner_stats_for_field: {
         Args: { field_uuid: string }
