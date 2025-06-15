@@ -32,8 +32,12 @@ serve(async (req) => {
     // Récupérer la réservation
     const { data: booking, error: bookingError } = await supabaseClient
       .from('bookings')
-      .select('*')
-      .eq('cinetpay_transaction_id', cmp_trans_id)
+      .select(`
+        *,
+        profiles!inner(email, full_name),
+        fields!inner(name, location, owner_id)
+      `)
+      .eq('cinetpay_transaction_id', cpm_trans_id)
       .single()
 
     if (bookingError || !booking) {
@@ -44,7 +48,7 @@ serve(async (req) => {
     console.log('Réservation trouvée:', booking.id)
 
     if (cpm_trans_status === 'ACCEPTED' || cpm_trans_status === '1') {
-      // Paiement accepté - Utiliser le nouveau système de confirmation intelligente
+      // Paiement accepté - Utiliser le système de confirmation intelligente
       console.log('Paiement accepté - Traitement avec confirmation intelligente')
 
       // Utiliser la nouvelle fonction de traitement intelligent
@@ -74,14 +78,15 @@ serve(async (req) => {
         .from('bookings')
         .update({
           payment_status: 'paid',
-          status: updatedBooking.status || 'confirmed', // Peut être 'owner_confirmed' si auto-confirmation
+          status: updatedBooking?.status || 'confirmed',
           escrow_status: 'funds_held',
+          cinetpay_transaction_id: cpm_trans_id,
           updated_at: new Date().toISOString()
         })
         .eq('id', booking.id)
 
       // Envoyer notifications selon le type de fenêtre
-      if (updatedBooking.confirmation_window_type === 'auto') {
+      if (updatedBooking?.confirmation_window_type === 'auto') {
         // Auto-confirmation immédiate - notifier que c'est confirmé
         await supabaseClient.functions.invoke('send-booking-email', {
           body: {
@@ -96,9 +101,9 @@ serve(async (req) => {
           body: {
             booking_id: booking.id,
             notification_type: 'smart_owner_confirmation_required',
-            window_type: updatedBooking.confirmation_window_type,
-            deadline: updatedBooking.confirmation_deadline,
-            auto_action: updatedBooking.auto_action
+            window_type: updatedBooking?.confirmation_window_type,
+            deadline: updatedBooking?.confirmation_deadline,
+            auto_action: updatedBooking?.auto_action
           }
         })
       }
@@ -108,11 +113,11 @@ serve(async (req) => {
         body: {
           booking_id: booking.id,
           notification_type: 'smart_payment_confirmation',
-          window_type: updatedBooking.confirmation_window_type
+          window_type: updatedBooking?.confirmation_window_type
         }
       })
 
-      console.log('Traitement intelligent complété - Type de fenêtre:', updatedBooking.confirmation_window_type)
+      console.log('Traitement intelligent complété - Type de fenêtre:', updatedBooking?.confirmation_window_type)
 
     } else if (cpm_trans_status === 'DECLINED' || cpm_trans_status === '0') {
       // Paiement refusé
@@ -121,6 +126,7 @@ serve(async (req) => {
         .update({
           payment_status: 'failed',
           status: 'cancelled',
+          cinetpay_transaction_id: cpm_trans_id,
           updated_at: new Date().toISOString()
         })
         .eq('id', booking.id)

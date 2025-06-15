@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Clock, User, MapPin, DollarSign, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, User, MapPin, DollarSign, AlertTriangle, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import BookingConfirmationCard from './BookingConfirmationCard';
@@ -38,37 +38,10 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
     enabled: !!ownerId
   });
 
-  const handleApproveBooking = async (bookingId: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('approve-booking', {
-        body: { booking_id: bookingId }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Réservation approuvée",
-        description: "Le client a reçu un lien de paiement sécurisé.",
-      });
-
-      refetch();
-    } catch (error: any) {
-      console.error('Erreur approbation:', error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible d'approuver la réservation",
-        variant: "destructive"
-      });
-    }
-  };
-
   const getStatusBadge = (status: string, escrowStatus?: string, windowType?: string) => {
     switch (status) {
-      case 'pending_approval':
-      case 'pending': // Ajout du statut 'pending'
-        return <Badge variant="secondary">En attente d'approbation</Badge>;
-      case 'approved':
-        return <Badge variant="outline">Approuvé - En attente de paiement</Badge>;
+      case 'pending':
+        return <Badge variant="secondary">En attente de paiement</Badge>;
       case 'confirmed':
         if (escrowStatus === 'funds_held') {
           const urgentTypes = ['express', 'short'];
@@ -222,21 +195,6 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
                   </div>
                 )}
 
-                {/* Afficher les boutons d'approbation pour les statuts 'pending_approval' ET 'pending' */}
-                {(booking.status === 'pending_approval' || booking.status === 'pending') && (
-                  <div className="flex space-x-2">
-                    <Button 
-                      onClick={() => handleApproveBooking(booking.id)}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      Approuver
-                    </Button>
-                    <Button variant="outline">
-                      Refuser
-                    </Button>
-                  </div>
-                )}
-
                 {booking.escrow_status && booking.escrow_status !== 'none' && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <div className="flex items-center justify-between">
@@ -252,6 +210,18 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
                         Votre part : {booking.owner_amount.toLocaleString()} XOF
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Message informatif pour le nouveau workflow */}
+                {booking.status === 'pending' && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <div className="flex items-center space-x-2">
+                      <Clock className="w-4 h-4 text-yellow-600" />
+                      <span className="text-sm text-yellow-800">
+                        Client en cours de paiement - Vous serez notifié après paiement
+                      </span>
+                    </div>
                   </div>
                 )}
               </CardContent>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Clock, Users } from 'lucide-react';
+import { Calendar, Clock, Users, CreditCard } from 'lucide-react';
 
 interface BookingFormProps {
   fieldId: string;
@@ -35,7 +36,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const [duration, setDuration] = useState<string>('1');
   const [specialRequests, setSpecialRequests] = useState('');
 
-  const createBookingMutation = useMutation({
+  const createBookingAndPayMutation = useMutation({
     mutationFn: async (bookingData: any) => {
       if (!user) throw new Error('Utilisateur non connecté');
 
@@ -47,7 +48,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
       const totalPrice = pricePerHour * parseInt(duration);
       const platformFee = Math.round(totalPrice * 0.05); // 5% de commission
 
-      const { data, error } = await supabase
+      // Créer la réservation
+      const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert({
           field_id: fieldId,
@@ -60,7 +62,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
           platform_fee: platformFee,
           owner_amount: totalPrice - platformFee,
           special_requests: specialRequests || null,
-          status: 'pending', // Changé de 'pending_approval' à 'pending'
+          status: 'pending', // En attente de paiement
           payment_status: 'pending',
           escrow_status: 'none',
           currency: 'XOF'
@@ -68,15 +70,37 @@ const BookingForm: React.FC<BookingFormProps> = ({
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (bookingError) throw bookingError;
+
+      // Créer le paiement CinetPay immédiatement
+      const { data: paymentData, error: paymentError } = await supabase.functions.invoke(
+        'create-cinetpay-payment',
+        {
+          body: {
+            booking_id: booking.id,
+            amount: totalPrice,
+            customer_name: user.email?.split('@')[0] || 'Client',
+            customer_email: user.email,
+            description: `Réservation ${fieldName} - ${selectedDate.toLocaleDateString()}`,
+            currency: 'XOF'
+          }
+        }
+      );
+
+      if (paymentError) throw paymentError;
+
+      // Rediriger vers CinetPay
+      if (paymentData.payment_url) {
+        window.location.href = paymentData.payment_url;
+      }
+
+      return booking;
     },
     onSuccess: () => {
       toast({
-        title: "Demande envoyée !",
-        description: "Votre demande de réservation a été envoyée au propriétaire.",
+        title: "Redirection vers le paiement",
+        description: "Vous allez être redirigé vers CinetPay pour effectuer le paiement.",
       });
-      onSuccess?.();
     },
     onError: (error: any) => {
       console.error('Erreur lors de la création de la réservation:', error);
@@ -100,7 +124,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
       return;
     }
 
-    createBookingMutation.mutate({});
+    createBookingAndPayMutation.mutate({});
   };
 
   const calculateTotal = () => {
@@ -198,14 +222,20 @@ const BookingForm: React.FC<BookingFormProps> = ({
         </div>
       </div>
 
-      {/* Explication du processus */}
+      {/* Nouveau processus expliqué */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h4 className="font-medium text-blue-900 mb-2">Comment ça fonctionne</h4>
+        <h4 className="font-medium text-blue-900 mb-2 flex items-center">
+          <CreditCard className="w-4 h-4 mr-2" />
+          Processus de réservation sécurisé
+        </h4>
         <ol className="text-sm text-blue-800 space-y-1">
-          <li>1. Vous envoyez votre demande de réservation</li>
-          <li>2. Le propriétaire examine et approuve votre demande</li>
-          <li>3. Vous recevez un email avec le lien de paiement</li>
-          <li>4. Après paiement, votre réservation est confirmée</li>
+          <li>1. Vous payez maintenant via CinetPay (sécurisé)</li>
+          <li>2. Vos fonds sont protégés sur notre plateforme</li>
+          <li>3. Le propriétaire confirme votre réservation</li>
+          <li>4. Les fonds sont transférés au propriétaire</li>
+          <li className="font-medium text-blue-900">
+            💡 Remboursement automatique si pas de confirmation
+          </li>
         </ol>
       </div>
 
@@ -221,10 +251,17 @@ const BookingForm: React.FC<BookingFormProps> = ({
         </Button>
         <Button
           type="submit"
-          disabled={createBookingMutation.isPending}
+          disabled={createBookingAndPayMutation.isPending}
           className="flex-1 bg-green-600 hover:bg-green-700"
         >
-          {createBookingMutation.isPending ? "Envoi..." : "Envoyer la demande"}
+          {createBookingAndPayMutation.isPending ? (
+            "Redirection..."
+          ) : (
+            <>
+              <CreditCard className="w-4 h-4 mr-2" />
+              Réserver et Payer
+            </>
+          )}
         </Button>
       </div>
     </form>
