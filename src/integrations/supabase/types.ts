@@ -57,15 +57,19 @@ export type Database = {
           cancelled_at: string | null
           confirmation_email_sent: boolean | null
           created_at: string | null
+          currency: string | null
           end_time: string
           field_id: string
           id: string
+          owner_amount: number | null
           payment_intent_id: string | null
           payment_status: string | null
+          platform_fee: number | null
           player_count: number | null
           special_requests: string | null
           start_time: string
           status: string | null
+          stripe_transfer_id: string | null
           total_price: number
           updated_at: string | null
           user_id: string
@@ -76,15 +80,19 @@ export type Database = {
           cancelled_at?: string | null
           confirmation_email_sent?: boolean | null
           created_at?: string | null
+          currency?: string | null
           end_time: string
           field_id: string
           id?: string
+          owner_amount?: number | null
           payment_intent_id?: string | null
           payment_status?: string | null
+          platform_fee?: number | null
           player_count?: number | null
           special_requests?: string | null
           start_time: string
           status?: string | null
+          stripe_transfer_id?: string | null
           total_price: number
           updated_at?: string | null
           user_id: string
@@ -95,15 +103,19 @@ export type Database = {
           cancelled_at?: string | null
           confirmation_email_sent?: boolean | null
           created_at?: string | null
+          currency?: string | null
           end_time?: string
           field_id?: string
           id?: string
+          owner_amount?: number | null
           payment_intent_id?: string | null
           payment_status?: string | null
+          platform_fee?: number | null
           player_count?: number | null
           special_requests?: string | null
           start_time?: string
           status?: string | null
+          stripe_transfer_id?: string | null
           total_price?: number
           updated_at?: string | null
           user_id?: string
@@ -178,6 +190,7 @@ export type Database = {
           capacity: number
           city: string
           created_at: string | null
+          currency: string | null
           description: string | null
           field_type: string
           id: string
@@ -199,6 +212,7 @@ export type Database = {
           capacity: number
           city: string
           created_at?: string | null
+          currency?: string | null
           description?: string | null
           field_type: string
           id?: string
@@ -220,6 +234,7 @@ export type Database = {
           capacity?: number
           city?: string
           created_at?: string | null
+          currency?: string | null
           description?: string | null
           field_type?: string
           id?: string
@@ -350,6 +365,8 @@ export type Database = {
           full_name: string | null
           id: string
           phone: string | null
+          stripe_account_verified: boolean | null
+          stripe_onboarding_completed: boolean | null
           updated_at: string | null
           user_type: string | null
         }
@@ -360,6 +377,8 @@ export type Database = {
           full_name?: string | null
           id: string
           phone?: string | null
+          stripe_account_verified?: boolean | null
+          stripe_onboarding_completed?: boolean | null
           updated_at?: string | null
           user_type?: string | null
         }
@@ -370,6 +389,8 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
+          stripe_account_verified?: boolean | null
+          stripe_onboarding_completed?: boolean | null
           updated_at?: string | null
           user_type?: string | null
         }
@@ -463,6 +484,45 @@ export type Database = {
           reason?: string | null
           target_user_id?: string
           user_agent?: string | null
+        }
+        Relationships: []
+      }
+      stripe_accounts: {
+        Row: {
+          account_status: string
+          charges_enabled: boolean | null
+          created_at: string
+          details_submitted: boolean | null
+          id: string
+          onboarding_url: string | null
+          owner_id: string
+          payouts_enabled: boolean | null
+          stripe_account_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_status?: string
+          charges_enabled?: boolean | null
+          created_at?: string
+          details_submitted?: boolean | null
+          id?: string
+          onboarding_url?: string | null
+          owner_id: string
+          payouts_enabled?: boolean | null
+          stripe_account_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_status?: string
+          charges_enabled?: boolean | null
+          created_at?: string
+          details_submitted?: boolean | null
+          id?: string
+          onboarding_url?: string | null
+          owner_id?: string
+          payouts_enabled?: boolean | null
+          stripe_account_id?: string
+          updated_at?: string
         }
         Relationships: []
       }

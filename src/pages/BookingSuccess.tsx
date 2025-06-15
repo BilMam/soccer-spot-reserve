@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Calendar, Clock, MapPin, Euro, Mail } from 'lucide-react';
+import { CheckCircle, Calendar, Clock, MapPin, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -149,12 +149,25 @@ const BookingSuccess = () => {
                 <span>{booking.start_time} - {booking.end_time}</span>
               </div>
 
-              <div className="flex items-center justify-between border-t pt-4">
-                <div className="flex items-center space-x-3">
-                  <Euro className="w-5 h-5 text-green-600" />
-                  <span className="font-medium">Prix total</span>
+              <div className="border-t pt-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Prix total payé</span>
+                  <span className="text-xl font-bold text-green-600">
+                    {Math.round(booking.total_price).toLocaleString()} XOF
+                  </span>
                 </div>
-                <span className="text-xl font-bold text-green-600">{booking.total_price}€</span>
+                {booking.platform_fee && (
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Montant terrain :</span>
+                      <span>{Math.round(booking.owner_amount || 0).toLocaleString()} XOF</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Commission plateforme :</span>
+                      <span>{Math.round(booking.platform_fee).toLocaleString()} XOF</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {booking.special_requests && (
@@ -191,6 +204,12 @@ const BookingSuccess = () => {
                 <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
                 <p className="text-gray-700">
                   En cas de besoin, contactez le propriétaire via votre profil
+                </p>
+              </div>
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
+                <p className="text-gray-700">
+                  Le propriétaire recevra automatiquement 95% du montant (frais Stripe déduits)
                 </p>
               </div>
             </CardContent>
