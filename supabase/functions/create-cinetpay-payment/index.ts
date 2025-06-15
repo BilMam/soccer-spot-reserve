@@ -21,9 +21,10 @@ serve(async (req) => {
   }
 
   try {
+    // Utiliser la clé de service pour avoir accès complet à la base de données
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
     const authHeader = req.headers.get('Authorization')!
@@ -35,7 +36,9 @@ serve(async (req) => {
 
     const { booking_id, amount, field_name, date, time }: PaymentRequest = await req.json()
 
-    // Récupérer les informations de la réservation et du propriétaire
+    console.log('Traitement paiement CinetPay pour:', { booking_id, amount, field_name, date, time })
+
+    // Récupérer les informations de la réservation
     const { data: booking, error: bookingError } = await supabaseClient
       .from('bookings')
       .select(`
@@ -45,17 +48,24 @@ serve(async (req) => {
       .eq('id', booking_id)
       .single()
 
-    if (bookingError) throw bookingError
+    if (bookingError) {
+      console.error('Erreur récupération réservation:', bookingError)
+      throw new Error(`Réservation non trouvée: ${bookingError.message}`)
+    }
 
-    // Récupérer le compte CinetPay du propriétaire
-    const { data: paymentAccount, error: accountError } = await supabaseClient
+    console.log('Réservation trouvée:', booking)
+
+    // Essayer de récupérer le compte CinetPay du propriétaire (optionnel)
+    const { data: paymentAccount } = await supabaseClient
       .from('payment_accounts')
       .select('*')
       .eq('owner_id', booking.fields.owner_id)
       .eq('payment_provider', 'cinetpay')
-      .single()
+      .maybeSingle()
 
-    // Si pas de compte CinetPay, créer le paiement simple sans split
+    console.log('Compte paiement propriétaire:', paymentAccount)
+
+    // Vérifier les clés API CinetPay
     const cinetpayApiKey = Deno.env.get('CINETPAY_API_KEY')
     const cinetpaySiteId = Deno.env.get('CINETPAY_SITE_ID')
 
@@ -67,19 +77,22 @@ serve(async (req) => {
     const platformFee = Math.round(amount * 0.05) // 5% de commission
     const ownerAmount = amount - platformFee
 
+    console.log('Montants calculés:', { amount, platformFee, ownerAmount })
+
     // Créer la transaction CinetPay
+    const transactionId = `booking_${booking_id}_${Date.now()}`
     const paymentData = {
       apikey: cinetpayApiKey,
       site_id: cinetpaySiteId,
-      transaction_id: `booking_${booking_id}_${Date.now()}`,
+      transaction_id: transactionId,
       amount: amount,
       currency: 'XOF',
       description: `Réservation ${field_name} - ${date} ${time}`,
-      return_url: `${Deno.env.get('SUPABASE_URL')?.replace('supabase.co', 'lovable.app')}/booking-success?session_id=booking_${booking_id}`,
+      return_url: `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com')}/booking-success?session_id=booking_${booking_id}`,
       notify_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/cinetpay-webhook`,
-      customer_name: user.user_metadata?.full_name || 'Client',
+      customer_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Client',
       customer_email: user.email,
-      channels: 'ALL', // Support tous les moyens de paiement (Mobile Money, cartes, etc.)
+      channels: 'ALL', // Support tous les moyens de paiement
     }
 
     // Si le propriétaire a un compte marchand CinetPay, utiliser le split payment
@@ -93,6 +106,8 @@ serve(async (req) => {
       ]
     }
 
+    console.log('Données paiement CinetPay:', paymentData)
+
     const response = await fetch('https://api-checkout.cinetpay.com/v2/payment', {
       method: 'POST',
       headers: {
@@ -102,16 +117,17 @@ serve(async (req) => {
     })
 
     const result = await response.json()
+    console.log('Réponse CinetPay:', result)
 
     if (!response.ok || result.code !== '201') {
       throw new Error(result.message || 'Erreur lors de la création du paiement CinetPay')
     }
 
     // Mettre à jour la réservation avec les informations CinetPay
-    await supabaseClient
+    const { error: updateError } = await supabaseClient
       .from('bookings')
       .update({
-        cinetpay_transaction_id: paymentData.transaction_id,
+        cinetpay_transaction_id: transactionId,
         payment_provider: 'cinetpay',
         platform_fee: platformFee,
         owner_amount: ownerAmount,
@@ -119,10 +135,17 @@ serve(async (req) => {
       })
       .eq('id', booking_id)
 
+    if (updateError) {
+      console.error('Erreur mise à jour réservation:', updateError)
+      throw updateError
+    }
+
+    console.log('Paiement CinetPay créé avec succès')
+
     return new Response(
       JSON.stringify({
         url: result.data.payment_url,
-        transaction_id: paymentData.transaction_id
+        transaction_id: transactionId
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
