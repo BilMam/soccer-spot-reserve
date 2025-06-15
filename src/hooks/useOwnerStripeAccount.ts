@@ -12,9 +12,10 @@ export const useOwnerStripeAccount = () => {
       if (!user) throw new Error('Utilisateur non connecté');
 
       const { data, error } = await supabase
-        .from('stripe_accounts')
+        .from('payment_accounts')
         .select('*')
         .eq('owner_id', user.id)
+        .eq('payment_provider', 'stripe')
         .single();
 
       if (error && error.code !== 'PGRST116') {
