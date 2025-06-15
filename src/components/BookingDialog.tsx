@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Clock, MapPin, Users, CreditCard, Smartphone } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, CheckCircle, Clock4 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -51,7 +51,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
 
     setIsProcessing(true);
     try {
-      // Créer la réservation d'abord
+      // Créer la réservation en attente d'approbation
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert({
@@ -64,7 +64,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
           currency: 'XOF',
           player_count: playerCount,
           special_requests: specialRequests || null,
-          status: 'pending',
+          status: 'pending_approval', // Nouveau statut : en attente d'approbation
           payment_status: 'pending',
           payment_provider: 'cinetpay'
         })
@@ -73,35 +73,25 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
 
       if (bookingError) throw bookingError;
 
-      // Créer la session de paiement CinetPay
-      const { data, error } = await supabase.functions.invoke('create-cinetpay-payment', {
+      // Envoyer notification au propriétaire du terrain
+      await supabase.functions.invoke('send-booking-email', {
         body: {
           booking_id: booking.id,
-          amount: priceInXOF,
-          field_name: field.name,
-          date: format(selectedDate, 'dd/MM/yyyy', { locale: fr }),
-          time: `${selectedStartTime} - ${selectedEndTime}`
+          notification_type: 'booking_request_to_owner'
         }
       });
 
-      if (error) throw error;
-
-      if (data.url) {
-        // Ouvrir CinetPay checkout dans un nouvel onglet
-        window.open(data.url, '_blank');
-        
-        toast({
-          title: "Redirection vers CinetPay",
-          description: "Votre réservation sera confirmée après le paiement via Mobile Money ou carte bancaire.",
-        });
-        
-        onOpenChange(false);
-      }
+      toast({
+        title: "Demande de réservation envoyée",
+        description: "Le propriétaire du terrain va examiner votre demande. Vous recevrez un email avec le lien de paiement une fois la demande approuvée.",
+      });
+      
+      onOpenChange(false);
     } catch (error: any) {
-      console.error('Erreur lors de la réservation:', error);
+      console.error('Erreur lors de la demande de réservation:', error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de créer la réservation",
+        description: error.message || "Impossible de créer la demande de réservation",
         variant: "destructive"
       });
     } finally {
@@ -113,7 +103,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Confirmer la réservation</DialogTitle>
+          <DialogTitle>Demander une réservation</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
@@ -139,24 +129,24 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
             
             <div className="flex items-center justify-between border-t pt-3">
               <div className="flex items-center space-x-2">
-                <CreditCard className="w-4 h-4 text-green-600" />
+                <CheckCircle className="w-4 h-4 text-green-600" />
                 <span className="font-medium">Prix total</span>
               </div>
               <span className="text-xl font-bold text-green-600">{priceInXOF.toLocaleString()} XOF</span>
             </div>
           </div>
 
-          {/* Moyens de paiement supportés */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-            <h4 className="font-medium text-green-900 mb-2 flex items-center">
-              <Smartphone className="w-4 h-4 mr-2" />
-              Moyens de paiement acceptés
+          {/* Nouveau processus expliqué */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <h4 className="font-medium text-blue-900 mb-2 flex items-center">
+              <Clock4 className="w-4 h-4 mr-2" />
+              Comment ça fonctionne
             </h4>
-            <div className="grid grid-cols-2 gap-2 text-sm text-green-800">
-              <div>• Orange Money</div>
-              <div>• MTN Money</div>
-              <div>• Moov Money</div>
-              <div>• Cartes bancaires</div>
+            <div className="space-y-1 text-sm text-blue-800">
+              <div>1. Vous envoyez votre demande de réservation</div>
+              <div>2. Le propriétaire examine et approuve votre demande</div>
+              <div>3. Vous recevez un email avec le lien de paiement</div>
+              <div>4. Après paiement, votre réservation est confirmée</div>
             </div>
           </div>
 
@@ -188,24 +178,6 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
             />
           </div>
 
-          {/* Informations de commission */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <div className="text-sm text-blue-800 space-y-1">
-              <div className="flex justify-between">
-                <span>Montant terrain :</span>
-                <span>{Math.round(priceInXOF * 0.95).toLocaleString()} XOF</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Commission plateforme (5%) :</span>
-                <span>{Math.round(priceInXOF * 0.05).toLocaleString()} XOF</span>
-              </div>
-              <div className="flex justify-between font-medium border-t pt-1">
-                <span>Total à payer :</span>
-                <span>{priceInXOF.toLocaleString()} XOF</span>
-              </div>
-            </div>
-          </div>
-
           {/* Boutons d'action */}
           <div className="flex space-x-3">
             <Button 
@@ -220,7 +192,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
               disabled={isProcessing}
               className="flex-1 bg-green-600 hover:bg-green-700"
             >
-              {isProcessing ? "Traitement..." : "Payer avec CinetPay"}
+              {isProcessing ? "Envoi..." : "Envoyer la demande"}
             </Button>
           </div>
         </div>

@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, MapPin, Clock, Users, Star, X } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, Star, X, Clock4, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ReviewDialog from '@/components/ReviewDialog';
 
@@ -89,14 +89,33 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { label: 'En attente', variant: 'outline' as const },
-      confirmed: { label: 'Confirmée', variant: 'default' as const },
-      cancelled: { label: 'Annulée', variant: 'destructive' as const },
-      completed: { label: 'Terminée', variant: 'secondary' as const }
+      pending_approval: { label: 'En attente d\'approbation', variant: 'outline' as const, color: 'text-orange-600' },
+      approved: { label: 'Approuvée - En attente de paiement', variant: 'outline' as const, color: 'text-blue-600' },
+      pending: { label: 'En attente', variant: 'outline' as const, color: 'text-yellow-600' },
+      confirmed: { label: 'Confirmée', variant: 'default' as const, color: 'text-green-600' },
+      cancelled: { label: 'Annulée', variant: 'destructive' as const, color: 'text-red-600' },
+      completed: { label: 'Terminée', variant: 'secondary' as const, color: 'text-gray-600' }
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return <Badge variant={config.variant} className={config.color}>{config.label}</Badge>;
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending_approval':
+        return <Clock4 className="w-4 h-4 text-orange-600" />;
+      case 'approved':
+        return <CheckCircle className="w-4 h-4 text-blue-600" />;
+      case 'confirmed':
+        return <CheckCircle className="w-4 h-4 text-green-600" />;
+      case 'completed':
+        return <CheckCircle className="w-4 h-4 text-gray-600" />;
+      case 'cancelled':
+        return <X className="w-4 h-4 text-red-600" />;
+      default:
+        return <Clock4 className="w-4 h-4 text-yellow-600" />;
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -117,7 +136,7 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
     const now = new Date();
     const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
     
-    return booking.status === 'pending' || booking.status === 'confirmed' && hoursUntilBooking > 24;
+    return (booking.status === 'pending_approval' || booking.status === 'approved' || booking.status === 'confirmed') && hoursUntilBooking > 24;
   };
 
   const canReview = (booking: Booking) => {
@@ -127,6 +146,23 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
   const handleReview = (booking: Booking) => {
     setSelectedBooking(booking);
     setReviewDialogOpen(true);
+  };
+
+  const getStatusMessage = (status: string) => {
+    switch (status) {
+      case 'pending_approval':
+        return "Le propriétaire examine votre demande. Vous recevrez un email dès qu'elle sera approuvée.";
+      case 'approved':
+        return "Votre demande a été approuvée ! Vérifiez vos emails pour le lien de paiement.";
+      case 'confirmed':
+        return "Votre réservation est confirmée. Amusez-vous bien !";
+      case 'cancelled':
+        return "Cette réservation a été annulée.";
+      case 'completed':
+        return "Cette réservation est terminée. Vous pouvez laisser un avis.";
+      default:
+        return "";
+    }
   };
 
   if (isLoading) {
@@ -171,7 +207,10 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
                         {booking.fields.location}
                       </div>
                     </div>
-                    {getStatusBadge(booking.status)}
+                    <div className="flex items-center space-x-2">
+                      {getStatusIcon(booking.status)}
+                      {getStatusBadge(booking.status)}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -191,9 +230,16 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
                     </div>
                   </div>
 
+                  {/* Message de statut */}
+                  {getStatusMessage(booking.status) && (
+                    <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
+                      <p className="text-sm text-blue-800">{getStatusMessage(booking.status)}</p>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center">
                     <div className="text-lg font-semibold text-green-600">
-                      {booking.total_price}€
+                      {booking.total_price.toLocaleString()} XOF
                     </div>
                     <div className="flex space-x-2">
                       {canReview(booking) && (

@@ -1,11 +1,11 @@
 
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, Users, MapPin, CheckCircle, XCircle, Clock4 } from 'lucide-react';
+import { Calendar, Clock, Users, MapPin, CheckCircle, XCircle, Clock4, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Table,
@@ -34,6 +34,7 @@ interface OwnerBookingsProps {
 
 const OwnerBookings = ({ ownerId }: OwnerBookingsProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const { data: bookings, isLoading, refetch } = useQuery({
@@ -49,32 +50,62 @@ const OwnerBookings = ({ ownerId }: OwnerBookingsProps) => {
     enabled: !!ownerId
   });
 
-  const handleStatusChange = async (bookingId: string, newStatus: string) => {
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status: newStatus })
-        .eq('id', bookingId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Statut mis à jour",
-        description: `La réservation a été ${newStatus === 'confirmed' ? 'confirmée' : 'refusée'}`,
+  const approveBookingMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const { data, error } = await supabase.functions.invoke('approve-booking', {
+        body: { booking_id: bookingId }
       });
 
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Réservation approuvée",
+        description: "Un lien de paiement a été envoyé au client par email.",
+      });
       refetch();
-    } catch (error) {
+    },
+    onError: (error: any) => {
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour le statut de la réservation",
+        description: error.message || "Impossible d'approuver la réservation",
         variant: "destructive"
       });
     }
-  };
+  });
+
+  const rejectBookingMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled' })
+        .eq('id', bookingId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Réservation refusée",
+        description: "La demande de réservation a été refusée.",
+      });
+      refetch();
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de refuser la réservation",
+        variant: "destructive"
+      });
+    }
+  });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case 'pending_approval':
+        return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">En attente d'approbation</Badge>;
+      case 'approved':
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Approuvée (en attente de paiement)</Badge>;
       case 'confirmed':
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Confirmée</Badge>;
       case 'pending':
@@ -88,6 +119,10 @@ const OwnerBookings = ({ ownerId }: OwnerBookingsProps) => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
+      case 'pending_approval':
+        return <Clock4 className="w-4 h-4 text-orange-600" />;
+      case 'approved':
+        return <CreditCard className="w-4 h-4 text-blue-600" />;
       case 'confirmed':
         return <CheckCircle className="w-4 h-4 text-green-600" />;
       case 'pending':
@@ -134,11 +169,18 @@ const OwnerBookings = ({ ownerId }: OwnerBookingsProps) => {
               Toutes
             </Button>
             <Button
-              variant={statusFilter === 'pending' ? 'default' : 'outline'}
+              variant={statusFilter === 'pending_approval' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setStatusFilter('pending')}
+              onClick={() => setStatusFilter('pending_approval')}
             >
-              En attente
+              À approuver
+            </Button>
+            <Button
+              variant={statusFilter === 'approved' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('approved')}
+            >
+              Approuvées
             </Button>
             <Button
               variant={statusFilter === 'confirmed' ? 'default' : 'outline'}
@@ -200,7 +242,7 @@ const OwnerBookings = ({ ownerId }: OwnerBookingsProps) => {
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">
-                    {booking.total_price}€
+                    {booking.total_price.toLocaleString()} XOF
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
@@ -209,19 +251,21 @@ const OwnerBookings = ({ ownerId }: OwnerBookingsProps) => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {booking.status === 'pending' && (
+                    {booking.status === 'pending_approval' && (
                       <div className="flex space-x-2">
                         <Button
                           size="sm"
-                          onClick={() => handleStatusChange(booking.booking_id, 'confirmed')}
+                          onClick={() => approveBookingMutation.mutate(booking.booking_id)}
+                          disabled={approveBookingMutation.isPending}
                           className="bg-green-600 hover:bg-green-700"
                         >
-                          Accepter
+                          Approuver
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleStatusChange(booking.booking_id, 'cancelled')}
+                          onClick={() => rejectBookingMutation.mutate(booking.booking_id)}
+                          disabled={rejectBookingMutation.isPending}
                         >
                           Refuser
                         </Button>

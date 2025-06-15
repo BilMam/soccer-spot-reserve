@@ -1,53 +1,53 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import Search from "./pages/Search";
-import FieldDetail from "./pages/FieldDetail";
-import OwnerDashboard from "./pages/OwnerDashboard";
-import AddField from "./pages/AddField";
-import EditField from "./pages/EditField";
-import Profile from "./pages/Profile";
-import BecomeOwner from "./pages/BecomeOwner";
-import BookingSuccess from "./pages/BookingSuccess";
-import AdminDashboard from "./pages/AdminDashboard";
-import SuperAdminDashboard from "./pages/SuperAdminDashboard";
-import NotFound from "./pages/NotFound";
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from '@/components/ui/toaster';
+import Index from '@/pages/Index';
+import Auth from '@/pages/Auth';
+import Profile from '@/pages/Profile';
+import Search from '@/pages/Search';
+import FieldDetail from '@/pages/FieldDetail';
+import AddField from '@/pages/AddField';
+import EditField from '@/pages/EditField';
+import BecomeOwner from '@/pages/BecomeOwner';
+import OwnerDashboard from '@/pages/OwnerDashboard';
+import AdminDashboard from '@/pages/AdminDashboard';
+import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
+import BookingSuccess from '@/pages/BookingSuccess';
+import PaymentPage from '@/pages/PaymentPage';
+import NotFound from '@/pages/NotFound';
+import { AuthProvider } from '@/hooks/useAuth';
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Router>
+          <div className="min-h-screen bg-gray-50">
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/field/:id" element={<FieldDetail />} />
+              <Route path="/add-field" element={<AddField />} />
+              <Route path="/edit-field/:id" element={<EditField />} />
+              <Route path="/become-owner" element={<BecomeOwner />} />
+              <Route path="/owner-dashboard" element={<OwnerDashboard />} />
+              <Route path="/admin-dashboard" element={<AdminDashboard />} />
+              <Route path="/super-admin-dashboard" element={<SuperAdminDashboard />} />
+              <Route path="/booking-success" element={<BookingSuccess />} />
+              <Route path="/payment/:token" element={<PaymentPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </div>
+        </Router>
         <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/field/:id" element={<FieldDetail />} />
-            <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-            <Route path="/add-field" element={<AddField />} />
-            <Route path="/edit-field/:id" element={<EditField />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/become-owner" element={<BecomeOwner />} />
-            <Route path="/booking-success" element={<BookingSuccess />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/super-admin/dashboard" element={<SuperAdminDashboard />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
