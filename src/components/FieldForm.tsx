@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,7 +35,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     location: '',
     address: '',
     city: '',
-    field_type: '',
+    field_type: 'natural_grass', // Set default value instead of empty string
     capacity: '',
     price_per_hour: '',
     availability_start: '08:00',

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -46,7 +45,7 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
         <div className="space-y-2">
           <Label htmlFor="field_type">Type de terrain *</Label>
           <Select 
-            value={formData.field_type} 
+            value={formData.field_type || undefined} 
             onValueChange={(value) => onInputChange('field_type', value)}
             required
           >
