@@ -23,6 +23,7 @@ export interface Field {
   capacity: number;
   price_per_hour: number;
   description?: string;
+  is_active: boolean;
   created_at: string;
   profiles?: {
     full_name: string;
