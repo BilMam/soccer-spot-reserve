@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,7 +60,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
           platform_fee: platformFee,
           owner_amount: totalPrice - platformFee,
           special_requests: specialRequests || null,
-          status: 'pending_approval', // Statut correct selon la contrainte
+          status: 'pending', // Changé de 'pending_approval' à 'pending'
           payment_status: 'pending',
           escrow_status: 'none',
           currency: 'XOF'
