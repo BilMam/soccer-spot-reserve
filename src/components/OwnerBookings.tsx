@@ -65,6 +65,7 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
   const getStatusBadge = (status: string, escrowStatus?: string, windowType?: string) => {
     switch (status) {
       case 'pending_approval':
+      case 'pending': // Ajout du statut 'pending'
         return <Badge variant="secondary">En attente d'approbation</Badge>;
       case 'approved':
         return <Badge variant="outline">Approuvé - En attente de paiement</Badge>;
@@ -221,7 +222,8 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
                   </div>
                 )}
 
-                {booking.status === 'pending_approval' && (
+                {/* Afficher les boutons d'approbation pour les statuts 'pending_approval' ET 'pending' */}
+                {(booking.status === 'pending_approval' || booking.status === 'pending') && (
                   <div className="flex space-x-2">
                     <Button 
                       onClick={() => handleApproveBooking(booking.id)}
