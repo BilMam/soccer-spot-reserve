@@ -34,6 +34,7 @@ serve(async (req) => {
     console.log('Approbation réservation par propriétaire (Escrow):', { booking_id, user_id: user.id })
 
     // Vérifier que la réservation existe et appartient à un terrain du propriétaire
+    // Accepter les statuts 'pending_approval' ET 'pending'
     const { data: booking, error: bookingError } = await supabaseClient
       .from('bookings')
       .select(`
@@ -43,10 +44,12 @@ serve(async (req) => {
       `)
       .eq('id', booking_id)
       .eq('fields.owner_id', user.id)
-      .eq('status', 'pending_approval')
+      .in('status', ['pending_approval', 'pending'])
       .single()
 
     if (bookingError || !booking) {
+      console.error('Erreur booking:', bookingError)
+      console.log('Tentative de recherche avec booking_id:', booking_id, 'et owner_id:', user.id)
       throw new Error('Réservation non trouvée ou non autorisée')
     }
 
