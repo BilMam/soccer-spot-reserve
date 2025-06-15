@@ -59,10 +59,16 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
 
   const approveApplicationMutation = useMutation({
     mutationFn: async (applicationId: string) => {
-      const { error } = await supabase.rpc('approve_owner_application', {
+      console.log('Attempting to approve application:', applicationId);
+      const { data, error } = await supabase.rpc('approve_owner_application', {
         application_id: applicationId
       });
-      if (error) throw error;
+      console.log('RPC response:', { data, error });
+      if (error) {
+        console.error('RPC Error details:', error);
+        throw error;
+      }
+      return data;
     },
     onSuccess: () => {
       toast({
@@ -75,7 +81,7 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
       console.error('Error approving application:', error);
       toast({
         title: "Erreur",
-        description: "Impossible d'approuver la demande.",
+        description: `Impossible d'approuver la demande: ${error.message || 'Erreur inconnue'}`,
         variant: "destructive"
       });
     }
@@ -83,11 +89,17 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
 
   const rejectApplicationMutation = useMutation({
     mutationFn: async ({ applicationId, notes }: { applicationId: string, notes: string }) => {
-      const { error } = await supabase.rpc('reject_owner_application', {
+      console.log('Attempting to reject application:', applicationId, 'with notes:', notes);
+      const { data, error } = await supabase.rpc('reject_owner_application', {
         application_id: applicationId,
         notes: notes
       });
-      if (error) throw error;
+      console.log('RPC response:', { data, error });
+      if (error) {
+        console.error('RPC Error details:', error);
+        throw error;
+      }
+      return data;
     },
     onSuccess: () => {
       toast({
@@ -100,7 +112,7 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
       console.error('Error rejecting application:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de rejeter la demande.",
+        description: `Impossible de rejeter la demande: ${error.message || 'Erreur inconnue'}`,
         variant: "destructive"
       });
     }
