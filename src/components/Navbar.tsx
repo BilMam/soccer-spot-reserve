@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Search, User, Menu, MapPin, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -66,8 +65,8 @@ const Navbar = () => {
                 Mes réservations
               </a>
             )}
-            {/* Hide "Become owner" link if user is already an owner */}
-            {!isOwner && (
+            {/* Hide "Become owner" link if user is already an owner OR has admin permissions */}
+            {!isOwner && !hasAdminPermissions && (
               <a href="/become-owner" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
                 Devenir propriétaire
               </a>
