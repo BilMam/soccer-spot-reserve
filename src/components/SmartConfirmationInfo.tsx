@@ -11,7 +11,7 @@ interface SmartConfirmationInfoProps {
     confirmation_window_type?: string;
     confirmation_deadline?: string;
     auto_action?: string;
-    time_until_slot?: string;
+    time_until_slot?: unknown;
     booking_date: string;
     start_time: string;
   };
