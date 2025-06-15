@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,7 +19,7 @@ interface OwnerApplication {
   phone: string;
   experience?: string;
   motivation?: string;
-  status: 'pending' | 'approved' | 'rejected' | 'under_review';
+  status: string; // Changed to string to match database return type
   admin_notes?: string;
   reviewed_by?: string;
   reviewed_at?: string;
