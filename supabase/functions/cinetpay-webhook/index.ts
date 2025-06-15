@@ -48,10 +48,10 @@ serve(async (req) => {
     let bookingStatus = 'pending'
     let paymentStatus = 'pending'
 
-    if (cmp_result === '00' && cpm_trans_status === 'ACCEPTED') {
+    if (cpm_result === '00' && cpm_trans_status === 'ACCEPTED') {
       bookingStatus = 'confirmed'
       paymentStatus = 'paid'
-    } else if (cpm_trans_status === 'REFUSED') {
+    } else if (cmp_trans_status === 'REFUSED') {
       bookingStatus = 'cancelled'
       paymentStatus = 'failed'
     }
