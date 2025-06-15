@@ -87,9 +87,17 @@ serve(async (req) => {
         }
       })
 
-      console.log('Fonds mis en escrow avec succès - Notification propriétaire envoyée')
+      // Envoyer confirmation de paiement au client
+      await supabaseClient.functions.invoke('send-booking-email', {
+        body: {
+          booking_id: booking.id,
+          notification_type: 'payment_confirmation'
+        }
+      })
 
-    } else if (cpm_trans_status === 'DECLINED' || cmp_trans_status === '0') {
+      console.log('Fonds mis en escrow avec succès - Notifications envoyées')
+
+    } else if (cpm_trans_status === 'DECLINED' || cpm_trans_status === '0') {
       // Paiement refusé
       const { error: updateError } = await supabaseClient
         .from('bookings')

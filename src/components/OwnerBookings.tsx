@@ -1,284 +1,244 @@
 
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, Users, MapPin, CheckCircle, XCircle, Clock4, CreditCard } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-
-interface Booking {
-  booking_id: string;
-  field_name: string;
-  user_name: string;
-  booking_date: string;
-  start_time: string;
-  end_time: string;
-  status: string;
-  total_price: number;
-  player_count: number;
-}
+import { Calendar, Clock, User, MapPin, DollarSign, AlertTriangle } from 'lucide-react';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import BookingConfirmationCard from './BookingConfirmationCard';
 
 interface OwnerBookingsProps {
   ownerId: string;
 }
 
-const OwnerBookings = ({ ownerId }: OwnerBookingsProps) => {
+const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const { data: bookings, isLoading, refetch } = useQuery({
     queryKey: ['owner-bookings', ownerId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_owner_recent_bookings', {
-        owner_uuid: ownerId
-      });
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          profiles!inner(full_name, email),
+          fields!inner(name, location, owner_id)
+        `)
+        .eq('fields.owner_id', ownerId)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as Booking[];
+      return data;
     },
     enabled: !!ownerId
   });
 
-  const approveBookingMutation = useMutation({
-    mutationFn: async (bookingId: string) => {
+  const handleApproveBooking = async (bookingId: string) => {
+    try {
       const { data, error } = await supabase.functions.invoke('approve-booking', {
         body: { booking_id: bookingId }
       });
 
       if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
+
       toast({
         title: "Réservation approuvée",
-        description: "Un lien de paiement a été envoyé au client par email.",
+        description: "Le client a reçu un lien de paiement sécurisé.",
       });
+
       refetch();
-    },
-    onError: (error: any) => {
+    } catch (error: any) {
+      console.error('Erreur approbation:', error);
       toast({
         title: "Erreur",
         description: error.message || "Impossible d'approuver la réservation",
         variant: "destructive"
       });
     }
-  });
+  };
 
-  const rejectBookingMutation = useMutation({
-    mutationFn: async (bookingId: string) => {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status: 'cancelled' })
-        .eq('id', bookingId);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Réservation refusée",
-        description: "La demande de réservation a été refusée.",
-      });
-      refetch();
-    },
-    onError: () => {
-      toast({
-        title: "Erreur",
-        description: "Impossible de refuser la réservation",
-        variant: "destructive"
-      });
-    }
-  });
-
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, escrowStatus?: string) => {
     switch (status) {
       case 'pending_approval':
-        return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">En attente d'approbation</Badge>;
+        return <Badge variant="secondary">En attente d'approbation</Badge>;
       case 'approved':
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Approuvée (en attente de paiement)</Badge>;
+        return <Badge variant="outline">Approuvé - En attente de paiement</Badge>;
       case 'confirmed':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Confirmée</Badge>;
-      case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">En attente</Badge>;
+        if (escrowStatus === 'funds_held') {
+          return <Badge className="bg-blue-600">Payé - Confirmation requise</Badge>;
+        }
+        return <Badge className="bg-blue-600">Confirmé</Badge>;
+      case 'owner_confirmed':
+        return <Badge className="bg-green-600">Confirmé par vous</Badge>;
+      case 'completed':
+        return <Badge className="bg-green-600">Terminé</Badge>;
       case 'cancelled':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Annulée</Badge>;
+        return <Badge variant="destructive">Annulé</Badge>;
+      case 'refunded':
+        return <Badge variant="destructive">Remboursé</Badge>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending_approval':
-        return <Clock4 className="w-4 h-4 text-orange-600" />;
-      case 'approved':
-        return <CreditCard className="w-4 h-4 text-blue-600" />;
-      case 'confirmed':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case 'pending':
-        return <Clock4 className="w-4 h-4 text-yellow-600" />;
-      case 'cancelled':
-        return <XCircle className="w-4 h-4 text-red-600" />;
-      default:
-        return <Clock4 className="w-4 h-4 text-gray-400" />;
-    }
-  };
+  // Séparer les réservations qui nécessitent une confirmation
+  const pendingConfirmations = bookings?.filter(booking => 
+    booking.status === 'confirmed' && 
+    booking.escrow_status === 'funds_held' && 
+    !booking.owner_confirmed_at
+  ) || [];
 
-  const filteredBookings = bookings?.filter(booking => 
-    statusFilter === 'all' || booking.status === statusFilter
+  const otherBookings = bookings?.filter(booking => 
+    !(booking.status === 'confirmed' && 
+      booking.escrow_status === 'funds_held' && 
+      !booking.owner_confirmed_at)
   ) || [];
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Réservations récentes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="animate-pulse space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <Card key={i}>
+            <CardContent className="p-6">
+              <div className="animate-pulse space-y-4">
+                <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                <div className="h-6 bg-gray-200 rounded w-2/3"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle>Réservations récentes</CardTitle>
-          <div className="flex space-x-2">
-            <Button
-              variant={statusFilter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter('all')}
-            >
-              Toutes
-            </Button>
-            <Button
-              variant={statusFilter === 'pending_approval' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter('pending_approval')}
-            >
-              À approuver
-            </Button>
-            <Button
-              variant={statusFilter === 'approved' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter('approved')}
-            >
-              Approuvées
-            </Button>
-            <Button
-              variant={statusFilter === 'confirmed' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter('confirmed')}
-            >
-              Confirmées
-            </Button>
+    <div className="space-y-6">
+      {/* Section des confirmations requises */}
+      {pendingConfirmations.length > 0 && (
+        <div>
+          <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2">
+            <AlertTriangle className="w-5 h-5 text-yellow-600" />
+            <span>Confirmations requises ({pendingConfirmations.length})</span>
+          </h3>
+          <div className="space-y-4">
+            {pendingConfirmations.map((booking) => (
+              <BookingConfirmationCard
+                key={booking.id}
+                booking={booking}
+                onConfirm={() => refetch()}
+              />
+            ))}
           </div>
         </div>
-      </CardHeader>
-      <CardContent>
-        {filteredBookings.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>Aucune réservation trouvée</p>
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Client</TableHead>
-                <TableHead>Terrain</TableHead>
-                <TableHead>Date & Heure</TableHead>
-                <TableHead>Joueurs</TableHead>
-                <TableHead>Prix</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredBookings.map((booking) => (
-                <TableRow key={booking.booking_id}>
-                  <TableCell className="font-medium">
-                    {booking.user_name || 'Client anonyme'}
-                  </TableCell>
-                  <TableCell>
+      )}
+
+      {/* Section des autres réservations */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">
+          Toutes les réservations ({otherBookings.length})
+        </h3>
+        <div className="space-y-4">
+          {otherBookings.map((booking) => (
+            <Card key={booking.id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{booking.fields.name}</CardTitle>
+                  {getStatusBadge(booking.status, booking.escrow_status)}
+                </div>
+              </CardHeader>
+              
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <User className="w-4 h-4 text-gray-500" />
+                    <span>{booking.profiles.full_name}</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-4 h-4 text-gray-500" />
+                    <span>{booking.fields.location}</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="w-4 h-4 text-gray-500" />
+                    <span>{format(new Date(booking.booking_date), 'dd/MM/yyyy', { locale: fr })}</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Clock className="w-4 h-4 text-gray-500" />
+                    <span>{booking.start_time.slice(0, 5)} - {booking.end_time.slice(0, 5)}</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <DollarSign className="w-4 h-4 text-gray-500" />
+                    <span>{booking.total_price.toLocaleString()} XOF</span>
+                  </div>
+                  
+                  {booking.player_count && (
                     <div className="flex items-center space-x-2">
-                      <MapPin className="w-4 h-4 text-gray-400" />
-                      <span>{booking.field_name}</span>
+                      <User className="w-4 h-4 text-gray-500" />
+                      <span>{booking.player_count} joueurs</span>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span>{new Date(booking.booking_date).toLocaleDateString('fr-FR')}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Clock className="w-4 h-4 text-gray-400" />
-                        <span>{booking.start_time} - {booking.end_time}</span>
-                      </div>
+                  )}
+                </div>
+
+                {booking.special_requests && (
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <h4 className="font-medium text-gray-900 mb-1">Demandes spéciales :</h4>
+                    <p className="text-gray-600 text-sm">{booking.special_requests}</p>
+                  </div>
+                )}
+
+                {booking.status === 'pending_approval' && (
+                  <div className="flex space-x-2">
+                    <Button 
+                      onClick={() => handleApproveBooking(booking.id)}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      Approuver
+                    </Button>
+                    <Button variant="outline">
+                      Refuser
+                    </Button>
+                  </div>
+                )}
+
+                {booking.escrow_status && booking.escrow_status !== 'none' && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-blue-900">Statut Escrow :</span>
+                      <Badge variant="outline" className="text-blue-700">
+                        {booking.escrow_status === 'funds_held' ? 'Fonds sécurisés' :
+                         booking.escrow_status === 'transferred' ? 'Transféré' :
+                         booking.escrow_status === 'refunded' ? 'Remboursé' : booking.escrow_status}
+                      </Badge>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Users className="w-4 h-4 text-gray-400" />
-                      <span>{booking.player_count || 'Non spécifié'}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {booking.total_price.toLocaleString()} XOF
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon(booking.status)}
-                      {getStatusBadge(booking.status)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {booking.status === 'pending_approval' && (
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          onClick={() => approveBookingMutation.mutate(booking.booking_id)}
-                          disabled={approveBookingMutation.isPending}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          Approuver
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => rejectBookingMutation.mutate(booking.booking_id)}
-                          disabled={rejectBookingMutation.isPending}
-                        >
-                          Refuser
-                        </Button>
+                    {booking.owner_amount && (
+                      <div className="text-sm text-blue-800 mt-1">
+                        Votre part : {booking.owner_amount.toLocaleString()} XOF
                       </div>
                     )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+
+          {otherBookings.length === 0 && pendingConfirmations.length === 0 && (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <p className="text-gray-500">Aucune réservation pour le moment</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 

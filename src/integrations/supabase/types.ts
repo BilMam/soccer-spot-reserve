@@ -64,8 +64,10 @@ export type Database = {
           end_time: string
           escrow_status: string | null
           field_id: string
+          final_reminder_sent_at: string | null
           id: string
           owner_amount: number | null
+          owner_confirmation_sent_at: string | null
           owner_confirmed_at: string | null
           payment_intent_id: string | null
           payment_provider: string | null
@@ -94,8 +96,10 @@ export type Database = {
           end_time: string
           escrow_status?: string | null
           field_id: string
+          final_reminder_sent_at?: string | null
           id?: string
           owner_amount?: number | null
+          owner_confirmation_sent_at?: string | null
           owner_confirmed_at?: string | null
           payment_intent_id?: string | null
           payment_provider?: string | null
@@ -124,8 +128,10 @@ export type Database = {
           end_time?: string
           escrow_status?: string | null
           field_id?: string
+          final_reminder_sent_at?: string | null
           id?: string
           owner_amount?: number | null
+          owner_confirmation_sent_at?: string | null
           owner_confirmed_at?: string | null
           payment_intent_id?: string | null
           payment_provider?: string | null
@@ -154,6 +160,56 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escrow_automation_tasks: {
+        Row: {
+          booking_id: string
+          created_at: string | null
+          error_message: string | null
+          executed_at: string | null
+          id: string
+          max_retries: number | null
+          retry_count: number | null
+          scheduled_at: string
+          status: string
+          task_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          max_retries?: number | null
+          retry_count?: number | null
+          scheduled_at: string
+          status?: string
+          task_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          max_retries?: number | null
+          retry_count?: number | null
+          scheduled_at?: string
+          status?: string
+          task_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escrow_automation_tasks_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
         ]
@@ -796,6 +852,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      confirm_booking_by_owner: {
+        Args: { p_booking_id: string; p_owner_id: string }
+        Returns: boolean
+      }
       get_all_owner_applications: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -872,6 +932,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      process_automation_tasks: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          task_id: string
+          booking_id: string
+          task_type: string
+          result: string
+        }[]
+      }
       process_escrow_transaction: {
         Args: {
           p_booking_id: string
@@ -893,6 +962,14 @@ export type Database = {
           reason?: string
         }
         Returns: undefined
+      }
+      schedule_escrow_task: {
+        Args: {
+          p_booking_id: string
+          p_task_type: string
+          p_scheduled_at: string
+        }
+        Returns: string
       }
       update_owner_stats_for_field: {
         Args: { field_uuid: string }
