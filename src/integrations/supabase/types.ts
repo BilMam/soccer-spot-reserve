@@ -427,6 +427,84 @@ export type Database = {
           },
         ]
       }
+      role_audit_log: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          new_value: string | null
+          old_value: string | null
+          performed_by: string
+          reason: string | null
+          target_user_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          new_value?: string | null
+          old_value?: string | null
+          performed_by: string
+          reason?: string | null
+          target_user_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          new_value?: string | null
+          old_value?: string | null
+          performed_by?: string
+          reason?: string | null
+          target_user_id?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          granted_at: string | null
+          granted_by: string | null
+          id: string
+          is_active: boolean | null
+          notes: string | null
+          role: Database["public"]["Enums"]["user_role_type"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          role: Database["public"]["Enums"]["user_role_type"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          role?: Database["public"]["Enums"]["user_role_type"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -438,6 +516,22 @@ export type Database = {
       }
       approve_owner_application: {
         Args: { application_id: string; notes?: string }
+        Returns: undefined
+      }
+      can_promote_user: {
+        Args: {
+          promoter_id: string
+          target_role: Database["public"]["Enums"]["user_role_type"]
+        }
+        Returns: boolean
+      }
+      change_user_type: {
+        Args: {
+          target_user_id: string
+          new_user_type: string
+          new_role?: Database["public"]["Enums"]["user_role_type"]
+          reason?: string
+        }
         Returns: undefined
       }
       check_booking_conflict: {
@@ -499,8 +593,43 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_users_with_roles: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          email: string
+          full_name: string
+          user_type: string
+          roles: Database["public"]["Enums"]["user_role_type"][]
+          created_at: string
+        }[]
+      }
+      grant_role_to_user: {
+        Args: {
+          target_user_id: string
+          role_to_grant: Database["public"]["Enums"]["user_role_type"]
+          reason?: string
+          expires_at?: string
+        }
+        Returns: undefined
+      }
+      has_role: {
+        Args: {
+          user_uuid: string
+          role_name: Database["public"]["Enums"]["user_role_type"]
+        }
+        Returns: boolean
+      }
       reject_owner_application: {
         Args: { application_id: string; notes: string }
+        Returns: undefined
+      }
+      revoke_role_from_user: {
+        Args: {
+          target_user_id: string
+          role_to_revoke: Database["public"]["Enums"]["user_role_type"]
+          reason?: string
+        }
         Returns: undefined
       }
       update_owner_stats_for_field: {
@@ -509,7 +638,14 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      user_role_type:
+        | "super_admin"
+        | "admin_general"
+        | "admin_fields"
+        | "admin_users"
+        | "moderator"
+        | "owner"
+        | "player"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -624,6 +760,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role_type: [
+        "super_admin",
+        "admin_general",
+        "admin_fields",
+        "admin_users",
+        "moderator",
+        "owner",
+        "player",
+      ],
+    },
   },
 } as const

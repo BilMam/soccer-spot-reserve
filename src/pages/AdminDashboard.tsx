@@ -50,21 +50,25 @@ const AdminDashboard = () => {
   const [selectedApplication, setSelectedApplication] = useState<OwnerApplication | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
 
-  // Vérifier si l'utilisateur est admin
-  const { data: profile } = useQuery({
-    queryKey: ['profile', user?.id],
+  // Vérifier si l'utilisateur a les permissions d'admin
+  const { data: userRoles } = useQuery({
+    queryKey: ['user-roles', user?.id],
     queryFn: async () => {
-      if (!user) return null;
+      if (!user) return [];
       const { data, error } = await supabase
-        .from('profiles')
-        .select('user_type')
-        .eq('id', user.id)
-        .single();
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
       if (error) throw error;
       return data;
     },
     enabled: !!user
   });
+
+  const hasAdminPermissions = userRoles?.some(role => 
+    ['super_admin', 'admin_general', 'admin_fields', 'admin_users'].includes(role.role)
+  );
 
   // Récupérer les demandes de propriétaires
   const { data: applications, isLoading: loadingApplications } = useQuery({
@@ -77,7 +81,7 @@ const AdminDashboard = () => {
       }
       return data || [];
     },
-    enabled: profile?.user_type === 'admin'
+    enabled: hasAdminPermissions
   });
 
   // Récupérer les terrains
@@ -98,7 +102,7 @@ const AdminDashboard = () => {
       }
       return data || [];
     },
-    enabled: profile?.user_type === 'admin'
+    enabled: hasAdminPermissions
   });
 
   // Mutation pour approuver une demande
@@ -191,7 +195,7 @@ const AdminDashboard = () => {
     );
   }
 
-  if (profile?.user_type !== 'admin') {
+  if (!hasAdminPermissions) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
