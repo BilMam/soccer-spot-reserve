@@ -79,7 +79,7 @@ serve(async (req) => {
       currency: 'XOF',
       description: `Réservation ${field_name} - ${date} ${time}`,
       return_url: `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com')}/booking-success?session_id=booking_${booking_id}`,
-      notify_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/cinetpay-webhook`,
+      notify_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/cinetpay-escrow-webhook`,
       customer_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Client',
       customer_email: user.email,
       channels: 'ALL',
