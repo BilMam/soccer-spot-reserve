@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 export const usePermissions = () => {
   const { user } = useAuth();
 
-  const { data: userRoles } = useQuery({
+  const { data: userRoles, isLoading: loading } = useQuery({
     queryKey: ['user-roles', user?.id],
     queryFn: async () => {
       if (!user) return [];
@@ -22,9 +22,12 @@ export const usePermissions = () => {
   });
 
   const isSuperAdmin = userRoles?.some(role => role.role === 'super_admin');
+  const isOwner = userRoles?.some(role => role.role === 'owner');
 
   return {
     userRoles,
-    isSuperAdmin
+    isSuperAdmin,
+    isOwner,
+    loading
   };
 };

@@ -9,10 +9,14 @@ import OwnerFields from '@/components/OwnerFields';
 import OwnerBookings from '@/components/OwnerBookings';
 import StripeOnboarding from '@/components/StripeOnboarding';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useOwnerStats } from '@/hooks/useOwnerStats';
+import { useOwnerFields } from '@/hooks/useOwnerFields';
 
 const OwnerDashboard = () => {
   const { user, loading } = useAuth();
   const { isOwner, loading: permissionsLoading } = usePermissions();
+  const { data: stats, isLoading: statsLoading } = useOwnerStats();
+  const { data: fields, isLoading: fieldsLoading } = useOwnerFields();
 
   if (loading || permissionsLoading) {
     return (
@@ -60,16 +64,16 @@ const OwnerDashboard = () => {
 
           <TabsContent value="overview">
             <div className="space-y-6">
-              <OwnerStats />
+              <OwnerStats stats={stats} isLoading={statsLoading} />
             </div>
           </TabsContent>
 
           <TabsContent value="fields">
-            <OwnerFields />
+            <OwnerFields fields={fields} isLoading={fieldsLoading} />
           </TabsContent>
 
           <TabsContent value="bookings">
-            <OwnerBookings />
+            <OwnerBookings ownerId={user.id} />
           </TabsContent>
 
           <TabsContent value="payments">
