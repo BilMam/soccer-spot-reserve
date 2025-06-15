@@ -46,19 +46,12 @@ const PaymentPage = () => {
       }
 
       try {
-        // Valider le lien de paiement
-        const { data: linkData, error: linkError } = await supabase
-          .from('payment_links')
-          .select(`
-            booking_id,
-            expires_at,
-            is_active,
-            used_at
-          `)
-          .eq('token', token)
-          .maybeSingle();
+        // Utiliser la fonction PostgreSQL pour valider le lien de paiement
+        const { data: validationData, error: validationError } = await supabase
+          .rpc('validate_payment_link', { p_token: token });
 
-        if (linkError || !linkData) {
+        if (validationError || !validationData) {
+          console.error('Erreur validation lien:', validationError);
           toast({
             title: "Lien invalide",
             description: "Ce lien de paiement n'existe pas ou a expiré.",
@@ -69,12 +62,8 @@ const PaymentPage = () => {
           return;
         }
 
-        // Vérifier si le lien est encore valide
-        if (!linkData.is_active || linkData.used_at || new Date(linkData.expires_at) < new Date()) {
-          setLinkExpired(true);
-          setIsLoading(false);
-          return;
-        }
+        // Le booking_id est retourné par la fonction validate_payment_link
+        const bookingId = validationData;
 
         // Charger les détails de la réservation
         const { data: bookingData, error: bookingError } = await supabase
@@ -84,11 +73,12 @@ const PaymentPage = () => {
             fields!inner(name, location),
             profiles!inner(full_name, email)
           `)
-          .eq('id', linkData.booking_id)
+          .eq('id', bookingId)
           .eq('status', 'approved')
           .single();
 
         if (bookingError || !bookingData) {
+          console.error('Erreur chargement réservation:', bookingError);
           toast({
             title: "Réservation introuvable",
             description: "Cette réservation n'existe pas ou n'est plus disponible pour le paiement.",
@@ -135,7 +125,7 @@ const PaymentPage = () => {
       if (error) throw error;
 
       if (data.url) {
-        // Marquer le lien comme utilisé
+        // Marquer le lien comme utilisé via une requête directe
         await supabase
           .from('payment_links')
           .update({ used_at: new Date().toISOString() })
