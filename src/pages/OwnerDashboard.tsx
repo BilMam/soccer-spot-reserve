@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import OwnerStats from '@/components/OwnerStats';
 import OwnerFields from '@/components/OwnerFields';
 import OwnerBookings from '@/components/OwnerBookings';
-import StripeOnboarding from '@/components/StripeOnboarding';
+import CinetPayOnboarding from '@/components/CinetPayOnboarding';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useOwnerStats } from '@/hooks/useOwnerStats';
 import { useOwnerFields } from '@/hooks/useOwnerFields';
@@ -78,11 +78,10 @@ const OwnerDashboard = () => {
 
           <TabsContent value="payments">
             <div className="space-y-6">
-              <StripeOnboarding />
+              <CinetPayOnboarding />
               
-              {/* Ici, on pourrait ajouter d'autres composants liés aux paiements */}
               <div className="bg-white rounded-lg border p-6">
-                <h3 className="text-lg font-medium mb-4">Informations sur les revenus</h3>
+                <h3 className="text-lg font-medium mb-4">Informations sur les revenus CinetPay</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div className="space-y-2">
                     <h4 className="font-medium">Comment ça fonctionne :</h4>
@@ -90,16 +89,18 @@ const OwnerDashboard = () => {
                       <li>• Paiement direct après chaque réservation</li>
                       <li>• Commission automatique de 5%</li>
                       <li>• Virements en franc CFA (XOF)</li>
-                      <li>• Revenus nets : ~92% du montant total</li>
+                      <li>• Support Mobile Money et cartes bancaires</li>
+                      <li>• Revenus nets : ~92.5% du montant total</li>
                     </ul>
                   </div>
                   <div className="space-y-2">
-                    <h4 className="font-medium">Frais appliqués :</h4>
+                    <h4 className="font-medium">Moyens de paiement :</h4>
                     <ul className="space-y-1 text-gray-600">
-                      <li>• Commission plateforme : 5%</li>
-                      <li>• Frais Stripe : ~2.9% + frais fixes</li>
-                      <li>• Total des frais : ~8%</li>
-                      <li>• Exemple : 10 000 XOF → 9 210 XOF nets</li>
+                      <li>• Orange Money, MTN Money, Moov Money</li>
+                      <li>• Cartes Visa, Mastercard</li>
+                      <li>• Virements bancaires locaux</li>
+                      <li>• Commission CinetPay : ~2.5%</li>
+                      <li>• Exemple : 10 000 XOF → 9 250 XOF nets</li>
                     </ul>
                   </div>
                 </div>

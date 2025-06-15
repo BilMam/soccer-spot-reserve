@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Calendar, Clock, MapPin, Mail } from 'lucide-react';
+import { CheckCircle, Calendar, Clock, MapPin, Mail, Smartphone } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -20,7 +20,9 @@ const BookingSuccess = () => {
     queryFn: async () => {
       if (!sessionId) throw new Error('ID de session manquant');
 
-      // Récupérer la réservation via l'ID de session Stripe
+      // Récupérer la réservation via l'ID de session
+      const bookingId = sessionId.replace('booking_', '');
+      
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -28,7 +30,7 @@ const BookingSuccess = () => {
           fields (name, location, address),
           profiles (full_name, email)
         `)
-        .eq('payment_intent_id', sessionId)
+        .eq('id', bookingId)
         .single();
 
       if (error) throw error;
@@ -118,7 +120,7 @@ const BookingSuccess = () => {
                 Réservation confirmée !
               </h1>
               <p className="text-gray-600">
-                Votre paiement a été traité avec succès et votre réservation est confirmée.
+                Votre paiement CinetPay a été traité avec succès et votre réservation est confirmée.
               </p>
             </CardContent>
           </Card>
@@ -209,7 +211,14 @@ const BookingSuccess = () => {
               <div className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
                 <p className="text-gray-700">
-                  Le propriétaire recevra automatiquement 95% du montant (frais Stripe déduits)
+                  <Smartphone className="w-4 h-4 inline mr-1" />
+                  Paiement sécurisé traité par CinetPay (Mobile Money & cartes bancaires)
+                </p>
+              </div>
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
+                <p className="text-gray-700">
+                  Le propriétaire recevra automatiquement 95% du montant
                 </p>
               </div>
             </CardContent>

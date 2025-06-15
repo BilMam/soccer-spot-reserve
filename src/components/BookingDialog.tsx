@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Clock, MapPin, Users, CreditCard } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, CreditCard, Smartphone } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -65,15 +65,16 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
           player_count: playerCount,
           special_requests: specialRequests || null,
           status: 'pending',
-          payment_status: 'pending'
+          payment_status: 'pending',
+          payment_provider: 'cinetpay'
         })
         .select()
         .single();
 
       if (bookingError) throw bookingError;
 
-      // Créer la session de paiement Stripe Connect
-      const { data, error } = await supabase.functions.invoke('create-connect-payment', {
+      // Créer la session de paiement CinetPay
+      const { data, error } = await supabase.functions.invoke('create-cinetpay-payment', {
         body: {
           booking_id: booking.id,
           amount: priceInXOF,
@@ -86,12 +87,12 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
       if (error) throw error;
 
       if (data.url) {
-        // Ouvrir Stripe checkout dans un nouvel onglet
+        // Ouvrir CinetPay checkout dans un nouvel onglet
         window.open(data.url, '_blank');
         
         toast({
-          title: "Redirection vers le paiement",
-          description: "Votre réservation sera confirmée après le paiement.",
+          title: "Redirection vers CinetPay",
+          description: "Votre réservation sera confirmée après le paiement via Mobile Money ou carte bancaire.",
         });
         
         onOpenChange(false);
@@ -142,6 +143,20 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                 <span className="font-medium">Prix total</span>
               </div>
               <span className="text-xl font-bold text-green-600">{priceInXOF.toLocaleString()} XOF</span>
+            </div>
+          </div>
+
+          {/* Moyens de paiement supportés */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+            <h4 className="font-medium text-green-900 mb-2 flex items-center">
+              <Smartphone className="w-4 h-4 mr-2" />
+              Moyens de paiement acceptés
+            </h4>
+            <div className="grid grid-cols-2 gap-2 text-sm text-green-800">
+              <div>• Orange Money</div>
+              <div>• MTN Money</div>
+              <div>• Moov Money</div>
+              <div>• Cartes bancaires</div>
             </div>
           </div>
 
@@ -205,7 +220,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
               disabled={isProcessing}
               className="flex-1 bg-green-600 hover:bg-green-700"
             >
-              {isProcessing ? "Traitement..." : "Payer et réserver"}
+              {isProcessing ? "Traitement..." : "Payer avec CinetPay"}
             </Button>
           </div>
         </div>

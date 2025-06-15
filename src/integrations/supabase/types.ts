@@ -55,6 +55,7 @@ export type Database = {
           booking_date: string
           cancellation_reason: string | null
           cancelled_at: string | null
+          cinetpay_transaction_id: string | null
           confirmation_email_sent: boolean | null
           created_at: string | null
           currency: string | null
@@ -63,6 +64,7 @@ export type Database = {
           id: string
           owner_amount: number | null
           payment_intent_id: string | null
+          payment_provider: string | null
           payment_status: string | null
           platform_fee: number | null
           player_count: number | null
@@ -78,6 +80,7 @@ export type Database = {
           booking_date: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          cinetpay_transaction_id?: string | null
           confirmation_email_sent?: boolean | null
           created_at?: string | null
           currency?: string | null
@@ -86,6 +89,7 @@ export type Database = {
           id?: string
           owner_amount?: number | null
           payment_intent_id?: string | null
+          payment_provider?: string | null
           payment_status?: string | null
           platform_fee?: number | null
           player_count?: number | null
@@ -101,6 +105,7 @@ export type Database = {
           booking_date?: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          cinetpay_transaction_id?: string | null
           confirmation_email_sent?: boolean | null
           created_at?: string | null
           currency?: string | null
@@ -109,6 +114,7 @@ export type Database = {
           id?: string
           owner_amount?: number | null
           payment_intent_id?: string | null
+          payment_provider?: string | null
           payment_status?: string | null
           platform_fee?: number | null
           player_count?: number | null
@@ -357,9 +363,59 @@ export type Database = {
           },
         ]
       }
+      payment_accounts: {
+        Row: {
+          account_status: string
+          account_type: string | null
+          charges_enabled: boolean | null
+          created_at: string
+          details_submitted: boolean | null
+          external_account_id: string
+          id: string
+          merchant_id: string | null
+          onboarding_url: string | null
+          owner_id: string
+          payment_provider: string
+          payouts_enabled: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          account_status?: string
+          account_type?: string | null
+          charges_enabled?: boolean | null
+          created_at?: string
+          details_submitted?: boolean | null
+          external_account_id: string
+          id?: string
+          merchant_id?: string | null
+          onboarding_url?: string | null
+          owner_id: string
+          payment_provider?: string
+          payouts_enabled?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          account_status?: string
+          account_type?: string | null
+          charges_enabled?: boolean | null
+          created_at?: string
+          details_submitted?: boolean | null
+          external_account_id?: string
+          id?: string
+          merchant_id?: string | null
+          onboarding_url?: string | null
+          owner_id?: string
+          payment_provider?: string
+          payouts_enabled?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          cinetpay_account_verified: boolean | null
+          cinetpay_onboarding_completed: boolean | null
           created_at: string | null
           email: string | null
           full_name: string | null
@@ -372,6 +428,8 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          cinetpay_account_verified?: boolean | null
+          cinetpay_onboarding_completed?: boolean | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
@@ -384,6 +442,8 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          cinetpay_account_verified?: boolean | null
+          cinetpay_onboarding_completed?: boolean | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
@@ -484,45 +544,6 @@ export type Database = {
           reason?: string | null
           target_user_id?: string
           user_agent?: string | null
-        }
-        Relationships: []
-      }
-      stripe_accounts: {
-        Row: {
-          account_status: string
-          charges_enabled: boolean | null
-          created_at: string
-          details_submitted: boolean | null
-          id: string
-          onboarding_url: string | null
-          owner_id: string
-          payouts_enabled: boolean | null
-          stripe_account_id: string
-          updated_at: string
-        }
-        Insert: {
-          account_status?: string
-          charges_enabled?: boolean | null
-          created_at?: string
-          details_submitted?: boolean | null
-          id?: string
-          onboarding_url?: string | null
-          owner_id: string
-          payouts_enabled?: boolean | null
-          stripe_account_id: string
-          updated_at?: string
-        }
-        Update: {
-          account_status?: string
-          charges_enabled?: boolean | null
-          created_at?: string
-          details_submitted?: boolean | null
-          id?: string
-          onboarding_url?: string | null
-          owner_id?: string
-          payouts_enabled?: boolean | null
-          stripe_account_id?: string
-          updated_at?: string
         }
         Relationships: []
       }
