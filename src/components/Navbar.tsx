@@ -1,11 +1,13 @@
 
 import React from 'react';
-import { Search, User, Menu, MapPin, LogOut, Shield } from 'lucide-react';
+import { Search, User, Menu, MapPin, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
+import AdminNavigation from '@/components/AdminNavigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,8 +19,9 @@ import {
 const Navbar = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { hasAdminPermissions } = useAdminPermissions();
 
-  // Vérifier si l'utilisateur est admin
+  // Vérifier le type d'utilisateur (owner, etc.)
   const { data: profile } = useQuery({
     queryKey: ['profile', user?.id],
     queryFn: async () => {
@@ -38,6 +41,8 @@ const Navbar = () => {
     await signOut();
     navigate('/');
   };
+
+  const isOwner = profile?.user_type === 'owner';
 
   return (
     <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
@@ -61,13 +66,19 @@ const Navbar = () => {
                 Mes réservations
               </a>
             )}
-            <a href="/become-owner" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
-              Devenir propriétaire
-            </a>
+            {/* Hide "Become owner" link if user is already an owner */}
+            {!isOwner && (
+              <a href="/become-owner" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
+                Devenir propriétaire
+              </a>
+            )}
           </div>
 
           {/* User Menu */}
           <div className="flex items-center space-x-4">
+            {/* Admin Navigation - shows admin/super-admin buttons if user has permissions */}
+            {hasAdminPermissions && <AdminNavigation />}
+            
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -84,17 +95,11 @@ const Navbar = () => {
                   <DropdownMenuItem onClick={() => navigate('/profile')}>
                     Mes réservations
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/owner/dashboard')}>
-                    Mes terrains
-                  </DropdownMenuItem>
-                  {profile?.user_type === 'admin' && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => navigate('/admin/dashboard')}>
-                        <Shield className="w-4 h-4 mr-2" />
-                        Dashboard Admin
-                      </DropdownMenuItem>
-                    </>
+                  {/* Show "Mes terrains" only for owners */}
+                  {isOwner && (
+                    <DropdownMenuItem onClick={() => navigate('/owner/dashboard')}>
+                      Mes terrains
+                    </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
