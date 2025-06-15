@@ -71,25 +71,35 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
       if (bookingError) throw bookingError;
 
-      // Créer le paiement CinetPay avec les bonnes données
+      // Préparer les données pour le paiement CinetPay
+      const paymentRequestData = {
+        booking_id: booking.id,
+        amount: totalPrice,
+        field_name: fieldName, // Assurer que field_name est bien défini
+        date: selectedDate.toLocaleDateString('fr-FR'), // Format français de la date
+        time: `${startTime} - ${endTime}` // Format de l'heure
+      };
+
+      console.log('Données envoyées à l\'Edge Function:', paymentRequestData);
+
+      // Créer le paiement CinetPay avec les données correctement structurées
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke(
         'create-cinetpay-payment',
         {
-          body: {
-            booking_id: booking.id,
-            amount: totalPrice,
-            field_name: fieldName,
-            date: selectedDate.toLocaleDateString('fr-FR'),
-            time: `${startTime} - ${endTime}`
-          }
+          body: paymentRequestData
         }
       );
 
-      if (paymentError) throw paymentError;
+      if (paymentError) {
+        console.error('Erreur lors de l\'appel à l\'Edge Function:', paymentError);
+        throw paymentError;
+      }
 
       // Rediriger vers CinetPay
-      if (paymentData.url) {
+      if (paymentData?.url) {
         window.location.href = paymentData.url;
+      } else {
+        throw new Error('URL de paiement non reçue');
       }
 
       return booking;
@@ -121,6 +131,15 @@ const BookingForm: React.FC<BookingFormProps> = ({
       });
       return;
     }
+
+    console.log('Soumission du formulaire avec:', {
+      fieldId,
+      fieldName,
+      selectedDate,
+      selectedTime,
+      duration,
+      playerCount
+    });
 
     createBookingAndPayMutation.mutate({});
   };
