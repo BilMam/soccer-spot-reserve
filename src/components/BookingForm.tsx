@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -72,17 +71,16 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
       if (bookingError) throw bookingError;
 
-      // Créer le paiement CinetPay immédiatement
+      // Créer le paiement CinetPay avec les bonnes données
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke(
         'create-cinetpay-payment',
         {
           body: {
             booking_id: booking.id,
             amount: totalPrice,
-            customer_name: user.email?.split('@')[0] || 'Client',
-            customer_email: user.email,
-            description: `Réservation ${fieldName} - ${selectedDate.toLocaleDateString()}`,
-            currency: 'XOF'
+            field_name: fieldName,
+            date: selectedDate.toLocaleDateString('fr-FR'),
+            time: `${startTime} - ${endTime}`
           }
         }
       );
@@ -90,8 +88,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
       if (paymentError) throw paymentError;
 
       // Rediriger vers CinetPay
-      if (paymentData.payment_url) {
-        window.location.href = paymentData.payment_url;
+      if (paymentData.url) {
+        window.location.href = paymentData.url;
       }
 
       return booking;
