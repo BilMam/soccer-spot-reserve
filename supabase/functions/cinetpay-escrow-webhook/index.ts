@@ -33,7 +33,7 @@ serve(async (req) => {
     const { data: booking, error: bookingError } = await supabaseClient
       .from('bookings')
       .select('*')
-      .eq('cinetpay_transaction_id', cpm_trans_id)
+      .eq('cinetpay_transaction_id', cmp_trans_id)
       .single()
 
     if (bookingError || !booking) {
@@ -44,12 +44,12 @@ serve(async (req) => {
     console.log('Réservation trouvée:', booking.id)
 
     if (cpm_trans_status === 'ACCEPTED' || cpm_trans_status === '1') {
-      // Paiement accepté - Mettre les fonds en escrow
-      console.log('Paiement accepté - Mise en escrow des fonds')
+      // Paiement accepté - Utiliser le nouveau système de confirmation intelligente
+      console.log('Paiement accepté - Traitement avec confirmation intelligente')
 
-      // Créer la transaction d'escrow
+      // Utiliser la nouvelle fonction de traitement intelligent
       const { data: escrowTransaction, error: escrowError } = await supabaseClient
-        .rpc('process_escrow_transaction', {
+        .rpc('process_smart_booking_confirmation', {
           p_booking_id: booking.id,
           p_transaction_type: 'payment_received',
           p_amount: booking.total_price,
@@ -58,44 +58,61 @@ serve(async (req) => {
         })
 
       if (escrowError) {
-        console.error('Erreur création transaction escrow:', escrowError)
+        console.error('Erreur traitement confirmation intelligente:', escrowError)
         throw escrowError
       }
 
-      // Mettre à jour le statut de la réservation
-      const { error: updateError } = await supabaseClient
+      // Récupérer les informations mises à jour
+      const { data: updatedBooking } = await supabaseClient
+        .from('bookings')
+        .select('*')
+        .eq('id', booking.id)
+        .single()
+
+      // Mettre à jour le statut de base
+      await supabaseClient
         .from('bookings')
         .update({
           payment_status: 'paid',
-          status: 'confirmed', // Réservation confirmée côté client
-          escrow_status: 'funds_held', // Fonds en attente chez la plateforme
+          status: updatedBooking.status || 'confirmed', // Peut être 'owner_confirmed' si auto-confirmation
+          escrow_status: 'funds_held',
           updated_at: new Date().toISOString()
         })
         .eq('id', booking.id)
 
-      if (updateError) {
-        console.error('Erreur mise à jour réservation:', updateError)
-        throw updateError
+      // Envoyer notifications selon le type de fenêtre
+      if (updatedBooking.confirmation_window_type === 'auto') {
+        // Auto-confirmation immédiate - notifier que c'est confirmé
+        await supabaseClient.functions.invoke('send-booking-email', {
+          body: {
+            booking_id: booking.id,
+            notification_type: 'auto_confirmed',
+            window_type: 'auto'
+          }
+        })
+      } else {
+        // Envoyer notification au propriétaire avec délai adaptatif
+        await supabaseClient.functions.invoke('send-booking-email', {
+          body: {
+            booking_id: booking.id,
+            notification_type: 'smart_owner_confirmation_required',
+            window_type: updatedBooking.confirmation_window_type,
+            deadline: updatedBooking.confirmation_deadline,
+            auto_action: updatedBooking.auto_action
+          }
+        })
       }
-
-      // Envoyer notification au propriétaire pour qu'il confirme
-      await supabaseClient.functions.invoke('send-booking-email', {
-        body: {
-          booking_id: booking.id,
-          notification_type: 'owner_confirmation_required',
-          escrow_deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-        }
-      })
 
       // Envoyer confirmation de paiement au client
       await supabaseClient.functions.invoke('send-booking-email', {
         body: {
           booking_id: booking.id,
-          notification_type: 'payment_confirmation'
+          notification_type: 'smart_payment_confirmation',
+          window_type: updatedBooking.confirmation_window_type
         }
       })
 
-      console.log('Fonds mis en escrow avec succès - Notifications envoyées')
+      console.log('Traitement intelligent complété - Type de fenêtre:', updatedBooking.confirmation_window_type)
 
     } else if (cpm_trans_status === 'DECLINED' || cpm_trans_status === '0') {
       // Paiement refusé

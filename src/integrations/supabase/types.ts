@@ -52,6 +52,7 @@ export type Database = {
       }
       bookings: {
         Row: {
+          auto_action: string | null
           auto_refund_processed: boolean | null
           booking_date: string
           cancellation_reason: string | null
@@ -59,6 +60,7 @@ export type Database = {
           cinetpay_transaction_id: string | null
           confirmation_deadline: string | null
           confirmation_email_sent: boolean | null
+          confirmation_window_type: string | null
           created_at: string | null
           currency: string | null
           end_time: string
@@ -78,12 +80,14 @@ export type Database = {
           start_time: string
           status: string | null
           stripe_transfer_id: string | null
+          time_until_slot: unknown | null
           total_price: number
           transfer_scheduled_at: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          auto_action?: string | null
           auto_refund_processed?: boolean | null
           booking_date: string
           cancellation_reason?: string | null
@@ -91,6 +95,7 @@ export type Database = {
           cinetpay_transaction_id?: string | null
           confirmation_deadline?: string | null
           confirmation_email_sent?: boolean | null
+          confirmation_window_type?: string | null
           created_at?: string | null
           currency?: string | null
           end_time: string
@@ -110,12 +115,14 @@ export type Database = {
           start_time: string
           status?: string | null
           stripe_transfer_id?: string | null
+          time_until_slot?: unknown | null
           total_price: number
           transfer_scheduled_at?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          auto_action?: string | null
           auto_refund_processed?: boolean | null
           booking_date?: string
           cancellation_reason?: string | null
@@ -123,6 +130,7 @@ export type Database = {
           cinetpay_transaction_id?: string | null
           confirmation_deadline?: string | null
           confirmation_email_sent?: boolean | null
+          confirmation_window_type?: string | null
           created_at?: string | null
           currency?: string | null
           end_time?: string
@@ -142,6 +150,7 @@ export type Database = {
           start_time?: string
           status?: string | null
           stripe_transfer_id?: string | null
+          time_until_slot?: unknown | null
           total_price?: number
           transfer_scheduled_at?: string | null
           updated_at?: string | null
@@ -609,6 +618,36 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          setting_key: string
+          setting_type: string
+          setting_value: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_type?: string
+          setting_value: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_type?: string
+          setting_value?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -826,6 +865,10 @@ export type Database = {
         Args: { application_id: string; notes?: string }
         Returns: undefined
       }
+      calculate_smart_confirmation_deadline: {
+        Args: { p_booking_date: string; p_start_time: string }
+        Returns: Record<string, unknown>
+      }
       can_promote_user: {
         Args: {
           promoter_id: string
@@ -942,6 +985,25 @@ export type Database = {
         }[]
       }
       process_escrow_transaction: {
+        Args: {
+          p_booking_id: string
+          p_transaction_type: string
+          p_amount: number
+          p_cinetpay_transaction_id?: string
+          p_platform_fee?: number
+        }
+        Returns: string
+      }
+      process_smart_automation_tasks: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          task_id: string
+          booking_id: string
+          task_type: string
+          result: string
+        }[]
+      }
+      process_smart_booking_confirmation: {
         Args: {
           p_booking_id: string
           p_transaction_type: string

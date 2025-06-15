@@ -18,10 +18,10 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    console.log('Traitement des tâches d\'automatisation escrow')
+    console.log('Traitement des tâches d\'automatisation escrow intelligente')
 
-    // Exécuter les tâches d'automatisation
-    const { data: results, error } = await supabaseClient.rpc('process_automation_tasks')
+    // Utiliser la nouvelle fonction de traitement intelligent
+    const { data: results, error } = await supabaseClient.rpc('process_smart_automation_tasks')
 
     if (error) {
       console.error('Erreur lors du traitement des tâches:', error)
@@ -30,14 +30,39 @@ serve(async (req) => {
 
     console.log('Tâches traitées:', results?.length || 0)
 
-    // Traiter les notifications pour les tâches de rappel
+    // Traiter les notifications pour les nouvelles tâches
     for (const result of results || []) {
+      if (result.task_type === 'auto_confirm' && result.result === 'auto_confirmed') {
+        // Notification d'auto-confirmation
+        await supabaseClient.functions.invoke('send-booking-email', {
+          body: {
+            booking_id: result.booking_id,
+            notification_type: 'auto_confirmed_express'
+          }
+        })
+      }
+      
+      if (result.task_type === 'sms_reminder' && result.result === 'sms_reminder_scheduled') {
+        // Envoyer SMS de rappel (à implémenter)
+        console.log('SMS rappel programmé pour:', result.booking_id)
+      }
+      
+      if (result.task_type === 'support_escalation' && result.result === 'support_escalation_scheduled') {
+        // Escalade vers le support
+        await supabaseClient.functions.invoke('send-booking-email', {
+          body: {
+            booking_id: result.booking_id,
+            notification_type: 'support_escalation'
+          }
+        })
+      }
+      
       if (result.task_type === 'reminder_notification' && result.result === 'reminder_scheduled') {
         // Envoyer notification de rappel au propriétaire
         await supabaseClient.functions.invoke('send-booking-email', {
           body: {
             booking_id: result.booking_id,
-            notification_type: 'owner_final_reminder'
+            notification_type: 'smart_owner_reminder'
           }
         })
       }
@@ -57,7 +82,7 @@ serve(async (req) => {
         await supabaseClient.functions.invoke('send-booking-email', {
           body: {
             booking_id: result.booking_id,
-            notification_type: 'auto_refund_processed'
+            notification_type: 'smart_auto_refund_processed'
           }
         })
       }
@@ -76,7 +101,7 @@ serve(async (req) => {
     )
 
   } catch (error: any) {
-    console.error('Erreur traitement automatisation escrow:', error)
+    console.error('Erreur traitement automatisation escrow intelligente:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       {

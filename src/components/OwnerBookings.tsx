@@ -10,6 +10,7 @@ import { Calendar, Clock, User, MapPin, DollarSign, AlertTriangle } from 'lucide
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import BookingConfirmationCard from './BookingConfirmationCard';
+import SmartConfirmationInfo from './SmartConfirmationInfo';
 
 interface OwnerBookingsProps {
   ownerId: string;
@@ -61,7 +62,7 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
     }
   };
 
-  const getStatusBadge = (status: string, escrowStatus?: string) => {
+  const getStatusBadge = (status: string, escrowStatus?: string, windowType?: string) => {
     switch (status) {
       case 'pending_approval':
         return <Badge variant="secondary">En attente d'approbation</Badge>;
@@ -69,7 +70,13 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
         return <Badge variant="outline">Approuvé - En attente de paiement</Badge>;
       case 'confirmed':
         if (escrowStatus === 'funds_held') {
-          return <Badge className="bg-blue-600">Payé - Confirmation requise</Badge>;
+          const urgentTypes = ['express', 'short'];
+          const isUrgent = urgentTypes.includes(windowType || '');
+          return (
+            <Badge className={isUrgent ? "bg-orange-600" : "bg-blue-600"}>
+              {isUrgent ? 'URGENT - Confirmation requise' : 'Payé - Confirmation requise'}
+            </Badge>
+          );
         }
         return <Badge className="bg-blue-600">Confirmé</Badge>;
       case 'owner_confirmed':
@@ -98,6 +105,21 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
       !booking.owner_confirmed_at)
   ) || [];
 
+  // Trier les confirmations par urgence
+  const sortedPendingConfirmations = pendingConfirmations.sort((a, b) => {
+    const urgentTypes = ['express', 'short'];
+    const aUrgent = urgentTypes.includes(a.confirmation_window_type || '');
+    const bUrgent = urgentTypes.includes(b.confirmation_window_type || '');
+    
+    if (aUrgent && !bUrgent) return -1;
+    if (!aUrgent && bUrgent) return 1;
+    
+    // Si même urgence, trier par deadline
+    const aDeadline = new Date(a.confirmation_deadline || 0);
+    const bDeadline = new Date(b.confirmation_deadline || 0);
+    return aDeadline.getTime() - bDeadline.getTime();
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -119,14 +141,14 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
   return (
     <div className="space-y-6">
       {/* Section des confirmations requises */}
-      {pendingConfirmations.length > 0 && (
+      {sortedPendingConfirmations.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2">
             <AlertTriangle className="w-5 h-5 text-yellow-600" />
-            <span>Confirmations requises ({pendingConfirmations.length})</span>
+            <span>Confirmations requises ({sortedPendingConfirmations.length})</span>
           </h3>
           <div className="space-y-4">
-            {pendingConfirmations.map((booking) => (
+            {sortedPendingConfirmations.map((booking) => (
               <BookingConfirmationCard
                 key={booking.id}
                 booking={booking}
@@ -148,11 +170,16 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">{booking.fields.name}</CardTitle>
-                  {getStatusBadge(booking.status, booking.escrow_status)}
+                  {getStatusBadge(booking.status, booking.escrow_status, booking.confirmation_window_type)}
                 </div>
               </CardHeader>
               
               <CardContent className="space-y-4">
+                {/* Afficher les infos de confirmation intelligente si disponibles */}
+                {booking.confirmation_window_type && (
+                  <SmartConfirmationInfo booking={booking} />
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4 text-gray-500" />
@@ -229,7 +256,7 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
             </Card>
           ))}
 
-          {otherBookings.length === 0 && pendingConfirmations.length === 0 && (
+          {otherBookings.length === 0 && sortedPendingConfirmations.length === 0 && (
             <Card>
               <CardContent className="py-8 text-center">
                 <p className="text-gray-500">Aucune réservation pour le moment</p>
