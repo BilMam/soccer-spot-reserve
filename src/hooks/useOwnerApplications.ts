@@ -12,24 +12,41 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
     queryKey: ['owner-applications-admin'],
     queryFn: async (): Promise<OwnerApplication[]> => {
       try {
-        // Utiliser directement une requête sur la table avec les politiques RLS
-        const { data, error } = await supabase
+        // Récupérer les demandes d'abord
+        const { data: applicationsData, error: applicationsError } = await supabase
           .from('owner_applications')
-          .select(`
-            *,
-            profiles!inner(email)
-          `);
+          .select('*')
+          .order('created_at', { ascending: false });
           
-        if (error) {
-          console.error('Error fetching applications:', error);
+        if (applicationsError) {
+          console.error('Error fetching applications:', applicationsError);
           return [];
         }
-        
-        // Transformer les données pour inclure l'email utilisateur
-        const transformedData = data?.map(app => ({
-          ...app,
-          user_email: app.profiles?.email
-        })) || [];
+
+        if (!applicationsData || applicationsData.length === 0) {
+          return [];
+        }
+
+        // Récupérer les profils séparément
+        const userIds = applicationsData.map(app => app.user_id);
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .in('id', userIds);
+
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+          return applicationsData.map(app => ({ ...app, user_email: undefined }));
+        }
+
+        // Joindre les données
+        const transformedData = applicationsData.map(app => {
+          const profile = profilesData?.find(p => p.id === app.user_id);
+          return {
+            ...app,
+            user_email: profile?.email
+          };
+        });
         
         return transformedData;
       } catch (error) {
