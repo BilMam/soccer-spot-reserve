@@ -13,15 +13,16 @@ const StripeOnboarding = () => {
   const { toast } = useToast();
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
 
-  const { data: stripeAccount, isLoading, refetch } = useQuery({
-    queryKey: ['stripe-account', user?.id],
+  const { data: paymentAccount, isLoading, refetch } = useQuery({
+    queryKey: ['payment-account-stripe', user?.id],
     queryFn: async () => {
       if (!user) return null;
       
       const { data, error } = await supabase
-        .from('stripe_accounts')
+        .from('payment_accounts')
         .select('*')
         .eq('owner_id', user.id)
+        .eq('payment_provider', 'stripe')
         .single();
       
       if (error && error.code !== 'PGRST116') {
@@ -69,11 +70,11 @@ const StripeOnboarding = () => {
   };
 
   const getStatusIcon = () => {
-    if (!stripeAccount) return <Clock className="w-5 h-5 text-gray-500" />;
+    if (!paymentAccount) return <Clock className="w-5 h-5 text-gray-500" />;
     
-    if (stripeAccount.charges_enabled && stripeAccount.payouts_enabled) {
+    if (paymentAccount.charges_enabled && paymentAccount.payouts_enabled) {
       return <CheckCircle className="w-5 h-5 text-green-600" />;
-    } else if (stripeAccount.details_submitted) {
+    } else if (paymentAccount.details_submitted) {
       return <Clock className="w-5 h-5 text-yellow-600" />;
     } else {
       return <AlertCircle className="w-5 h-5 text-red-600" />;
@@ -81,11 +82,11 @@ const StripeOnboarding = () => {
   };
 
   const getStatusText = () => {
-    if (!stripeAccount) return "Non configuré";
+    if (!paymentAccount) return "Non configuré";
     
-    if (stripeAccount.charges_enabled && stripeAccount.payouts_enabled) {
+    if (paymentAccount.charges_enabled && paymentAccount.payouts_enabled) {
       return "Compte vérifié et actif";
-    } else if (stripeAccount.details_submitted) {
+    } else if (paymentAccount.details_submitted) {
       return "En cours de vérification";
     } else {
       return "Configuration incomplète";
@@ -93,11 +94,11 @@ const StripeOnboarding = () => {
   };
 
   const getStatusColor = () => {
-    if (!stripeAccount) return "text-gray-600";
+    if (!paymentAccount) return "text-gray-600";
     
-    if (stripeAccount.charges_enabled && stripeAccount.payouts_enabled) {
+    if (paymentAccount.charges_enabled && paymentAccount.payouts_enabled) {
       return "text-green-600";
-    } else if (stripeAccount.details_submitted) {
+    } else if (paymentAccount.details_submitted) {
       return "text-yellow-600";
     } else {
       return "text-red-600";
@@ -133,7 +134,7 @@ const StripeOnboarding = () => {
           </span>
         </div>
 
-        {!stripeAccount ? (
+        {!paymentAccount ? (
           <div className="space-y-4">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="font-medium text-blue-900 mb-2">
@@ -162,7 +163,7 @@ const StripeOnboarding = () => {
               )}
             </Button>
           </div>
-        ) : !stripeAccount.charges_enabled ? (
+        ) : !paymentAccount.charges_enabled ? (
           <div className="space-y-4">
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <h4 className="font-medium text-yellow-900 mb-2">
@@ -173,9 +174,9 @@ const StripeOnboarding = () => {
               </p>
             </div>
             
-            {stripeAccount.onboarding_url && (
+            {paymentAccount.onboarding_url && (
               <Button 
-                onClick={() => window.open(stripeAccount.onboarding_url, '_blank')}
+                onClick={() => window.open(paymentAccount.onboarding_url, '_blank')}
                 className="w-full bg-yellow-600 hover:bg-yellow-700"
               >
                 <ExternalLink className="w-4 h-4 mr-2" />

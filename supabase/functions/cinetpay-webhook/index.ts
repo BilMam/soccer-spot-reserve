@@ -48,7 +48,7 @@ serve(async (req) => {
     let bookingStatus = 'pending'
     let paymentStatus = 'pending'
 
-    if (cpm_result === '00' && cpm_trans_status === 'ACCEPTED') {
+    if (cmp_result === '00' && cpm_trans_status === 'ACCEPTED') {
       bookingStatus = 'confirmed'
       paymentStatus = 'paid'
     } else if (cpm_trans_status === 'REFUSED') {
@@ -64,7 +64,7 @@ serve(async (req) => {
         payment_status: paymentStatus,
         updated_at: new Date().toISOString()
       })
-      .eq('cinetpay_transaction_id', cmp_trans_id)
+      .eq('cinetpay_transaction_id', cpm_trans_id)
       .select(`
         *,
         profiles!inner(email, full_name),
