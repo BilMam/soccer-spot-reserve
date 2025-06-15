@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Crown, Users, Shield, Eye, History, UserCog } from 'lucide-react';
+import type { Database } from '@/integrations/supabase/types';
+
+type UserRoleType = Database['public']['Enums']['user_role_type'];
 
 interface UserWithRoles {
   user_id: string;
@@ -40,7 +42,7 @@ const SuperAdminDashboard = () => {
   const queryClient = useQueryClient();
   const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null);
   const [newUserType, setNewUserType] = useState('');
-  const [newRole, setNewRole] = useState('');
+  const [newRole, setNewRole] = useState<UserRoleType | ''>('');
   const [reason, setReason] = useState('');
 
   // Vérifier si l'utilisateur est super admin
@@ -98,7 +100,7 @@ const SuperAdminDashboard = () => {
     mutationFn: async ({ userId, userType, role, reason }: { 
       userId: string, 
       userType: string, 
-      role?: string, 
+      role?: UserRoleType, 
       reason: string 
     }) => {
       const { error } = await supabase.rpc('change_user_type', {
@@ -135,7 +137,7 @@ const SuperAdminDashboard = () => {
   const grantRoleMutation = useMutation({
     mutationFn: async ({ userId, role, reason }: { 
       userId: string, 
-      role: string, 
+      role: UserRoleType, 
       reason: string 
     }) => {
       const { error } = await supabase.rpc('grant_role_to_user', {
@@ -316,7 +318,7 @@ const SuperAdminDashboard = () => {
                                   <label className="block text-sm font-medium mb-2">
                                     Nouveau rôle (optionnel)
                                   </label>
-                                  <Select value={newRole} onValueChange={setNewRole}>
+                                  <Select value={newRole} onValueChange={(value) => setNewRole(value as UserRoleType | '')}>
                                     <SelectTrigger>
                                       <SelectValue placeholder="Sélectionner un rôle" />
                                     </SelectTrigger>
