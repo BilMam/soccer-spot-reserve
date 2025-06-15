@@ -36,6 +36,13 @@ serve(async (req) => {
 
     const { booking_id, amount, field_name, date, time }: PaymentRequest = await req.json()
 
+    console.log('Données reçues:', { booking_id, amount, field_name, date, time })
+
+    // Validation des données
+    if (!booking_id || !amount || !field_name || !date || !time) {
+      throw new Error('Données manquantes: booking_id, amount, field_name, date et time sont requis')
+    }
+
     console.log('Traitement paiement CinetPay escrow pour:', { booking_id, amount, field_name, date, time })
 
     // Récupérer les informations de la réservation
@@ -59,6 +66,12 @@ serve(async (req) => {
     const cinetpayApiKey = Deno.env.get('CINETPAY_API_KEY')
     const cinetpaySiteId = Deno.env.get('CINETPAY_SITE_ID')
 
+    console.log('Vérification clés API:', { 
+      hasApiKey: !!cinetpayApiKey, 
+      hasSiteId: !!cinetpaySiteId,
+      siteId: cinetpaySiteId 
+    })
+
     if (!cinetpayApiKey || !cinetpaySiteId) {
       throw new Error('Clés API CinetPay non configurées')
     }
@@ -71,15 +84,23 @@ serve(async (req) => {
 
     // Créer la transaction CinetPay - TOUT VA VERS LE COMPTE PLATEFORME
     const transactionId = `escrow_${booking_id}_${Date.now()}`
+    
+    // Construire l'URL de retour correctement
+    const baseUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com')
+    const returnUrl = `${baseUrl}/booking-success?session_id=booking_${booking_id}`
+    const notifyUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/cinetpay-escrow-webhook`
+
+    console.log('URLs configurées:', { returnUrl, notifyUrl })
+
     const paymentData = {
       apikey: cinetpayApiKey,
-      site_id: cinetpaySiteId,
+      site_id: parseInt(cinetpaySiteId), // S'assurer que c'est un nombre
       transaction_id: transactionId,
       amount: amount,
       currency: 'XOF',
       description: `Réservation ${field_name} - ${date} ${time}`,
-      return_url: `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com')}/booking-success?session_id=booking_${booking_id}`,
-      notify_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/cinetpay-escrow-webhook`,
+      return_url: returnUrl,
+      notify_url: notifyUrl,
       customer_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Client',
       customer_email: user.email,
       channels: 'ALL',
@@ -98,9 +119,16 @@ serve(async (req) => {
 
     const result = await response.json()
     console.log('Réponse CinetPay:', result)
+    console.log('Status HTTP:', response.status)
 
-    if (!response.ok || result.code !== '201') {
-      throw new Error(result.message || 'Erreur lors de la création du paiement CinetPay')
+    if (!response.ok) {
+      console.error('Erreur HTTP CinetPay:', response.status, result)
+      throw new Error(`Erreur HTTP ${response.status}: ${result.message || 'Erreur inconnue'}`)
+    }
+
+    if (result.code !== '201') {
+      console.error('Erreur CinetPay:', result)
+      throw new Error(`Erreur CinetPay (${result.code}): ${result.message || result.description || 'Erreur inconnue'}`)
     }
 
     // Mettre à jour la réservation avec les informations d'escrow
