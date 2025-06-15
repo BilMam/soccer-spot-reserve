@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
 import BookingForm from '@/components/BookingForm';
 import ReviewsList from '@/components/ReviewsList';
+import FavoriteButton from '@/components/FavoriteButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -138,7 +139,10 @@ const FieldDetail = () => {
             {/* Field Info */}
             <Card>
               <CardContent className="p-6">
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">{field.name}</h1>
+                <div className="flex items-start justify-between mb-4">
+                  <h1 className="text-3xl font-bold text-gray-900">{field.name}</h1>
+                  <FavoriteButton fieldId={field.id} size="default" variant="outline" />
+                </div>
                 
                 <div className="flex items-center text-gray-600 mb-4">
                   <MapPin className="w-5 h-5 mr-2" />

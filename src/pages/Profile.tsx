@@ -5,9 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, History, Star, Settings } from 'lucide-react';
+import { User, History, Star, Settings, Heart } from 'lucide-react';
 import UserBookings from '@/components/UserBookings';
 import UserReviews from '@/components/UserReviews';
+import UserFavorites from '@/components/UserFavorites';
 import ProfileSettings from '@/components/ProfileSettings';
 
 const Profile = () => {
@@ -54,10 +55,14 @@ const Profile = () => {
 
         {/* Onglets */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="bookings" className="flex items-center space-x-2">
               <History className="w-4 h-4" />
               <span>Mes Réservations</span>
+            </TabsTrigger>
+            <TabsTrigger value="favorites" className="flex items-center space-x-2">
+              <Heart className="w-4 h-4" />
+              <span>Mes Favoris</span>
             </TabsTrigger>
             <TabsTrigger value="reviews" className="flex items-center space-x-2">
               <Star className="w-4 h-4" />
@@ -71,6 +76,10 @@ const Profile = () => {
 
           <TabsContent value="bookings" className="space-y-6">
             <UserBookings userId={user.id} />
+          </TabsContent>
+
+          <TabsContent value="favorites" className="space-y-6">
+            <UserFavorites />
           </TabsContent>
 
           <TabsContent value="reviews" className="space-y-6">
