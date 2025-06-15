@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +8,7 @@ import Navbar from '@/components/Navbar';
 import BookingForm from '@/components/BookingForm';
 import ReviewsList from '@/components/ReviewsList';
 import FavoriteButton from '@/components/FavoriteButton';
+import FieldCalendar from '@/components/FieldCalendar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +39,11 @@ const FieldDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedStartTime, setSelectedStartTime] = useState<string>('');
+  const [selectedEndTime, setSelectedEndTime] = useState<string>('');
+  const [totalPrice, setTotalPrice] = useState<number>(0);
+  const [showBookingForm, setShowBookingForm] = useState(false);
 
   const { data: field, isLoading } = useQuery({
     queryKey: ['field', id],
@@ -73,6 +79,30 @@ const FieldDetail = () => {
       default:
         return null;
     }
+  };
+
+  const handleTimeSlotSelect = (date: Date, startTime: string, endTime: string, price: number) => {
+    setSelectedDate(date);
+    setSelectedStartTime(startTime);
+    setSelectedEndTime(endTime);
+    setTotalPrice(price);
+    setShowBookingForm(true);
+  };
+
+  const handleBookingSuccess = () => {
+    setShowBookingForm(false);
+    setSelectedDate(null);
+    setSelectedStartTime('');
+    setSelectedEndTime('');
+    setTotalPrice(0);
+    toast({
+      title: "Réservation réussie !",
+      description: "Votre demande de réservation a été envoyée.",
+    });
+  };
+
+  const handleBookingCancel = () => {
+    setShowBookingForm(false);
   };
 
   if (isLoading) {
@@ -191,8 +221,24 @@ const FieldDetail = () => {
 
           {/* Sidebar - Booking */}
           <div className="lg:col-span-1">
-            <div className="sticky top-8">
-              <BookingForm field={field} />
+            <div className="sticky top-8 space-y-6">
+              {!showBookingForm ? (
+                <FieldCalendar
+                  fieldId={field.id}
+                  fieldPrice={field.price_per_hour}
+                  onTimeSlotSelect={handleTimeSlotSelect}
+                />
+              ) : (
+                <BookingForm
+                  fieldId={field.id}
+                  fieldName={field.name}
+                  pricePerHour={field.price_per_hour}
+                  selectedDate={selectedDate!}
+                  selectedTime={selectedStartTime}
+                  onSuccess={handleBookingSuccess}
+                  onCancel={handleBookingCancel}
+                />
+              )}
             </div>
           </div>
         </div>
