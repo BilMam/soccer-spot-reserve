@@ -25,9 +25,18 @@ export const useAdminPermissions = () => {
     ['super_admin', 'admin_general', 'admin_fields', 'admin_users'].includes(role.role)
   );
 
+  const isSuperAdmin = userRoles?.some(role => role.role === 'super_admin');
+  const isGeneralAdmin = userRoles?.some(role => role.role === 'admin_general');
+  const isFieldsAdmin = userRoles?.some(role => role.role === 'admin_fields');
+  const isUsersAdmin = userRoles?.some(role => role.role === 'admin_users');
+
   return {
     user,
     userRoles,
-    hasAdminPermissions
+    hasAdminPermissions,
+    isSuperAdmin,
+    isGeneralAdmin,
+    isFieldsAdmin,
+    isUsersAdmin
   };
 };

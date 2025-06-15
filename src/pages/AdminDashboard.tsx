@@ -2,10 +2,11 @@
 import React from 'react';
 import Navbar from '@/components/Navbar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, MapPin } from 'lucide-react';
+import { Users, MapPin, BarChart3 } from 'lucide-react';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { OwnerApplicationsTab } from '@/components/admin/OwnerApplicationsTab';
 import { FieldsManagementTab } from '@/components/admin/FieldsManagementTab';
+import { AdminStats } from '@/components/admin/AdminStats';
 
 const AdminDashboard = () => {
   const { user, hasAdminPermissions } = useAdminPermissions();
@@ -44,6 +45,8 @@ const AdminDashboard = () => {
           <p className="text-gray-600 mt-2">Gérez les demandes de propriétaires et la validation des terrains</p>
         </div>
 
+        <AdminStats hasAdminPermissions={hasAdminPermissions} />
+
         <Tabs defaultValue="applications" className="space-y-6">
           <TabsList>
             <TabsTrigger value="applications" className="flex items-center space-x-2">
@@ -54,6 +57,10 @@ const AdminDashboard = () => {
               <MapPin className="w-4 h-4" />
               <span>Terrains</span>
             </TabsTrigger>
+            <TabsTrigger value="stats" className="flex items-center space-x-2">
+              <BarChart3 className="w-4 h-4" />
+              <span>Statistiques</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="applications">
@@ -62,6 +69,12 @@ const AdminDashboard = () => {
 
           <TabsContent value="fields">
             <FieldsManagementTab hasAdminPermissions={hasAdminPermissions} />
+          </TabsContent>
+
+          <TabsContent value="stats">
+            <div className="text-center py-8 text-gray-500">
+              Statistiques détaillées à venir...
+            </div>
           </TabsContent>
         </Tabs>
       </div>

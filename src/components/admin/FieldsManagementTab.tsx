@@ -12,17 +12,22 @@ export const FieldsManagementTab: React.FC<FieldsManagementTabProps> = ({ hasAdm
   const {
     fields,
     loadingFields,
-    approveFieldMutation
+    approveFieldMutation,
+    rejectFieldMutation
   } = useFieldsManagement(hasAdminPermissions);
 
   const handleApprove = (fieldId: string) => {
     approveFieldMutation.mutate({ fieldId });
   };
 
+  const handleReject = (fieldId: string, reason: string) => {
+    rejectFieldMutation.mutate({ fieldId, reason });
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Terrains</CardTitle>
+        <CardTitle>Gestion des terrains</CardTitle>
       </CardHeader>
       <CardContent>
         {loadingFields ? (
@@ -38,7 +43,9 @@ export const FieldsManagementTab: React.FC<FieldsManagementTabProps> = ({ hasAdm
                 key={field.id}
                 field={field}
                 onApprove={handleApprove}
+                onReject={handleReject}
                 isApproving={approveFieldMutation.isPending}
+                isRejecting={rejectFieldMutation.isPending}
               />
             ))}
           </div>

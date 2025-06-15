@@ -11,12 +11,17 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
   const { data: applications, isLoading: loadingApplications } = useQuery({
     queryKey: ['owner-applications-admin'],
     queryFn: async (): Promise<OwnerApplication[]> => {
-      const { data, error } = await supabase.rpc('get_all_owner_applications');
-      if (error) {
-        console.error('Error fetching applications:', error);
+      try {
+        const { data, error } = await supabase.rpc('get_all_owner_applications');
+        if (error) {
+          console.error('Error fetching applications:', error);
+          return [];
+        }
+        return data || [];
+      } catch (error) {
+        console.error('Error in RPC call:', error);
         return [];
       }
-      return data || [];
     },
     enabled: hasAdminPermissions
   });

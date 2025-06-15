@@ -11,19 +11,24 @@ export const useFieldsManagement = (hasAdminPermissions: boolean) => {
   const { data: fields, isLoading: loadingFields } = useQuery({
     queryKey: ['fields-admin'],
     queryFn: async (): Promise<Field[]> => {
-      const { data, error } = await supabase
-        .from('fields')
-        .select(`
-          *,
-          profiles!fields_owner_id_fkey(full_name, email)
-        `)
-        .order('created_at', { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from('fields')
+          .select(`
+            *,
+            profiles!fields_owner_id_fkey(full_name, email)
+          `)
+          .order('created_at', { ascending: false });
 
-      if (error) {
+        if (error) {
+          console.error('Error fetching fields:', error);
+          return [];
+        }
+        return data || [];
+      } catch (error) {
         console.error('Error fetching fields:', error);
         return [];
       }
-      return data || [];
     },
     enabled: hasAdminPermissions
   });
@@ -52,9 +57,40 @@ export const useFieldsManagement = (hasAdminPermissions: boolean) => {
     }
   });
 
+  const rejectFieldMutation = useMutation({
+    mutationFn: async ({ fieldId, reason }: { fieldId: string; reason: string }) => {
+      // Update field to mark as rejected with reason
+      const { error } = await supabase
+        .from('fields')
+        .update({ 
+          is_active: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', fieldId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Terrain rejeté",
+        description: "Le terrain a été désactivé.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['fields-admin'] });
+    },
+    onError: (error: any) => {
+      console.error('Error rejecting field:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de rejeter le terrain.",
+        variant: "destructive"
+      });
+    }
+  });
+
   return {
     fields,
     loadingFields,
-    approveFieldMutation
+    approveFieldMutation,
+    rejectFieldMutation
   };
 };
