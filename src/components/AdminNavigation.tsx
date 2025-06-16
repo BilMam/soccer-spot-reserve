@@ -38,7 +38,7 @@ const AdminNavigation = () => {
       {hasAdminPermissions && (
         <Button
           variant="outline"
-          onClick={() => navigate('/admin/dashboard')}
+          onClick={() => navigate('/admin-dashboard')}
           className="flex items-center space-x-2"
         >
           <Shield className="w-4 h-4" />
@@ -49,7 +49,7 @@ const AdminNavigation = () => {
       {isSuperAdmin && (
         <Button
           variant="outline"
-          onClick={() => navigate('/super-admin/dashboard')}
+          onClick={() => navigate('/super-admin-dashboard')}
           className="flex items-center space-x-2 border-red-200 text-red-700 hover:bg-red-50"
         >
           <Crown className="w-4 h-4" />
