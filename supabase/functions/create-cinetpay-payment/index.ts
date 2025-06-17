@@ -16,48 +16,71 @@ interface PaymentRequest {
 }
 
 serve(async (req) => {
+  console.log('🚀 DÉBUT Edge Function create-cinetpay-payment');
+  console.log('📋 Méthode:', req.method);
+  console.log('📋 Headers:', Object.fromEntries(req.headers.entries()));
+
   if (req.method === 'OPTIONS') {
+    console.log('✅ Réponse OPTIONS pour CORS');
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
+    console.log('🔧 Initialisation client Supabase...');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    console.log('🔧 Variables d\'environnement:', {
+      supabaseUrl: supabaseUrl ? '✅ OK' : '❌ MANQUANT',
+      supabaseServiceKey: supabaseServiceKey ? '✅ OK' : '❌ MANQUANT'
+    });
+
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      supabaseUrl ?? '',
+      supabaseServiceKey ?? '',
     )
 
+    console.log('🔐 Vérification authentification...');
     const authHeader = req.headers.get('Authorization')!
-    const { data: { user } } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''))
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''))
     
+    if (authError) {
+      console.error('❌ Erreur authentification:', authError);
+      throw new Error(`Erreur authentification: ${authError.message}`);
+    }
+
     if (!user) {
+      console.error('❌ Utilisateur non authentifié');
       throw new Error('Utilisateur non authentifié')
     }
 
+    console.log('✅ Utilisateur authentifié:', user.id);
+
+    console.log('📥 Lecture données request...');
     const paymentData: PaymentRequest = await req.json()
-    console.log('Données reçues:', paymentData)
+    console.log('📥 Données reçues:', paymentData)
 
     const { booking_id, amount, field_name, date, time } = paymentData
 
     // Validation des données
-    if (!booking_id) {
-      throw new Error('booking_id manquant')
-    }
-    if (!amount || amount <= 0) {
-      throw new Error('amount manquant ou invalide')
-    }
-    if (!field_name) {
-      throw new Error('field_name manquant')
-    }
-    if (!date) {
-      throw new Error('date manquante')
-    }
-    if (!time) {
-      throw new Error('time manquant')
+    console.log('🔍 Validation des données...');
+    const validationErrors = [];
+    
+    if (!booking_id) validationErrors.push('booking_id manquant');
+    if (!amount || amount <= 0) validationErrors.push('amount manquant ou invalide');
+    if (!field_name) validationErrors.push('field_name manquant');
+    if (!date) validationErrors.push('date manquante');
+    if (!time) validationErrors.push('time manquant');
+
+    if (validationErrors.length > 0) {
+      console.error('❌ Erreurs validation:', validationErrors);
+      throw new Error(`Validation échouée: ${validationErrors.join(', ')}`);
     }
 
-    console.log('✅ Validation réussie - Traitement paiement CinetPay pour:', { booking_id, amount, field_name, date, time })
+    console.log('✅ Validation réussie');
 
     // Récupérer les informations de la réservation
+    console.log('📖 Récupération réservation...');
     const { data: booking, error: bookingError } = await supabaseClient
       .from('bookings')
       .select(`
@@ -68,25 +91,37 @@ serve(async (req) => {
       .single()
 
     if (bookingError) {
-      console.error('Erreur récupération réservation:', bookingError)
+      console.error('❌ Erreur récupération réservation:', bookingError)
       throw new Error(`Réservation non trouvée: ${bookingError.message}`)
     }
 
-    console.log('Réservation trouvée:', booking)
+    console.log('✅ Réservation trouvée:', {
+      id: booking.id,
+      user_id: booking.user_id,
+      total_price: booking.total_price,
+      field_name: booking.fields.name
+    });
 
     // Vérifier les clés API CinetPay
+    console.log('🔑 Vérification clés CinetPay...');
     const cinetpayApiKey = Deno.env.get('CINETPAY_API_KEY')
     const cinetpaySiteId = Deno.env.get('CINETPAY_SITE_ID')
 
+    console.log('🔑 Clés CinetPay:', {
+      apiKey: cinetpayApiKey ? '✅ OK' : '❌ MANQUANT',
+      siteId: cinetpaySiteId ? '✅ OK' : '❌ MANQUANT'
+    });
+
     if (!cinetpayApiKey || !cinetpaySiteId) {
-      throw new Error('Clés API CinetPay non configurées')
+      console.error('❌ Clés API CinetPay non configurées');
+      throw new Error('Configuration CinetPay manquante')
     }
 
     // Calculer les montants (commission de 5%)
     const platformFee = Math.round(amount * 0.05)
     const ownerAmount = amount - platformFee
 
-    console.log('Montants calculés:', { amount, platformFee, ownerAmount })
+    console.log('💰 Calcul montants:', { amount, platformFee, ownerAmount })
 
     // Créer la transaction CinetPay
     const transactionId = `escrow_${booking_id}_${Date.now()}`
@@ -109,7 +144,11 @@ serve(async (req) => {
       channels: 'ALL',
     }
 
-    console.log('Données paiement CinetPay:', cinetpayPaymentData)
+    console.log('💳 Appel API CinetPay...');
+    console.log('💳 Données envoyées:', {
+      ...cinetpayPaymentData,
+      apikey: '***MASKED***' // Masquer la clé API dans les logs
+    });
 
     const response = await fetch('https://api-checkout.cinetpay.com/v2/payment', {
       method: 'POST',
@@ -119,15 +158,27 @@ serve(async (req) => {
       body: JSON.stringify(cinetpayPaymentData)
     })
 
+    console.log('📡 Statut réponse CinetPay:', response.status);
+    console.log('📡 Headers réponse:', Object.fromEntries(response.headers.entries()));
+
     const result = await response.json()
-    console.log('Réponse CinetPay:', result)
+    console.log('📡 Contenu réponse CinetPay:', result)
 
     if (!response.ok || result.code !== '201') {
-      console.error('Erreur CinetPay:', result)
+      console.error('❌ Erreur API CinetPay:', {
+        status: response.status,
+        ok: response.ok,
+        code: result.code,
+        message: result.message,
+        description: result.description
+      });
       throw new Error(`Erreur CinetPay (${result.code}): ${result.message || result.description || 'Erreur inconnue'}`)
     }
 
+    console.log('✅ Paiement CinetPay créé avec succès');
+
     // Mettre à jour la réservation
+    console.log('📝 Mise à jour réservation...');
     const { error: updateError } = await supabaseClient
       .from('bookings')
       .update({
@@ -142,19 +193,23 @@ serve(async (req) => {
       .eq('id', booking_id)
 
     if (updateError) {
-      console.error('Erreur mise à jour réservation:', updateError)
+      console.error('❌ Erreur mise à jour réservation:', updateError)
       throw updateError
     }
 
-    console.log('✅ Paiement CinetPay créé avec succès')
+    console.log('✅ Réservation mise à jour');
+
+    const responseData = {
+      url: result.data.payment_url,
+      transaction_id: transactionId,
+      escrow_mode: true,
+      confirmation_deadline: '24 heures après paiement'
+    };
+
+    console.log('🎉 Succès - Envoi réponse:', responseData);
 
     return new Response(
-      JSON.stringify({
-        url: result.data.payment_url,
-        transaction_id: transactionId,
-        escrow_mode: true,
-        confirmation_deadline: '24 heures après paiement'
-      }),
+      JSON.stringify(responseData),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
@@ -162,9 +217,15 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('❌ Erreur création paiement CinetPay:', error)
+    console.error('💥 ERREUR GLOBALE Edge Function:', error)
+    console.error('💥 Stack trace:', error.stack)
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        timestamp: new Date().toISOString(),
+        function: 'create-cinetpay-payment'
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
