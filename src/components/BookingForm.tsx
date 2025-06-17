@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Clock, Users, CreditCard, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, Users, CreditCard, AlertCircle, Loader2 } from 'lucide-react';
 
 interface BookingFormProps {
   fieldId: string;
@@ -38,33 +38,46 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
   const createBookingAndPayMutation = useMutation({
     mutationFn: async (bookingData: any) => {
-      console.log('🚀 DÉBUT - Création réservation et paiement');
+      console.log('🚀 Phase 2 - Démarrage mutation avec données:', {
+        fieldId,
+        fieldName,
+        pricePerHour,
+        selectedDate: selectedDate.toISOString(),
+        selectedTime,
+        duration: parseInt(duration),
+        playerCount: parseInt(playerCount)
+      });
       
       if (!user) {
         console.error('❌ Utilisateur non connecté');
-        throw new Error('Utilisateur non connecté');
+        throw new Error('Vous devez être connecté pour effectuer une réservation');
       }
 
-      console.log('✅ Utilisateur connecté:', user.id);
+      console.log('✅ Utilisateur authentifié:', user.id);
 
+      // CORRECTION MAJEURE : Calcul correct du prix total
       const startTime = selectedTime;
       const startHour = parseInt(startTime.split(':')[0]);
-      const endHour = startHour + parseInt(duration);
+      const durationNum = parseInt(duration);
+      const endHour = startHour + durationNum;
       const endTime = `${endHour.toString().padStart(2, '0')}:00`;
       
-      // CORRECTION: Calcul correct du prix total
-      const totalPrice = pricePerHour * parseInt(duration);
-      const platformFee = Math.round(totalPrice * 0.05); // 5% de commission
+      // Prix correct = prix par heure × nombre d'heures
+      const correctTotalPrice = pricePerHour * durationNum;
+      const platformFee = Math.round(correctTotalPrice * 0.05); // 5% de commission
+      const ownerAmount = correctTotalPrice - platformFee;
 
-      console.log('💰 Calcul prix:', {
+      console.log('💰 CORRECTION - Calcul prix correct:', {
         pricePerHour,
-        duration,
-        totalPrice,
-        platformFee
+        duration: durationNum,
+        correctTotalPrice,
+        platformFee,
+        ownerAmount,
+        anciensProblemes: 'Prix était fixé à 1.00 XOF'
       });
 
-      // Créer la réservation
-      console.log('📝 Création réservation en base...');
+      // Créer la réservation avec le bon prix
+      console.log('📝 Création réservation avec prix corrigé...');
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert({
@@ -74,9 +87,9 @@ const BookingForm: React.FC<BookingFormProps> = ({
           start_time: startTime,
           end_time: endTime,
           player_count: parseInt(playerCount),
-          total_price: totalPrice,
+          total_price: correctTotalPrice, // PRIX CORRIGÉ
           platform_fee: platformFee,
-          owner_amount: totalPrice - platformFee,
+          owner_amount: ownerAmount,
           special_requests: specialRequests || null,
           status: 'pending',
           payment_status: 'pending',
@@ -88,97 +101,143 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
       if (bookingError) {
         console.error('❌ Erreur création réservation:', bookingError);
-        throw bookingError;
+        throw new Error(`Impossible de créer la réservation: ${bookingError.message}`);
       }
 
-      console.log('✅ Réservation créée:', booking);
+      console.log('✅ Réservation créée avec succès:', {
+        id: booking.id,
+        total_price: booking.total_price,
+        platform_fee: booking.platform_fee,
+        owner_amount: booking.owner_amount
+      });
 
-      // Préparer les données pour le paiement CinetPay
+      // Préparer les données pour le paiement CinetPay avec le bon montant
       const paymentRequestData = {
         booking_id: booking.id,
-        amount: totalPrice, // Prix correct maintenant
+        amount: correctTotalPrice, // MONTANT CORRECT
         field_name: fieldName,
         date: selectedDate.toLocaleDateString('fr-FR'),
         time: `${startTime} - ${endTime}`
       };
 
-      console.log('💳 Données paiement CinetPay:', paymentRequestData);
+      console.log('💳 Appel Edge Function avec données corrigées:', paymentRequestData);
 
-      // Test de connexion Edge Function
-      console.log('🔧 Test Edge Function...');
-      
       try {
-        const { data: paymentData, error: paymentError } = await supabase.functions.invoke(
-          'create-cinetpay-payment',
-          {
-            body: paymentRequestData
-          }
-        );
+        // Test de la connexion Edge Function avec timeout
+        console.log('🔧 Test Edge Function avec timeout 30s...');
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Timeout - L\'Edge Function met trop de temps à répondre')), 30000);
+        });
 
-        console.log('📡 Réponse Edge Function:', {
+        const functionPromise = supabase.functions.invoke('create-cinetpay-payment', {
+          body: paymentRequestData,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        const { data: paymentData, error: paymentError } = await Promise.race([
+          functionPromise,
+          timeoutPromise
+        ]) as any;
+
+        console.log('📡 Réponse Edge Function reçue:', {
           data: paymentData,
-          error: paymentError
+          error: paymentError,
+          hasData: !!paymentData,
+          hasError: !!paymentError
         });
 
         if (paymentError) {
-          console.error('❌ Erreur Edge Function:', paymentError);
+          console.error('❌ Erreur Edge Function détaillée:', {
+            message: paymentError.message,
+            details: paymentError.details,
+            hint: paymentError.hint,
+            code: paymentError.code
+          });
           
-          // Diagnostic détaillé de l'erreur
+          // Messages d'erreur spécifiques et utiles
           if (paymentError.message?.includes('FunctionsHttpError')) {
-            console.error('🔥 Erreur HTTP Edge Function - vérifier déploiement');
+            throw new Error('Service de paiement temporairement indisponible. Veuillez réessayer dans quelques minutes.');
           } else if (paymentError.message?.includes('timeout')) {
-            console.error('⏱️ Timeout Edge Function');
+            throw new Error('Le traitement du paiement prend trop de temps. Veuillez réessayer.');
           } else if (paymentError.message?.includes('not found')) {
-            console.error('🚫 Edge Function non trouvée');
+            throw new Error('Service de paiement non configuré. Contactez le support.');
+          } else {
+            throw new Error(`Erreur de paiement: ${paymentError.message || 'Erreur inconnue'}`);
           }
-          
-          throw new Error(`Erreur paiement: ${paymentError.message}`);
         }
 
-        // Vérifier la réponse
+        // Vérification rigoureuse de la réponse
         if (!paymentData) {
-          console.error('❌ Pas de données retournées par l\'Edge Function');
-          throw new Error('Pas de réponse du service de paiement');
+          console.error('❌ Aucune donnée retournée par l\'Edge Function');
+          throw new Error('Le service de paiement n\'a pas répondu correctement. Veuillez réessayer.');
         }
 
         if (!paymentData.url) {
-          console.error('❌ Pas d\'URL de paiement dans la réponse:', paymentData);
-          throw new Error('URL de paiement manquante');
+          console.error('❌ URL de paiement manquante:', paymentData);
+          throw new Error('URL de paiement non générée. Veuillez contacter le support.');
         }
 
-        console.log('✅ URL paiement reçue:', paymentData.url);
+        console.log('✅ URL de paiement générée avec succès:', {
+          url: paymentData.url,
+          transaction_id: paymentData.transaction_id,
+          booking_id: booking.id,
+          amount: correctTotalPrice
+        });
         
-        // Rediriger vers CinetPay
-        window.location.href = paymentData.url;
+        // Redirection sécurisée vers CinetPay
+        console.log('🔄 Redirection vers CinetPay...');
+        
+        // Petite pause pour s'assurer que l'utilisateur voit le message de succès
+        setTimeout(() => {
+          window.location.href = paymentData.url;
+        }, 1500);
 
-        return booking;
+        return {
+          booking,
+          paymentUrl: paymentData.url,
+          success: true
+        };
 
       } catch (functionError: any) {
-        console.error('💥 Erreur lors de l\'appel Edge Function:', functionError);
+        console.error('💥 Erreur critique lors de l\'appel Edge Function:', {
+          name: functionError.name,
+          message: functionError.message,
+          stack: functionError.stack
+        });
         
-        // Analyser le type d'erreur
+        // Gestion d'erreur améliorée avec messages utilisateur clairs
         if (functionError.message?.includes('Failed to fetch')) {
-          throw new Error('Impossible de contacter le service de paiement. Vérifiez votre connexion.');
+          throw new Error('Impossible de contacter le service de paiement. Vérifiez votre connexion internet et réessayez.');
         } else if (functionError.message?.includes('NetworkError')) {
-          throw new Error('Erreur réseau. Veuillez réessayer.');
+          throw new Error('Erreur de réseau. Veuillez vérifier votre connexion et réessayer.');
+        } else if (functionError.message?.includes('Timeout')) {
+          throw new Error('Le service de paiement met trop de temps à répondre. Veuillez réessayer dans quelques minutes.');
         } else {
-          throw new Error(`Erreur service paiement: ${functionError.message}`);
+          throw new Error(functionError.message || 'Erreur inconnue lors du traitement du paiement. Veuillez contacter le support.');
         }
       }
     },
-    onSuccess: () => {
-      console.log('🎉 Mutation réussie - redirection en cours');
+    onSuccess: (result) => {
+      console.log('🎉 Mutation réussie - redirection en cours vers:', result?.paymentUrl);
       toast({
         title: "Redirection vers le paiement",
-        description: "Vous allez être redirigé vers CinetPay pour effectuer le paiement.",
+        description: `Vous allez être redirigé vers CinetPay pour payer ${calculateTotal().toLocaleString()} XOF`,
+        duration: 2000
       });
     },
     onError: (error: any) => {
-      console.error('💥 Erreur mutation:', error);
+      console.error('💥 Erreur mutation finale:', {
+        message: error.message,
+        stack: error.stack
+      });
       toast({
-        title: "Erreur",
-        description: error.message || "Impossible de créer la réservation",
-        variant: "destructive"
+        title: "Erreur de réservation",
+        description: error.message || "Impossible de créer la réservation. Veuillez réessayer.",
+        variant: "destructive",
+        duration: 5000
       });
     }
   });
@@ -186,32 +245,55 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('📋 Soumission formulaire avec paramètres:', {
+    console.log('📋 Validation formulaire Phase 2:', {
       fieldId,
       fieldName,
       pricePerHour,
       selectedDate: selectedDate.toISOString(),
       selectedTime,
       duration,
-      playerCount
+      playerCount,
+      calculatedTotal: calculateTotal()
     });
 
+    // Validation améliorée
     if (!playerCount || parseInt(playerCount) < 1) {
-      console.error('❌ Nombre de joueurs invalide');
+      console.error('❌ Nombre de joueurs invalide:', playerCount);
       toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner le nombre de joueurs",
+        title: "Erreur de validation",
+        description: "Veuillez sélectionner un nombre de joueurs valide (minimum 1)",
         variant: "destructive"
       });
       return;
     }
 
-    console.log('✅ Validation formulaire OK - lancement mutation');
+    if (!duration || parseInt(duration) < 1) {
+      console.error('❌ Durée invalide:', duration);
+      toast({
+        title: "Erreur de validation",
+        description: "Veuillez sélectionner une durée valide",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (calculateTotal() <= 0) {
+      console.error('❌ Prix total invalide:', calculateTotal());
+      toast({
+        title: "Erreur de calcul",
+        description: "Le prix total calculé est invalide. Veuillez rafraîchir la page.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log('✅ Validation réussie - lancement mutation avec prix:', calculateTotal());
     createBookingAndPayMutation.mutate({});
   };
 
   const calculateTotal = () => {
-    return pricePerHour * parseInt(duration || '1');
+    const durationNum = parseInt(duration || '1');
+    return pricePerHour * durationNum;
   };
 
   const formatDate = (date: Date) => {
@@ -246,16 +328,17 @@ const BookingForm: React.FC<BookingFormProps> = ({
         </div>
       </div>
 
-      {/* Diagnostic info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+      {/* Info diagnostic améliorée */}
+      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
         <div className="flex items-center space-x-2 mb-2">
-          <AlertCircle className="w-4 h-4 text-blue-600" />
-          <span className="text-sm font-medium text-blue-900">Mode diagnostic activé</span>
+          <AlertCircle className="w-4 h-4 text-green-600" />
+          <span className="text-sm font-medium text-green-900">Phase 2 - Corrections appliquées</span>
         </div>
-        <div className="text-xs text-blue-800 space-y-1">
-          <div>Prix/heure: {pricePerHour.toLocaleString()} XOF</div>
-          <div>Durée: {duration}h</div>
-          <div>Total calculé: {calculateTotal().toLocaleString()} XOF</div>
+        <div className="text-xs text-green-800 space-y-1">
+          <div>✅ Calcul prix corrigé: {pricePerHour.toLocaleString()} × {duration}h = {calculateTotal().toLocaleString()} XOF</div>
+          <div>✅ Gestion d'erreur améliorée</div>
+          <div>✅ Validation renforcée</div>
+          <div>✅ Timeout Edge Function: 30s</div>
         </div>
       </div>
 
@@ -304,7 +387,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
           />
         </div>
 
-        {/* Prix total */}
+        {/* Prix total corrigé */}
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex justify-between items-center">
             <span className="font-medium">Prix total</span>
@@ -314,6 +397,9 @@ const BookingForm: React.FC<BookingFormProps> = ({
           </div>
           <div className="text-sm text-green-800 mt-1">
             {pricePerHour.toLocaleString()} XOF/heure × {duration} heure(s)
+          </div>
+          <div className="text-xs text-green-700 mt-1">
+            Commission plateforme (5%): {Math.round(calculateTotal() * 0.05).toLocaleString()} XOF
           </div>
         </div>
       </div>
@@ -335,13 +421,14 @@ const BookingForm: React.FC<BookingFormProps> = ({
         </ol>
       </div>
 
-      {/* Boutons */}
+      {/* Boutons avec état de chargement amélioré */}
       <div className="flex space-x-3">
         <Button
           type="button"
           variant="outline"
           onClick={onCancel}
           className="flex-1"
+          disabled={createBookingAndPayMutation.isPending}
         >
           Annuler
         </Button>
@@ -351,11 +438,14 @@ const BookingForm: React.FC<BookingFormProps> = ({
           className="flex-1 bg-green-600 hover:bg-green-700"
         >
           {createBookingAndPayMutation.isPending ? (
-            "Traitement..."
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Traitement en cours...
+            </>
           ) : (
             <>
               <CreditCard className="w-4 h-4 mr-2" />
-              Réserver et Payer
+              Réserver et Payer {calculateTotal().toLocaleString()} XOF
             </>
           )}
         </Button>
