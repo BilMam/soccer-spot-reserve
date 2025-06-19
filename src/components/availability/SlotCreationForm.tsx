@@ -1,17 +1,14 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Save, RefreshCw } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { useAvailabilityManagement } from '@/hooks/useAvailabilityManagement';
 import { useExistingSlots } from '@/hooks/useExistingSlots';
-import TimeExclusionManager from './TimeExclusionManager';
-import BasicConfigurationForm from './BasicConfigurationForm';
-import DaySelectionForm from './DaySelectionForm';
-import SlotSummary from './SlotSummary';
 import ExistingSlotsPreview from './ExistingSlotsPreview';
 import SlotCreationSuccess from './SlotCreationSuccess';
+import SlotCreationFormHeader from './SlotCreationFormHeader';
+import SlotCreationFormContent from './SlotCreationFormContent';
+import SlotCreationFormActions from './SlotCreationFormActions';
+import SlotCreationFormLoading from './SlotCreationFormLoading';
 
 interface SlotCreationFormProps {
   fieldId: string;
@@ -47,15 +44,6 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
   const [timeExclusions, setTimeExclusions] = useState<TimeExclusion[]>([]);
   const [creationStep, setCreationStep] = useState<'preview' | 'creating' | 'success' | 'modify'>('preview');
   const [slotsCreatedCount, setSlotsCreatedCount] = useState(0);
-
-  const handleDayToggle = (dayValue: number, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      excludeDays: checked 
-        ? prev.excludeDays.filter(d => d !== dayValue)
-        : [...prev.excludeDays, dayValue]
-    }));
-  };
 
   const calculateTotalSlots = () => {
     const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -104,7 +92,6 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
   };
 
   const handleDelete = async () => {
-    // Logique de suppression à implémenter
     console.log('Suppression des créneaux...');
     refetch();
     setCreationStep('preview');
@@ -131,14 +118,7 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
   };
 
   if (checkingExisting) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <RefreshCw className="w-6 h-6 animate-spin mr-2" />
-          <span>Vérification des créneaux existants...</span>
-        </CardContent>
-      </Card>
-    );
+    return <SlotCreationFormLoading />;
   }
 
   if (creationStep === 'success') {
@@ -153,7 +133,6 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     );
   }
 
-  // Si des créneaux existent déjà et qu'on n'est pas en mode modification
   if (existingSlots.length > 0 && creationStep !== 'modify') {
     return (
       <ExistingSlotsPreview
@@ -171,68 +150,23 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Plus className="w-5 h-5" />
-          {creationStep === 'modify' ? 'Modifier les créneaux' : 'Créer les créneaux pour la période'}
-        </CardTitle>
-      </CardHeader>
+      <SlotCreationFormHeader isModifying={creationStep === 'modify'} />
       <CardContent>
-        <Tabs defaultValue="basic" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="basic">Configuration de base</TabsTrigger>
-            <TabsTrigger value="advanced">Exclusions avancées</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="basic" className="space-y-6">
-            <BasicConfigurationForm
-              startTime={formData.startTime}
-              endTime={formData.endTime}
-              slotDuration={formData.slotDuration}
-              onStartTimeChange={(time) => setFormData(prev => ({ ...prev, startTime: time }))}
-              onEndTimeChange={(time) => setFormData(prev => ({ ...prev, endTime: time }))}
-              onSlotDurationChange={(duration) => setFormData(prev => ({ ...prev, slotDuration: duration }))}
-            />
-
-            <DaySelectionForm
-              excludeDays={formData.excludeDays}
-              onDayToggle={handleDayToggle}
-            />
-          </TabsContent>
-
-          <TabsContent value="advanced">
-            <TimeExclusionManager
-              startDate={startDate}
-              endDate={endDate}
-              exclusions={timeExclusions}
-              onExclusionsChange={setTimeExclusions}
-            />
-          </TabsContent>
-        </Tabs>
-
-        <div className="mt-6">
-          <SlotSummary
-            startDate={startDate}
-            endDate={endDate}
-            startTime={formData.startTime}
-            endTime={formData.endTime}
-            slotDuration={formData.slotDuration}
-            excludeDays={formData.excludeDays}
-            timeExclusions={timeExclusions}
-            totalSlots={calculateTotalSlots()}
-          />
-        </div>
-
-        <div className="flex gap-2 mt-6">
-          <Button 
-            onClick={handleCreateSlots}
-            disabled={createAvailabilityForPeriod.isPending || creationStep === 'creating'}
-            className="flex-1"
-          >
-            <Save className="w-4 h-4 mr-2" />
-            {createAvailabilityForPeriod.isPending || creationStep === 'creating' ? 'Création...' : creationStep === 'modify' ? 'Appliquer les modifications' : 'Créer les créneaux'}
-          </Button>
-        </div>
+        <SlotCreationFormContent
+          formData={formData}
+          timeExclusions={timeExclusions}
+          startDate={startDate}
+          endDate={endDate}
+          totalSlots={calculateTotalSlots()}
+          onFormDataChange={setFormData}
+          onTimeExclusionsChange={setTimeExclusions}
+        />
+        
+        <SlotCreationFormActions
+          isCreating={createAvailabilityForPeriod.isPending || creationStep === 'creating'}
+          isModifying={creationStep === 'modify'}
+          onCreateSlots={handleCreateSlots}
+        />
       </CardContent>
     </Card>
   );
