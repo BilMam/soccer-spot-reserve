@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { generateTimeOptions, timeToMinutes, minutesToTime } from '@/utils/timeUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AvailabilitySlot {
   id: string;
@@ -31,7 +32,69 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
   onEndTimeChange,
   availableSlots
 }) => {
+  const [bookedSlots, setBookedSlots] = useState<Set<string>>(new Set());
   const timeOptions = generateTimeOptions();
+
+  // Récupérer les créneaux réservés
+  useEffect(() => {
+    const fetchBookedSlots = async () => {
+      if (availableSlots.length === 0) return;
+      
+      const fieldId = availableSlots[0]?.id ? 
+        availableSlots.find(slot => slot.id)?.id : null;
+      
+      if (!fieldId) return;
+
+      const dateStr = availableSlots[0]?.date;
+      if (!dateStr) return;
+
+      try {
+        const { data: bookings, error } = await supabase
+          .from('bookings')
+          .select('start_time, end_time')
+          .eq('field_id', fieldId)
+          .eq('booking_date', dateStr)
+          .in('status', ['pending', 'confirmed', 'owner_confirmed']);
+
+        if (error) {
+          console.error('Erreur lors de la vérification des réservations:', error);
+          return;
+        }
+
+        const bookedSlotKeys = new Set(
+          bookings?.map(booking => `${booking.start_time}-${booking.end_time}`) || []
+        );
+        
+        setBookedSlots(bookedSlotKeys);
+      } catch (error) {
+        console.error('Erreur lors de la vérification des réservations:', error);
+      }
+    };
+
+    fetchBookedSlots();
+  }, [availableSlots]);
+
+  // Vérifier si un créneau spécifique est réservé
+  const isSlotBooked = (startTime: string, endTime: string): boolean => {
+    const slotKey = `${startTime}-${endTime}`;
+    return bookedSlots.has(slotKey);
+  };
+
+  // Vérifier si un créneau est disponible (existe et is_available = true)
+  const isSlotAvailable = (startTime: string, endTime: string): boolean => {
+    const slot = availableSlots.find(s => s.start_time === startTime && s.end_time === endTime);
+    return slot ? slot.is_available : false;
+  };
+
+  // Déterminer le statut d'un créneau
+  const getSlotStatus = (startTime: string, endTime: string): 'available' | 'booked' | 'unavailable' | 'not_created' => {
+    const slot = availableSlots.find(s => s.start_time === startTime && s.end_time === endTime);
+    
+    if (!slot) return 'not_created';
+    if (isSlotBooked(startTime, endTime)) return 'booked';
+    if (!slot.is_available) return 'unavailable';
+    return 'available';
+  };
 
   const getAvailableEndTimes = (startTime: string): string[] => {
     if (!startTime) return [];
@@ -58,12 +121,37 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
     for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
       const slotStartTime = minutesToTime(minutes);
       const slotEndTime = minutesToTime(minutes + 30);
-      const slot = availableSlots.find(s => s.start_time === slotStartTime && s.end_time === slotEndTime);
-      if (!slot || !slot.is_available) {
+      const status = getSlotStatus(slotStartTime, slotEndTime);
+      if (status !== 'available') {
         return false;
       }
     }
     return true;
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'booked':
+        return (
+          <Badge variant="secondary" className="ml-2 text-xs bg-blue-100 text-blue-700">
+            Réservé
+          </Badge>
+        );
+      case 'unavailable':
+        return (
+          <Badge variant="secondary" className="ml-2 text-xs bg-red-100 text-red-700">
+            Indisponible
+          </Badge>
+        );
+      case 'not_created':
+        return (
+          <Badge variant="secondary" className="ml-2 text-xs bg-gray-100 text-gray-600">
+            Pas de créneau
+          </Badge>
+        );
+      default:
+        return null;
+    }
   };
 
   const availableEndTimes = getAvailableEndTimes(selectedStartTime);
@@ -81,15 +169,15 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
           <SelectContent>
             {timeOptions.slice(0, -1).map(time => {
               const nextTime = minutesToTime(timeToMinutes(time) + 30);
-              const isSlotAvailable = availableSlots.find(s => s.start_time === time && s.end_time === nextTime)?.is_available;
+              const status = getSlotStatus(time, nextTime);
+              const isDisabled = status !== 'available';
+              
               return (
-                <SelectItem key={time} value={time} disabled={!isSlotAvailable} className="flex items-center justify-between">
-                  <span>{time}</span>
-                  {!isSlotAvailable && (
-                    <Badge variant="secondary" className="ml-2 text-xs bg-gray-200 text-gray-600">
-                      Occupé
-                    </Badge>
-                  )}
+                <SelectItem key={time} value={time} disabled={isDisabled} className="flex items-center justify-between">
+                  <div className="flex items-center justify-between w-full">
+                    <span>{time}</span>
+                    {getStatusBadge(status)}
+                  </div>
                 </SelectItem>
               );
             })}

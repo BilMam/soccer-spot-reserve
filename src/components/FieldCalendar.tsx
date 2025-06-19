@@ -9,6 +9,7 @@ import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useFieldAvailability } from '@/hooks/useFieldAvailability';
 import { timeToMinutes, minutesToTime } from '@/utils/timeUtils';
+import { supabase } from '@/integrations/supabase/client';
 import OccupiedSlotsDisplay from '@/components/calendar/OccupiedSlotsDisplay';
 import TimeSlotSelector from '@/components/calendar/TimeSlotSelector';
 import BookingSummary from '@/components/calendar/BookingSummary';
@@ -40,6 +41,8 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
   const [selectedEndTime, setSelectedEndTime] = useState<string>('');
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [unavailableSlots, setUnavailableSlots] = useState<string[]>([]);
   const { toast } = useToast();
 
   const { useFieldAvailabilityForPeriod } = useFieldAvailability(fieldId);
@@ -49,10 +52,48 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
   
   const { data: availableSlots = [], isLoading } = useFieldAvailabilityForPeriod(startDateStr, endDateStr);
 
-  // Fonction pour afficher les créneaux occupés
-  const getOccupiedSlots = (): string[] => {
-    return availableSlots.filter(slot => !slot.is_available).map(slot => `${slot.start_time}-${slot.end_time}`);
-  };
+  // Récupérer les créneaux réservés et indisponibles
+  useEffect(() => {
+    const fetchSlotStatus = async () => {
+      if (!selectedDate) return;
+      
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      
+      try {
+        // Récupérer les réservations actives
+        const { data: bookings, error: bookingError } = await supabase
+          .from('bookings')
+          .select('start_time, end_time')
+          .eq('field_id', fieldId)
+          .eq('booking_date', dateStr)
+          .in('status', ['pending', 'confirmed', 'owner_confirmed']);
+
+        if (bookingError) {
+          console.error('Erreur lors de la récupération des réservations:', bookingError);
+        } else {
+          const booked = bookings?.map(booking => `${booking.start_time.slice(0, 5)}-${booking.end_time.slice(0, 5)}`) || [];
+          setBookedSlots(booked);
+        }
+
+        // Séparer les créneaux indisponibles (pas de réservation mais is_available = false)
+        const unavailable = availableSlots
+          .filter(slot => !slot.is_available)
+          .filter(slot => {
+            const slotKey = `${slot.start_time.slice(0, 5)}-${slot.end_time.slice(0, 5)}`;
+            return !bookings?.some(booking => 
+              `${booking.start_time}-${booking.end_time}` === `${slot.start_time}-${slot.end_time}`
+            );
+          })
+          .map(slot => `${slot.start_time.slice(0, 5)}-${slot.end_time.slice(0, 5)}`);
+        
+        setUnavailableSlots(unavailable);
+      } catch (error) {
+        console.error('Erreur lors de la vérification des créneaux:', error);
+      }
+    };
+
+    fetchSlotStatus();
+  }, [selectedDate, fieldId, availableSlots]);
 
   // Vérifier si une plage horaire est entièrement disponible
   const isRangeAvailable = (startTime: string, endTime: string): boolean => {
@@ -65,7 +106,15 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
       const slotStartTime = minutesToTime(minutes);
       const slotEndTime = minutesToTime(minutes + 30);
       const slot = availableSlots.find(s => s.start_time === slotStartTime && s.end_time === slotEndTime);
+      
+      // Le créneau doit exister ET être disponible ET ne pas être réservé
       if (!slot || !slot.is_available) {
+        return false;
+      }
+      
+      // Vérifier qu'il n'est pas réservé
+      const slotKey = `${slotStartTime}-${slotEndTime}`;
+      if (bookedSlots.includes(slotKey)) {
         return false;
       }
     }
@@ -92,30 +141,9 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
   // Réinitialiser l'heure de fin quand l'heure de début change
   useEffect(() => {
     if (selectedStartTime) {
-      // Cette logique est maintenant dans TimeSlotSelector
-      const availableEndTimes = getAvailableEndTimes(selectedStartTime);
-      if (!availableEndTimes.includes(selectedEndTime)) {
-        setSelectedEndTime('');
-      }
+      setSelectedEndTime('');
     }
   }, [selectedStartTime, availableSlots]);
-
-  const getAvailableEndTimes = (startTime: string): string[] => {
-    if (!startTime) return [];
-    const startMinutes = timeToMinutes(startTime);
-    const availableEndTimes: string[] = [];
-
-    for (let minutes = startMinutes + 30; minutes <= timeToMinutes('22:00'); minutes += 30) {
-      const endTime = minutesToTime(minutes);
-      
-      if (isRangeAvailable(startTime, endTime)) {
-        availableEndTimes.push(endTime);
-      } else {
-        break;
-      }
-    }
-    return availableEndTimes;
-  };
 
   const handleConfirmBooking = () => {
     if (!selectedDate || !selectedStartTime || !selectedEndTime) {
@@ -138,7 +166,6 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
 
   const rangeIsAvailable = isRangeAvailable(selectedStartTime, selectedEndTime);
   const totalPrice = calculateTotalPrice(selectedStartTime, selectedEndTime);
-  const occupiedSlots = getOccupiedSlots();
 
   return (
     <div className="space-y-6">
@@ -176,7 +203,10 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
               </div>
             ) : (
               <>
-                <OccupiedSlotsDisplay occupiedSlots={occupiedSlots} />
+                <OccupiedSlotsDisplay 
+                  occupiedSlots={bookedSlots} 
+                  unavailableSlots={unavailableSlots}
+                />
                 
                 <TimeSlotSelector
                   selectedStartTime={selectedStartTime}

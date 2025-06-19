@@ -1,24 +1,69 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
+import { AlertCircle } from 'lucide-react';
 
 interface OccupiedSlotsDisplayProps {
   occupiedSlots: string[];
+  unavailableSlots?: string[];
 }
 
-const OccupiedSlotsDisplay: React.FC<OccupiedSlotsDisplayProps> = ({ occupiedSlots }) => {
-  if (occupiedSlots.length === 0) return null;
+const OccupiedSlotsDisplay: React.FC<OccupiedSlotsDisplayProps> = ({ 
+  occupiedSlots, 
+  unavailableSlots = [] 
+}) => {
+  const hasOccupiedOrUnavailable = occupiedSlots.length > 0 || unavailableSlots.length > 0;
+
+  if (!hasOccupiedOrUnavailable) {
+    return (
+      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+        <div className="flex items-center space-x-2">
+          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+          <span className="text-sm text-green-700 font-medium">
+            Tous les créneaux sont disponibles
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-gray-50 rounded-lg p-3 border">
-      <p className="text-sm text-gray-600 mb-2">Créneaux déjà réservés :</p>
-      <div className="flex flex-wrap gap-1">
-        {occupiedSlots.map((slot, index) => (
-          <Badge key={index} variant="secondary" className="text-xs bg-gray-200 text-gray-700">
-            {slot}
-          </Badge>
-        ))}
-      </div>
+    <div className="space-y-2">
+      {occupiedSlots.length > 0 && (
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center space-x-2 mb-2">
+            <AlertCircle className="w-4 h-4 text-blue-600" />
+            <span className="text-sm font-medium text-blue-700">
+              Créneaux réservés
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {occupiedSlots.map((slot, index) => (
+              <Badge key={index} variant="secondary" className="bg-blue-100 text-blue-700 text-xs">
+                {slot}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {unavailableSlots.length > 0 && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center space-x-2 mb-2">
+            <AlertCircle className="w-4 h-4 text-red-600" />
+            <span className="text-sm font-medium text-red-700">
+              Créneaux indisponibles
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {unavailableSlots.map((slot, index) => (
+              <Badge key={index} variant="secondary" className="bg-red-100 text-red-700 text-xs">
+                {slot}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
