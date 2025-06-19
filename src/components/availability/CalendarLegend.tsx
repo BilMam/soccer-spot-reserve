@@ -9,6 +9,10 @@ const CalendarLegend: React.FC = () => {
         <span>Disponible</span>
       </div>
       <div className="flex items-center gap-2">
+        <div className="w-4 h-4 bg-blue-200 border border-blue-300 rounded"></div>
+        <span>Réservé</span>
+      </div>
+      <div className="flex items-center gap-2">
         <div className="w-4 h-4 bg-red-200 border border-red-300 rounded"></div>
         <span>Indisponible</span>
       </div>

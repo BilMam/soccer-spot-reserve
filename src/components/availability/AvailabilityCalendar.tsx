@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAvailabilityManagement } from '@/hooks/useAvailabilityManagement';
+import { supabase } from '@/integrations/supabase/client';
 import DaySlotDetails from './DaySlotDetails';
 import CalendarLegend from './CalendarLegend';
 import CalendarDay from './CalendarDay';
@@ -41,6 +42,7 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
 }) => {
   const { useFieldAvailabilityForPeriod, setSlotsUnavailable, setSlotsAvailable } = useAvailabilityManagement(fieldId);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [bookedSlotsByDate, setBookedSlotsByDate] = useState<Record<string, Set<string>>>({});
 
   const startDateStr = format(startDate, 'yyyy-MM-dd');
   const endDateStr = format(endDate, 'yyyy-MM-dd');
@@ -49,6 +51,44 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
 
   console.log('📅 Calendrier - Période:', { startDateStr, endDateStr });
   console.log('📅 Calendrier - Créneaux récupérés:', availabilitySlots.length);
+
+  // Récupérer les réservations pour la période
+  useEffect(() => {
+    const fetchBookedSlots = async () => {
+      try {
+        const { data: bookings, error } = await supabase
+          .from('bookings')
+          .select('booking_date, start_time, end_time')
+          .eq('field_id', fieldId)
+          .gte('booking_date', startDateStr)
+          .lte('booking_date', endDateStr)
+          .in('status', ['pending', 'confirmed', 'owner_confirmed']);
+
+        if (error) {
+          console.error('Erreur lors de la récupération des réservations:', error);
+          return;
+        }
+
+        const bookedByDate: Record<string, Set<string>> = {};
+        bookings?.forEach(booking => {
+          const dateStr = booking.booking_date;
+          if (!bookedByDate[dateStr]) {
+            bookedByDate[dateStr] = new Set();
+          }
+          bookedByDate[dateStr].add(`${booking.start_time}-${booking.end_time}`);
+        });
+
+        setBookedSlotsByDate(bookedByDate);
+        console.log('📅 Réservations récupérées:', bookedByDate);
+      } catch (error) {
+        console.error('Erreur lors de la récupération des réservations:', error);
+      }
+    };
+
+    if (fieldId && startDateStr && endDateStr) {
+      fetchBookedSlots();
+    }
+  }, [fieldId, startDateStr, endDateStr]);
 
   // Grouper les créneaux par date
   const slotsByDate = availabilitySlots.reduce((acc, slot) => {
@@ -203,8 +243,9 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
                 
                 const dayOfWeek = cell.date.getDay();
                 const dayName = format(cell.date, 'EEEE', { locale: fr });
+                const bookedSlots = bookedSlotsByDate[cell.dateStr] || new Set();
                 
-                console.log(`📅 Rendu cellule ${index}: ${cell.dateStr} (${dayName}, jour ${dayOfWeek}) - ${cell.slots.length} créneaux`);
+                console.log(`📅 Rendu cellule ${index}: ${cell.dateStr} (${dayName}, jour ${dayOfWeek}) - ${cell.slots.length} créneaux, ${bookedSlots.size} réservés`);
                 
                 return (
                   <Dialog key={`${cell.dateStr}-${index}`}>
@@ -213,6 +254,7 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
                         <CalendarDay 
                           day={cell.date} 
                           slots={cell.slots}
+                          bookedSlots={bookedSlots}
                           onClick={() => {}}
                         />
                       </div>

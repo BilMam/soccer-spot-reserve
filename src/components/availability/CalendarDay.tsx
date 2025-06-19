@@ -18,24 +18,38 @@ interface AvailabilitySlot {
 interface CalendarDayProps {
   day: Date;
   slots: AvailabilitySlot[];
+  bookedSlots: Set<string>;
   onClick: () => void;
 }
 
-const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, onClick }) => {
+const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, onClick }) => {
   // Calculer les statistiques pour ce jour
   const total = slots.length;
   const available = slots.filter(s => s.is_available).length;
   const unavailable = slots.filter(s => !s.is_available).length;
+  
+  // Calculer les créneaux réservés
+  const booked = slots.filter(slot => {
+    const slotKey = `${slot.start_time}-${slot.end_time}`;
+    return bookedSlots.has(slotKey);
+  }).length;
+  
   const hasSlots = total > 0;
   const hasUnavailable = unavailable > 0;
-  const isFullyAvailable = hasSlots && unavailable === 0;
+  const hasBooked = booked > 0;
+  const isFullyAvailable = hasSlots && unavailable === 0 && booked === 0;
 
-  // Déterminer la couleur de fond
+  // Déterminer la couleur de fond avec priorité
   let bgColor = 'bg-gray-50 border-gray-200';
-  if (isFullyAvailable) {
-    bgColor = 'bg-green-50 border-green-200';
-  } else if (hasUnavailable) {
+  if (hasUnavailable) {
+    // Rouge si indisponible (priorité la plus haute)
     bgColor = 'bg-red-50 border-red-200';
+  } else if (hasBooked) {
+    // Bleu si réservé
+    bgColor = 'bg-blue-50 border-blue-200';
+  } else if (isFullyAvailable) {
+    // Vert si tout disponible
+    bgColor = 'bg-green-50 border-green-200';
   }
 
   return (
@@ -47,9 +61,14 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, onClick }) => {
       <span className="font-medium">{day.getDate()}</span>
       {hasSlots && (
         <div className="flex gap-1 mt-1">
-          {available > 0 && (
+          {available > 0 && booked === 0 && (
             <Badge variant="secondary" className="text-xs px-1 py-0 bg-green-100 text-green-700">
               {available}
+            </Badge>
+          )}
+          {booked > 0 && (
+            <Badge variant="secondary" className="text-xs px-1 py-0 bg-blue-100 text-blue-700">
+              {booked}
             </Badge>
           )}
           {unavailable > 0 && (
