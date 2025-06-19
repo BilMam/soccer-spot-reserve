@@ -71,9 +71,9 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, onCl
     bgColor = 'bg-green-50 border-green-200';
   }
 
-  // Debug spécifique pour le mercredi 25
+  // Debug spécifique pour le mercredi 25 - CORRECTION: utiliser `booked` au lieu de `hasBooked`
   const dateStr = format(day, 'yyyy-MM-dd');
-  if (dateStr === '2025-06-25' || hasBooked > 0) {
+  if (dateStr === '2025-06-25' || booked > 0) {
     console.log('🎨 DEBUG COULEUR:', {
       date: dateStr,
       total,
