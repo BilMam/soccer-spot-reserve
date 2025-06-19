@@ -27,6 +27,13 @@ interface AvailabilitySlot {
   notes?: string;
 }
 
+interface CalendarCell {
+  date: Date | null;
+  dateStr: string;
+  slots: AvailabilitySlot[];
+  isEmpty: boolean;
+}
+
 const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
   fieldId,
   startDate,
@@ -52,32 +59,71 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
     return acc;
   }, {} as Record<string, AvailabilitySlot[]>);
 
-  console.log('📅 Calendrier - Créneaux par date:', Object.keys(slotsByDate));
-
-  // Générer les jours de la période
-  const generateDays = () => {
-    const days = [];
+  // Générer la grille du calendrier avec alignement correct
+  const generateCalendarGrid = (): CalendarCell[] => {
+    const grid: CalendarCell[] = [];
+    
+    // Générer tous les jours de la période
+    const periodDays: Date[] = [];
     const current = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
     const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
     
-    console.log('📅 Génération des jours de', format(current, 'yyyy-MM-dd'), 'à', format(end, 'yyyy-MM-dd'));
-    
     while (current <= end) {
-      const dayDate = new Date(current.getFullYear(), current.getMonth(), current.getDate());
-      days.push(dayDate);
-      
-      const dateStr = format(dayDate, 'yyyy-MM-dd');
-      const dayOfWeek = dayDate.getDay();
-      const dayName = format(dayDate, 'EEEE', { locale: fr });
-      const hasSlots = !!slotsByDate[dateStr];
-      const slotsCount = hasSlots ? slotsByDate[dateStr].length : 0;
-      
-      console.log(`📅 Jour généré: ${dateStr} (${dayName}, jour ${dayOfWeek}) - Créneaux: ${slotsCount}`);
-      
+      periodDays.push(new Date(current));
       current.setDate(current.getDate() + 1);
     }
     
-    return days;
+    console.log('📅 Jours de la période:', periodDays.length);
+    
+    if (periodDays.length === 0) return grid;
+    
+    // Calculer les cellules vides au début pour aligner le premier jour
+    const firstDay = periodDays[0];
+    const firstDayOfWeek = firstDay.getDay(); // 0 = dimanche, 1 = lundi, etc.
+    
+    console.log(`📅 Premier jour: ${format(firstDay, 'yyyy-MM-dd')} (jour ${firstDayOfWeek})`);
+    
+    // Ajouter des cellules vides au début
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      grid.push({
+        date: null,
+        dateStr: '',
+        slots: [],
+        isEmpty: true
+      });
+    }
+    
+    // Ajouter tous les jours de la période
+    periodDays.forEach(day => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const daySlots = slotsByDate[dateStr] || [];
+      
+      grid.push({
+        date: day,
+        dateStr,
+        slots: daySlots,
+        isEmpty: false
+      });
+      
+      console.log(`📅 Ajouté: ${dateStr} (${daySlots.length} créneaux)`);
+    });
+    
+    // Ajouter des cellules vides à la fin pour compléter la dernière semaine
+    const remainingCells = 7 - (grid.length % 7);
+    if (remainingCells < 7) {
+      for (let i = 0; i < remainingCells; i++) {
+        grid.push({
+          date: null,
+          dateStr: '',
+          slots: [],
+          isEmpty: true
+        });
+      }
+    }
+    
+    console.log(`📅 Grille générée: ${grid.length} cellules (${periodDays.length} jours + ${grid.length - periodDays.length} cellules vides)`);
+    
+    return grid;
   };
 
   const handleToggleSlotStatus = async (slot: AvailabilitySlot) => {
@@ -121,7 +167,7 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
     );
   }
 
-  const days = generateDays();
+  const calendarGrid = generateCalendarGrid();
 
   return (
     <div className="space-y-4">
@@ -138,27 +184,35 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
 
             {/* Calendrier */}
             <div className="grid grid-cols-7 gap-2">
+              {/* En-têtes des jours */}
               {['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'].map(day => (
                 <div key={day} className="p-2 text-center font-medium text-gray-500 border-b">
                   {day}
                 </div>
               ))}
               
-              {days.map((day, index) => {
-                const dateStr = format(day, 'yyyy-MM-dd');
-                const dateSlots = slotsByDate[dateStr] || [];
-                const dayOfWeek = day.getDay();
-                const dayName = format(day, 'EEEE', { locale: fr });
+              {/* Grille du calendrier */}
+              {calendarGrid.map((cell, index) => {
+                if (cell.isEmpty || !cell.date) {
+                  // Cellule vide pour l'alignement
+                  return (
+                    <div key={`empty-${index}`} className="h-16 bg-gray-50 border border-gray-100 rounded opacity-50">
+                    </div>
+                  );
+                }
                 
-                console.log(`📅 Rendu jour ${index}: ${dateStr} (${dayName}, jour ${dayOfWeek}) - ${dateSlots.length} créneaux`);
+                const dayOfWeek = cell.date.getDay();
+                const dayName = format(cell.date, 'EEEE', { locale: fr });
+                
+                console.log(`📅 Rendu cellule ${index}: ${cell.dateStr} (${dayName}, jour ${dayOfWeek}) - ${cell.slots.length} créneaux`);
                 
                 return (
-                  <Dialog key={`${dateStr}-${index}`}>
+                  <Dialog key={`${cell.dateStr}-${index}`}>
                     <DialogTrigger asChild>
-                      <div onClick={() => setSelectedDate(day)}>
+                      <div onClick={() => setSelectedDate(cell.date)}>
                         <CalendarDay 
-                          day={day} 
-                          slots={dateSlots}
+                          day={cell.date} 
+                          slots={cell.slots}
                           onClick={() => {}}
                         />
                       </div>
@@ -167,13 +221,13 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
                     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>
-                          {format(day, 'EEEE dd MMMM yyyy', { locale: fr })}
+                          {format(cell.date, 'EEEE dd MMMM yyyy', { locale: fr })}
                         </DialogTitle>
                       </DialogHeader>
                       
                       <DaySlotDetails
-                        slots={dateSlots}
-                        date={day}  
+                        slots={cell.slots}
+                        date={cell.date}  
                         onToggleSlotStatus={handleToggleSlotStatus}
                         isUpdating={setSlotsUnavailable.isPending || setSlotsAvailable.isPending}
                         fieldId={fieldId}
