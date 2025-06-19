@@ -9,7 +9,7 @@ export class AvailableEndTimesCalculator {
     this.slotStatusUtils = slotStatusUtils;
   }
 
-  // CORRIGÉ: Cette fonction s'arrête maintenant dès qu'un créneau non disponible est trouvé
+  // CORRIGÉ: Utilise maintenant la détection de chevauchements
   getAvailableEndTimes(startTime: string): string[] {
     if (!startTime) return [];
     const startMinutes = timeToMinutes(startTime);
@@ -39,13 +39,20 @@ export class AvailableEndTimesCalculator {
     return availableEndTimes;
   }
 
-  // Cette fonction vérifie si toute une plage est disponible
+  // MISE À JOUR: Cette fonction utilise maintenant la détection de chevauchements
   isRangeAvailable(startTime: string, endTime: string): boolean {
     if (!startTime || !endTime) return false;
+    
+    console.log('🔍 isRangeAvailable - Vérification plage:', `${startTime}-${endTime}`);
+
+    // Utiliser la nouvelle méthode de détection de chevauchements
+    if (this.slotStatusUtils.isRangeOverlapping(startTime, endTime)) {
+      console.log('🔍 Plage NON disponible à cause d\'un chevauchement');
+      return false;
+    }
+
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
-
-    console.log('🔍 isRangeAvailable - Vérification plage:', `${startTime}-${endTime}`);
 
     for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
       const slotStartTime = minutesToTime(minutes);
