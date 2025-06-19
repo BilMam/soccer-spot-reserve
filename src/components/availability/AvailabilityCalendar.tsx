@@ -40,6 +40,9 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
   
   const { data: availabilitySlots = [], isLoading } = useFieldAvailabilityForPeriod(startDateStr, endDateStr);
 
+  console.log('📅 Calendrier - Période:', { startDateStr, endDateStr });
+  console.log('📅 Calendrier - Créneaux récupérés:', availabilitySlots.length);
+
   // Grouper les créneaux par date
   const slotsByDate = availabilitySlots.reduce((acc, slot) => {
     if (!acc[slot.date]) {
@@ -49,13 +52,27 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
     return acc;
   }, {} as Record<string, AvailabilitySlot[]>);
 
+  console.log('📅 Calendrier - Créneaux par date:', Object.keys(slotsByDate));
+
   // Générer les jours de la période
   const generateDays = () => {
     const days = [];
     const current = new Date(startDate);
     
+    console.log('📅 Génération des jours de', format(startDate, 'yyyy-MM-dd'), 'à', format(endDate, 'yyyy-MM-dd'));
+    
     while (current <= endDate) {
-      days.push(new Date(current));
+      const dayDate = new Date(current);
+      days.push(dayDate);
+      
+      // Log pour débogage
+      const dateStr = format(dayDate, 'yyyy-MM-dd');
+      const dayOfWeek = dayDate.getDay();
+      const dayName = format(dayDate, 'EEEE', { locale: fr });
+      const hasSlots = !!slotsByDate[dateStr];
+      
+      console.log(`📅 Jour généré: ${dateStr} (${dayName}, jour ${dayOfWeek}) - Créneaux: ${hasSlots ? slotsByDate[dateStr].length : 0}`);
+      
       current.setDate(current.getDate() + 1);
     }
     
@@ -128,6 +145,10 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
               
               {days.map((day, index) => {
                 const dateSlots = slotsByDate[format(day, 'yyyy-MM-dd')] || [];
+                const dayOfWeek = day.getDay();
+                const dayName = format(day, 'EEEE', { locale: fr });
+                
+                console.log(`📅 Rendu jour ${index}: ${format(day, 'yyyy-MM-dd')} (${dayName}, jour ${dayOfWeek}) - ${dateSlots.length} créneaux`);
                 
                 return (
                   <Dialog key={index}>

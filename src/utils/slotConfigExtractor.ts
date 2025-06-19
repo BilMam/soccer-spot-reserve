@@ -34,6 +34,8 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
     };
   }
 
+  console.log('🔍 Extraction configuration - Créneaux reçus:', slots.length);
+
   // Trouver l'heure de début la plus tôt et l'heure de fin la plus tard
   const startTimes = slots.map(slot => slot.start_time).sort();
   const endTimes = slots.map(slot => slot.end_time).sort();
@@ -63,22 +65,79 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
     }
   });
 
-  // Déterminer les jours exclus en analysant les dates
+  // Analyser TOUTES les dates de la période pour déterminer les jours exclus
+  const dateRange = getDateRangeFromSlots(slots);
   const daysWithSlots = new Set<number>();
+  const dayAnalysis = new Map<number, { count: number, dates: string[] }>();
+
+  // Analyser chaque date de slot existant
   slots.forEach(slot => {
-    const date = new Date(slot.date);
-    daysWithSlots.add(date.getDay());
+    const date = new Date(slot.date + 'T00:00:00');
+    const dayOfWeek = date.getDay();
+    daysWithSlots.add(dayOfWeek);
+    
+    if (!dayAnalysis.has(dayOfWeek)) {
+      dayAnalysis.set(dayOfWeek, { count: 0, dates: [] });
+    }
+    const analysis = dayAnalysis.get(dayOfWeek)!;
+    if (!analysis.dates.includes(slot.date)) {
+      analysis.dates.push(slot.date);
+      analysis.count++;
+    }
   });
 
-  const allDays = [0, 1, 2, 3, 4, 5, 6];
-  const excludeDays = allDays.filter(day => !daysWithSlots.has(day));
+  console.log('📊 Analyse des jours avec créneaux:', {
+    daysWithSlots: Array.from(daysWithSlots),
+    dayAnalysis: Object.fromEntries(dayAnalysis),
+    dateRange
+  });
 
-  return {
+  // Calculer combien de fois chaque jour devrait apparaître dans la période
+  const expectedDaysCount = calculateExpectedDaysInRange(dateRange.start, dateRange.end);
+  console.log('📅 Jours attendus dans la période:', expectedDaysCount);
+
+  // Déterminer les jours exclus en comparant avec les jours attendus
+  const excludeDays: number[] = [];
+  for (let dayOfWeek = 0; dayOfWeek <= 6; dayOfWeek++) {
+    const expected = expectedDaysCount[dayOfWeek] || 0;
+    const actual = dayAnalysis.get(dayOfWeek)?.count || 0;
+    
+    // Si un jour n'a aucun créneau alors qu'il devrait en avoir, c'est qu'il est exclu
+    if (expected > 0 && actual === 0) {
+      excludeDays.push(dayOfWeek);
+    }
+  }
+
+  const result = {
     startTime: earliestStart,
     endTime: latestEnd,
     slotDuration: mostCommonDuration,
     excludeDays
   };
+
+  console.log('✅ Configuration extraite:', result);
+  return result;
+};
+
+const getDateRangeFromSlots = (slots: AvailabilitySlot[]): { start: Date, end: Date } => {
+  const dates = slots.map(slot => new Date(slot.date + 'T00:00:00')).sort((a, b) => a.getTime() - b.getTime());
+  return {
+    start: dates[0],
+    end: dates[dates.length - 1]
+  };
+};
+
+const calculateExpectedDaysInRange = (startDate: Date, endDate: Date): Record<number, number> => {
+  const expected: Record<number, number> = {};
+  const current = new Date(startDate);
+
+  while (current <= endDate) {
+    const dayOfWeek = current.getDay();
+    expected[dayOfWeek] = (expected[dayOfWeek] || 0) + 1;
+    current.setDate(current.getDate() + 1);
+  }
+
+  return expected;
 };
 
 const timeToMinutes = (time: string): number => {
