@@ -57,7 +57,7 @@ export class SlotValidationLogic {
         return false;
       }
       
-      // 3. CRITIQUE: Vérifier qu'il n'est pas réservé
+      // 3. CRITIQUE: Vérifier qu'il n'est pas dans les créneaux réservés
       const slotKey = `${normalizedSlotStart}-${normalizedSlotEnd}`;
       if (this.bookedSlots.includes(slotKey)) {
         console.log('🔍🔒 Créneau RÉSERVÉ détecté:', slotKey);

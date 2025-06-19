@@ -10,13 +10,13 @@ const SlotStatusBadge: React.FC<SlotStatusBadgeProps> = ({ status }) => {
   switch (status) {
     case 'booked':
       return (
-        <Badge variant="secondary" className="ml-2 text-xs bg-blue-100 text-blue-700">
+        <Badge variant="secondary" className="ml-2 text-xs bg-red-100 text-red-700">
           Réservé
         </Badge>
       );
     case 'unavailable':
       return (
-        <Badge variant="secondary" className="ml-2 text-xs bg-red-100 text-red-700">
+        <Badge variant="secondary" className="ml-2 text-xs bg-orange-100 text-orange-700">
           Indisponible
         </Badge>
       );

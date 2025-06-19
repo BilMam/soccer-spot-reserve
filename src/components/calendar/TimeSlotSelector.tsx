@@ -82,12 +82,13 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
             {timeOptions.slice(0, -1).map(time => {
               const nextTime = minutesToTime(timeToMinutes(time) + 30);
               const status = slotStatusUtils.getSlotStatus(time, nextTime);
+              // CORRECTION: Ne permettre la sélection QUE des créneaux disponibles
               const isDisabled = status !== 'available';
               
               return (
                 <SelectItem key={time} value={time} disabled={isDisabled} className="flex items-center justify-between">
                   <div className="flex items-center justify-between w-full">
-                    <span>{time}</span>
+                    <span className={isDisabled ? 'text-gray-400' : ''}>{time}</span>
                     <SlotStatusBadge status={status} />
                   </div>
                 </SelectItem>
