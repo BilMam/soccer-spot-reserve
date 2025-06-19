@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
-import BookingForm from '@/components/BookingForm';
 import ReviewsList from '@/components/ReviewsList';
 import FavoriteButton from '@/components/FavoriteButton';
 import FieldCalendar from '@/components/FieldCalendar';
@@ -42,7 +41,6 @@ const FieldDetail = () => {
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
   const [selectedEndTime, setSelectedEndTime] = useState<string>('');
   const [totalPrice, setTotalPrice] = useState<number>(0);
-  const [showBookingForm, setShowBookingForm] = useState(false);
 
   const { data: field, isLoading } = useQuery({
     queryKey: ['field', id],
@@ -92,23 +90,15 @@ const FieldDetail = () => {
     setSelectedStartTime(startTime);
     setSelectedEndTime(endTime);
     setTotalPrice(price);
-    setShowBookingForm(true);
-  };
-
-  const handleBookingSuccess = () => {
-    setShowBookingForm(false);
-    setSelectedDate(null);
-    setSelectedStartTime('');
-    setSelectedEndTime('');
-    setTotalPrice(0);
-    toast({
-      title: "Réservation réussie !",
-      description: "Votre demande de réservation a été envoyée.",
+    
+    navigate(`/checkout/${id}`, {
+      state: {
+        selectedDate: date,
+        selectedStartTime: startTime,
+        selectedEndTime: endTime,
+        totalPrice: price
+      }
     });
-  };
-
-  const handleBookingCancel = () => {
-    setShowBookingForm(false);
   };
 
   if (isLoading) {
@@ -225,28 +215,14 @@ const FieldDetail = () => {
             <ReviewsList fieldId={field.id} />
           </div>
 
-          {/* Sidebar - Booking */}
+          {/* Sidebar - Calendar seulement */}
           <div className="lg:col-span-1">
-            <div className="sticky top-8 space-y-6">
-              {!showBookingForm ? (
-                <FieldCalendar
-                  fieldId={field.id}
-                  fieldPrice={field.price_per_hour}
-                  onTimeSlotSelect={handleTimeSlotSelect}
-                />
-              ) : (
-                <BookingForm
-                  fieldId={field.id}
-                  fieldName={field.name}
-                  pricePerHour={field.price_per_hour}
-                  selectedDate={selectedDate!}
-                  selectedStartTime={selectedStartTime}
-                  selectedEndTime={selectedEndTime}
-                  totalPrice={totalPrice}
-                  onSuccess={handleBookingSuccess}
-                  onCancel={handleBookingCancel}
-                />
-              )}
+            <div className="sticky top-8">
+              <FieldCalendar
+                fieldId={field.id}
+                fieldPrice={field.price_per_hour}
+                onTimeSlotSelect={handleTimeSlotSelect}
+              />
             </div>
           </div>
         </div>
