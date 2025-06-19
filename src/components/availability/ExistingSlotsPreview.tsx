@@ -1,9 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Calendar, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { Calendar, AlertTriangle, CheckCircle, Info, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -19,8 +19,9 @@ interface ExistingSlotsPreviewProps {
   existingSlots: AvailabilitySlot[];
   startDate: Date;
   endDate: Date;
-  onReplace: () => void;
-  onComplete: () => void;
+  onModify: () => void;
+  onDelete: () => void;
+  onViewCalendar: () => void;
   onCancel: () => void;
   isLoading?: boolean;
 }
@@ -29,11 +30,14 @@ const ExistingSlotsPreview: React.FC<ExistingSlotsPreviewProps> = ({
   existingSlots,
   startDate,
   endDate,
-  onReplace,
-  onComplete,
+  onModify,
+  onDelete,
+  onViewCalendar,
   onCancel,
   isLoading = false
 }) => {
+  const [deleteConfirmStep, setDeleteConfirmStep] = useState(0);
+
   const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
   const daysWithSlots = new Set(existingSlots.map(slot => slot.date)).size;
   const totalSlots = existingSlots.length;
@@ -55,10 +59,15 @@ const ExistingSlotsPreview: React.FC<ExistingSlotsPreviewProps> = ({
     return "Période partiellement configurée";
   };
 
-  const getAlertVariant = () => {
-    if (totalSlots === 0) return "default";
-    if (daysWithSlots === totalDays) return "default";
-    return "default";
+  const handleDeleteClick = () => {
+    if (deleteConfirmStep === 0) {
+      setDeleteConfirmStep(1);
+      // Reset après 3 secondes
+      setTimeout(() => setDeleteConfirmStep(0), 3000);
+    } else {
+      onDelete();
+      setDeleteConfirmStep(0);
+    }
   };
 
   return (
@@ -70,7 +79,7 @@ const ExistingSlotsPreview: React.FC<ExistingSlotsPreviewProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Alert variant={getAlertVariant()}>
+        <Alert variant="default">
           <Info className="h-4 w-4" />
           <AlertDescription>{getStatusMessage()}</AlertDescription>
         </Alert>
@@ -102,34 +111,49 @@ const ExistingSlotsPreview: React.FC<ExistingSlotsPreviewProps> = ({
           </p>
         </div>
 
-        {totalSlots > 0 && (
-          <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t">
-            <Button
-              onClick={onReplace}
-              variant="destructive"
-              className="flex-1"
-              disabled={isLoading}
-            >
-              Remplacer tous les créneaux
-            </Button>
-            <Button
-              onClick={onComplete}
-              variant="default"
-              className="flex-1"
-              disabled={isLoading}
-            >
-              Compléter les créneaux manquants
-            </Button>
-            <Button
-              onClick={onCancel}
-              variant="outline"
-              className="flex-1"
-              disabled={isLoading}
-            >
-              Annuler
-            </Button>
-          </div>
-        )}
+        <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t">
+          <Button
+            onClick={onViewCalendar}
+            variant="outline"
+            className="flex-1"
+            disabled={isLoading}
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Voir les créneaux
+          </Button>
+          
+          {totalSlots > 0 && (
+            <>
+              <Button
+                onClick={onModify}
+                variant="default"
+                className="flex-1"
+                disabled={isLoading}
+              >
+                Modifier la configuration
+              </Button>
+              
+              <Button
+                onClick={handleDeleteClick}
+                variant="destructive"
+                className="flex-1"
+                disabled={isLoading}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                {deleteConfirmStep === 0 ? 'Supprimer tous' : 'Confirmer suppression ?'}
+              </Button>
+            </>
+          )}
+          
+          <Button
+            onClick={onCancel}
+            variant="outline"
+            className="flex-1"
+            disabled={isLoading}
+          >
+            Annuler
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

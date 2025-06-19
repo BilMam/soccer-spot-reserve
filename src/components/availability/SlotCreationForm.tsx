@@ -45,9 +45,8 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     excludeDays: [] as number[]
   });
   const [timeExclusions, setTimeExclusions] = useState<TimeExclusion[]>([]);
-  const [creationStep, setCreationStep] = useState<'preview' | 'creating' | 'success'>('preview');
+  const [creationStep, setCreationStep] = useState<'preview' | 'creating' | 'success' | 'modify'>('preview');
   const [slotsCreatedCount, setSlotsCreatedCount] = useState(0);
-  const [replaceMode, setReplaceMode] = useState(false);
 
   const handleDayToggle = (dayValue: number, checked: boolean) => {
     setFormData(prev => ({
@@ -76,10 +75,9 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     return Math.max(0, (activeDays * slotsPerDay) - excludedSlots);
   };
 
-  const handleCreateSlots = async (replace: boolean = false) => {
+  const handleCreateSlots = async () => {
     try {
       setCreationStep('creating');
-      setReplaceMode(replace);
       
       const result = await createAvailabilityForPeriod.mutateAsync({
         startDate: startDate.toISOString().split('T')[0],
@@ -101,9 +99,20 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     }
   };
 
-  const handleReplace = () => handleCreateSlots(true);
-  const handleComplete = () => handleCreateSlots(false);
-  const handleCancel = () => setCreationStep('preview');
+  const handleModify = () => {
+    setCreationStep('modify');
+  };
+
+  const handleDelete = async () => {
+    // Logique de suppression à implémenter
+    console.log('Suppression des créneaux...');
+    refetch();
+    setCreationStep('preview');
+  };
+
+  const handleCancel = () => {
+    setCreationStep('preview');
+  };
 
   const handleCreateNew = () => {
     setCreationStep('preview');
@@ -144,15 +153,16 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     );
   }
 
-  // Si des créneaux existent déjà, montrer l'aperçu
+  // Si des créneaux existent déjà et qu'on n'est pas en mode modification
   if (existingSlots.length > 0 && creationStep === 'preview') {
     return (
       <ExistingSlotsPreview
         existingSlots={existingSlots}
         startDate={startDate}
         endDate={endDate}
-        onReplace={handleReplace}
-        onComplete={handleComplete}
+        onModify={handleModify}
+        onDelete={handleDelete}
+        onViewCalendar={handleViewCalendar}
         onCancel={handleCancel}
         isLoading={creationStep === 'creating'}
       />
@@ -164,7 +174,7 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Plus className="w-5 h-5" />
-          Créer les créneaux pour la période
+          {creationStep === 'modify' ? 'Modifier les créneaux' : 'Créer les créneaux pour la période'}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -215,12 +225,12 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
 
         <div className="flex gap-2 mt-6">
           <Button 
-            onClick={() => handleCreateSlots(false)}
+            onClick={handleCreateSlots}
             disabled={createAvailabilityForPeriod.isPending || creationStep === 'creating'}
             className="flex-1"
           >
             <Save className="w-4 h-4 mr-2" />
-            {createAvailabilityForPeriod.isPending ? 'Création...' : 'Créer les créneaux'}
+            {createAvailabilityForPeriod.isPending ? 'Création...' : creationStep === 'modify' ? 'Appliquer les modifications' : 'Créer les créneaux'}
           </Button>
         </div>
       </CardContent>
