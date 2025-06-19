@@ -13,10 +13,6 @@ const CalendarLegend: React.FC = () => {
         <span>Indisponible</span>
       </div>
       <div className="flex items-center gap-2">
-        <div className="w-4 h-4 bg-orange-200 border border-orange-300 rounded"></div>
-        <span>Maintenance</span>
-      </div>
-      <div className="flex items-center gap-2">
         <div className="w-4 h-4 bg-gray-200 border border-gray-300 rounded"></div>
         <span>Pas de créneaux</span>
       </div>

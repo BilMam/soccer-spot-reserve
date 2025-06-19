@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Clock, CheckCircle, XCircle } from 'lucide-react';
 
 interface AvailabilitySlot {
   id?: string;
@@ -31,8 +31,6 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
   const getSlotStatusIcon = (slot: AvailabilitySlot) => {
     if (slot.is_available) {
       return <CheckCircle className="w-4 h-4 text-green-600" />;
-    } else if (slot.is_maintenance) {
-      return <AlertTriangle className="w-4 h-4 text-orange-600" />;
     } else {
       return <XCircle className="w-4 h-4 text-red-600" />;
     }
@@ -41,8 +39,6 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
   const getSlotStatusBadge = (slot: AvailabilitySlot) => {
     if (slot.is_available) {
       return <Badge variant="secondary" className="bg-green-100 text-green-700">Disponible</Badge>;
-    } else if (slot.is_maintenance) {
-      return <Badge variant="secondary" className="bg-orange-100 text-orange-700">Maintenance</Badge>;
     } else {
       return <Badge variant="secondary" className="bg-red-100 text-red-700">Indisponible</Badge>;
     }
@@ -121,7 +117,7 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
       </div>
 
       {/* Statistiques rapides */}
-      <div className="grid grid-cols-3 gap-2 pt-4 border-t">
+      <div className="grid grid-cols-2 gap-2 pt-4 border-t">
         <div className="text-center">
           <div className="text-lg font-bold text-green-600">
             {slots.filter(s => s.is_available).length}
@@ -130,15 +126,9 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
         </div>
         <div className="text-center">
           <div className="text-lg font-bold text-red-600">
-            {slots.filter(s => !s.is_available && !s.is_maintenance).length}
+            {slots.filter(s => !s.is_available).length}
           </div>
           <div className="text-xs text-gray-600">Indisponibles</div>
-        </div>
-        <div className="text-center">
-          <div className="text-lg font-bold text-orange-600">
-            {slots.filter(s => s.is_maintenance).length}
-          </div>
-          <div className="text-xs text-gray-600">Maintenance</div>
         </div>
       </div>
     </div>

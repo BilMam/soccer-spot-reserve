@@ -28,15 +28,12 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, onClick }) => {
   const unavailable = slots.filter(s => !s.is_available).length;
   const hasSlots = total > 0;
   const hasUnavailable = unavailable > 0;
-  const hasMaintenance = slots.some(slot => slot.is_maintenance);
   const isFullyAvailable = hasSlots && unavailable === 0;
 
   // Déterminer la couleur de fond
   let bgColor = 'bg-gray-50 border-gray-200';
   if (isFullyAvailable) {
     bgColor = 'bg-green-50 border-green-200';
-  } else if (hasMaintenance) {
-    bgColor = 'bg-orange-50 border-orange-200';
   } else if (hasUnavailable) {
     bgColor = 'bg-red-50 border-red-200';
   }

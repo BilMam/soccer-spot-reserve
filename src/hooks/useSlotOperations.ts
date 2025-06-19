@@ -86,7 +86,7 @@ export const useSlotOperations = (fieldId: string) => {
         p_date: params.date,
         p_start_time: params.startTime,
         p_end_time: params.endTime,
-        p_reason: params.reason || 'Maintenance',
+        p_reason: params.reason || 'Indisponible',
         p_notes: params.notes
       });
 
