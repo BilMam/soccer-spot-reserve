@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,11 +11,14 @@ import { Calendar, Clock, Settings, AlertTriangle, CheckCircle } from 'lucide-re
 import { format, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAvailabilityManagement } from '@/hooks/useAvailabilityManagement';
+import DaySlotDetails from './DaySlotDetails';
+
 interface AvailabilityCalendarProps {
   fieldId: string;
   startDate: Date;
   endDate: Date;
 }
+
 interface AvailabilitySlot {
   id?: string;
   date: string;
@@ -25,15 +29,13 @@ interface AvailabilitySlot {
   is_maintenance?: boolean;
   notes?: string;
 }
+
 const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
   fieldId,
   startDate,
   endDate
 }) => {
-  const {
-    useFieldAvailabilityForPeriod,
-    setSlotsUnavailable
-  } = useAvailabilityManagement(fieldId);
+  const { useFieldAvailabilityForPeriod, setSlotsUnavailable, setSlotsAvailable } = useAvailabilityManagement(fieldId);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [unavailabilityForm, setUnavailabilityForm] = useState({
     startTime: '08:00',
@@ -41,12 +43,11 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
     reason: 'Maintenance',
     notes: ''
   });
+
   const startDateStr = format(startDate, 'yyyy-MM-dd');
   const endDateStr = format(endDate, 'yyyy-MM-dd');
-  const {
-    data: availabilitySlots = [],
-    isLoading
-  } = useFieldAvailabilityForPeriod(startDateStr, endDateStr);
+  
+  const { data: availabilitySlots = [], isLoading, refetch } = useFieldAvailabilityForPeriod(startDateStr, endDateStr);
 
   // Grouper les créneaux par date
   const slotsByDate = availabilitySlots.reduce((acc, slot) => {
@@ -64,26 +65,28 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
     const total = slots.length;
     const available = slots.filter(s => s.is_available).length;
     const unavailable = slots.filter(s => !s.is_available).length;
-    return {
-      total,
-      available,
-      unavailable
-    };
+    
+    return { total, available, unavailable };
   };
 
   // Générer les jours de la période
   const generateDays = () => {
     const days = [];
     const current = new Date(startDate);
+    
     while (current <= endDate) {
       days.push(new Date(current));
       current.setDate(current.getDate() + 1);
     }
+    
     return days;
   };
+
   const handleSetUnavailable = async () => {
     if (!selectedDate) return;
+
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    
     try {
       await setSlotsUnavailable.mutateAsync({
         date: dateStr,
@@ -92,7 +95,7 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
         reason: unavailabilityForm.reason,
         notes: unavailabilityForm.notes
       });
-      setSelectedDate(null);
+      
       setUnavailabilityForm({
         startTime: '08:00',
         endTime: '18:00',
@@ -103,24 +106,54 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
       console.error('Erreur lors de la définition d\'indisponibilité:', error);
     }
   };
+
+  const handleToggleSlotStatus = async (slot: AvailabilitySlot) => {
+    try {
+      if (slot.is_available) {
+        // Marquer comme indisponible
+        await setSlotsUnavailable.mutateAsync({
+          date: slot.date,
+          startTime: slot.start_time,
+          endTime: slot.end_time,
+          reason: 'Marqué manuellement',
+          notes: 'Modifié depuis le calendrier'
+        });
+      } else {
+        // Marquer comme disponible
+        await setSlotsAvailable.mutateAsync({
+          date: slot.date,
+          startTime: slot.start_time,
+          endTime: slot.end_time
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors du changement de statut:', error);
+    }
+  };
+
   if (isLoading) {
-    return <Card>
+    return (
+      <Card>
         <CardHeader>
           <CardTitle>Calendrier des disponibilités</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="animate-pulse space-y-4">
             <div className="grid grid-cols-7 gap-2">
-              {Array.from({
-              length: 21
-            }).map((_, i) => <div key={i} className="h-16 bg-gray-200 rounded"></div>)}
+              {Array.from({ length: 21 }).map((_, i) => (
+                <div key={i} className="h-16 bg-gray-200 rounded"></div>
+              ))}
             </div>
           </div>
         </CardContent>
-      </Card>;
+      </Card>
+    );
   }
+
   const days = generateDays();
-  return <div className="space-y-4">
+
+  return (
+    <div className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -141,6 +174,10 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
                 <span>Indisponible</span>
               </div>
               <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-orange-200 border border-orange-300 rounded"></div>
+                <span>Maintenance</span>
+              </div>
+              <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-gray-200 border border-gray-300 rounded"></div>
                 <span>Pas de créneaux</span>
               </div>
@@ -148,114 +185,143 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
 
             {/* Calendrier */}
             <div className="grid grid-cols-7 gap-2">
-              {['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'].map(day => <div key={day} className="p-2 text-center font-medium text-gray-500 border-b">
+              {['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'].map(day => (
+                <div key={day} className="p-2 text-center font-medium text-gray-500 border-b">
                   {day}
-                </div>)}
+                </div>
+              ))}
               
               {days.map((day, index) => {
-              const stats = getDateStats(day);
-              const hasSlots = stats.total > 0;
-              const isUnavailable = stats.unavailable > 0;
-              const isFullyAvailable = hasSlots && stats.unavailable === 0;
-              return <Dialog key={index}>
+                const stats = getDateStats(day);
+                const hasSlots = stats.total > 0;
+                const dateSlots = slotsByDate[format(day, 'yyyy-MM-dd')] || [];
+                const hasUnavailable = stats.unavailable > 0;
+                const hasMaintenance = dateSlots.some(slot => slot.is_maintenance);
+                const isFullyAvailable = hasSlots && stats.unavailable === 0;
+                
+                let bgColor = 'bg-gray-50 border-gray-200';
+                if (isFullyAvailable) {
+                  bgColor = 'bg-green-50 border-green-200';
+                } else if (hasMaintenance) {
+                  bgColor = 'bg-orange-50 border-orange-200';
+                } else if (hasUnavailable) {
+                  bgColor = 'bg-red-50 border-red-200';
+                }
+                
+                return (
+                  <Dialog key={index}>
                     <DialogTrigger asChild>
-                      <Button variant="ghost" className={`h-16 p-2 flex flex-col items-center justify-center border cursor-pointer hover:shadow-md transition-all ${isFullyAvailable ? 'bg-green-50 border-green-200' : isUnavailable ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`} onClick={() => setSelectedDate(day)}>
+                      <Button
+                        variant="ghost"
+                        className={`h-16 p-2 flex flex-col items-center justify-center border cursor-pointer hover:shadow-md transition-all ${bgColor}`}
+                        onClick={() => setSelectedDate(day)}
+                      >
                         <span className="font-medium">{day.getDate()}</span>
-                        {hasSlots && <div className="flex gap-1 mt-1">
-                            {stats.available > 0 && <Badge variant="secondary" className="text-xs px-1 py-0 bg-green-100 text-green-700">
+                        {hasSlots && (
+                          <div className="flex gap-1 mt-1">
+                            {stats.available > 0 && (
+                              <Badge variant="secondary" className="text-xs px-1 py-0 bg-green-100 text-green-700">
                                 {stats.available}
-                              </Badge>}
-                            {stats.unavailable > 0 && <Badge variant="secondary" className="text-xs px-1 py-0 bg-red-100 text-red-700">
+                              </Badge>
+                            )}
+                            {stats.unavailable > 0 && (
+                              <Badge variant="secondary" className="text-xs px-1 py-0 bg-red-100 text-red-700">
                                 {stats.unavailable}
-                              </Badge>}
-                          </div>}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
                       </Button>
                     </DialogTrigger>
                     
-                    <DialogContent>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>
-                          {format(day, 'EEEE dd MMMM yyyy', {
-                        locale: fr
-                      })}
+                          {format(day, 'EEEE dd MMMM yyyy', { locale: fr })}
                         </DialogTitle>
                       </DialogHeader>
                       
-                      <div className="space-y-4">
-                        {/* Statistiques du jour */}
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                          <div className="p-3 bg-gray-50 rounded">
-                            <div className="text-lg font-bold">{stats.total}</div>
-                            <div className="text-sm text-gray-600">Total</div>
-                          </div>
-                          <div className="p-3 bg-green-50 rounded">
-                            <div className="text-lg font-bold text-green-700">{stats.available}</div>
-                            <div className="text-sm text-gray-600">Disponibles</div>
-                          </div>
-                          <div className="p-3 bg-red-50 rounded">
-                            <div className="text-lg font-bold text-red-700">{stats.unavailable}</div>
-                            <div className="text-sm text-gray-600">Indisponibles</div>
-                          </div>
-                        </div>
+                      <div className="space-y-6">
+                        {/* Vue détaillée des créneaux */}
+                        <DaySlotDetails
+                          slots={dateSlots}
+                          date={day}
+                          onToggleSlotStatus={handleToggleSlotStatus}
+                          isUpdating={setSlotsUnavailable.isPending || setSlotsAvailable.isPending}
+                        />
 
-                        {/* Formulaire d'indisponibilité */}
-                        <div className="space-y-4 border-t pt-4">
-                          <h4 className="font-medium">Marquer comme indisponible</h4>
-                          
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-medium">Heure de début</label>
-                              <Input type="time" value={unavailabilityForm.startTime} onChange={e => setUnavailabilityForm(prev => ({
-                            ...prev,
-                            startTime: e.target.value
-                          }))} />
+                        {/* Formulaire d'indisponibilité de masse */}
+                        {dateSlots.length > 0 && (
+                          <div className="space-y-4 border-t pt-4">
+                            <h4 className="font-medium">Marquer une plage comme indisponible</h4>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-sm font-medium">Heure de début</label>
+                                <Input
+                                  type="time"
+                                  value={unavailabilityForm.startTime}
+                                  onChange={(e) => setUnavailabilityForm(prev => ({ ...prev, startTime: e.target.value }))}
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium">Heure de fin</label>
+                                <Input
+                                  type="time"
+                                  value={unavailabilityForm.endTime}
+                                  onChange={(e) => setUnavailabilityForm(prev => ({ ...prev, endTime: e.target.value }))}
+                                />
+                              </div>
                             </div>
+
                             <div>
-                              <label className="text-sm font-medium">Heure de fin</label>
-                              <Input type="time" value={unavailabilityForm.endTime} onChange={e => setUnavailabilityForm(prev => ({
-                            ...prev,
-                            endTime: e.target.value
-                          }))} />
+                              <label className="text-sm font-medium">Raison</label>
+                              <Select 
+                                value={unavailabilityForm.reason} 
+                                onValueChange={(value) => setUnavailabilityForm(prev => ({ ...prev, reason: value }))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                  <SelectItem value="Travaux">Travaux</SelectItem>
+                                  <SelectItem value="Événement privé">Événement privé</SelectItem>
+                                  <SelectItem value="Congés">Congés</SelectItem>
+                                  <SelectItem value="Autre">Autre</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
-                          </div>
 
-                          <div>
-                            <label className="text-sm font-medium">Raison</label>
-                            <Select value={unavailabilityForm.reason} onValueChange={value => setUnavailabilityForm(prev => ({
-                          ...prev,
-                          reason: value
-                        }))}>
-                              
-                              <SelectContent>
-                                <SelectItem value="Maintenance">Maintenance</SelectItem>
-                                <SelectItem value="Travaux">Travaux</SelectItem>
-                                <SelectItem value="Événement privé">Événement privé</SelectItem>
-                                <SelectItem value="Congés">Congés</SelectItem>
-                                <SelectItem value="Autre">Autre</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
+                            <div>
+                              <label className="text-sm font-medium">Notes (optionnel)</label>
+                              <Textarea
+                                value={unavailabilityForm.notes}
+                                onChange={(e) => setUnavailabilityForm(prev => ({ ...prev, notes: e.target.value }))}
+                                placeholder="Détails supplémentaires..."
+                              />
+                            </div>
 
-                          <div>
-                            <label className="text-sm font-medium">Notes (optionnel)</label>
-                            <Textarea value={unavailabilityForm.notes} onChange={e => setUnavailabilityForm(prev => ({
-                          ...prev,
-                          notes: e.target.value
-                        }))} placeholder="Détails supplémentaires..." />
+                            <Button 
+                              onClick={handleSetUnavailable}
+                              disabled={setSlotsUnavailable.isPending}
+                              className="w-full"
+                            >
+                              {setSlotsUnavailable.isPending ? 'Application...' : 'Marquer la plage comme indisponible'}
+                            </Button>
                           </div>
-
-                          <Button onClick={handleSetUnavailable} disabled={setSlotsUnavailable.isPending} className="w-full">
-                            {setSlotsUnavailable.isPending ? 'Application...' : 'Marquer comme indisponible'}
-                          </Button>
-                        </div>
+                        )}
                       </div>
                     </DialogContent>
-                  </Dialog>;
-            })}
+                  </Dialog>
+                );
+              })}
             </div>
           </div>
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 };
+
 export default AvailabilityCalendar;
