@@ -54,19 +54,18 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
 
   console.log('📅 Calendrier - Créneaux par date:', Object.keys(slotsByDate));
 
-  // Générer les jours de la période avec vérification des dates
+  // Générer les jours de la période
   const generateDays = () => {
     const days = [];
-    const current = new Date(startDate);
+    const current = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
     
-    console.log('📅 Génération des jours de', format(startDate, 'yyyy-MM-dd'), 'à', format(endDate, 'yyyy-MM-dd'));
+    console.log('📅 Génération des jours de', format(current, 'yyyy-MM-dd'), 'à', format(end, 'yyyy-MM-dd'));
     
-    while (current <= endDate) {
-      // Créer une nouvelle instance de Date pour chaque jour
+    while (current <= end) {
       const dayDate = new Date(current.getFullYear(), current.getMonth(), current.getDate());
       days.push(dayDate);
       
-      // Log détaillé pour débogage
       const dateStr = format(dayDate, 'yyyy-MM-dd');
       const dayOfWeek = dayDate.getDay();
       const dayName = format(dayDate, 'EEEE', { locale: fr });
@@ -74,14 +73,6 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
       const slotsCount = hasSlots ? slotsByDate[dateStr].length : 0;
       
       console.log(`📅 Jour généré: ${dateStr} (${dayName}, jour ${dayOfWeek}) - Créneaux: ${slotsCount}`);
-      
-      // Vérification supplémentaire pour s'assurer de la cohérence
-      if (dayName === 'samedi' && dayOfWeek !== 6) {
-        console.error(`❌ ERREUR: ${dateStr} est un ${dayName} mais dayOfWeek=${dayOfWeek}`);
-      }
-      if (dayName === 'mardi' && dayOfWeek !== 2) {
-        console.error(`❌ ERREUR: ${dateStr} est un ${dayName} mais dayOfWeek=${dayOfWeek}`);
-      }
       
       current.setDate(current.getDate() + 1);
     }
@@ -159,14 +150,7 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
                 const dayOfWeek = day.getDay();
                 const dayName = format(day, 'EEEE', { locale: fr });
                 
-                // Log pour vérifier la correspondance jour/date
                 console.log(`📅 Rendu jour ${index}: ${dateStr} (${dayName}, jour ${dayOfWeek}) - ${dateSlots.length} créneaux`);
-                
-                // Vérification finale de cohérence
-                const expectedDayName = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'][dayOfWeek];
-                if (dayName !== expectedDayName) {
-                  console.error(`❌ INCOHÉRENCE: ${dateStr} - Nom calculé: ${dayName}, Nom attendu: ${expectedDayName}, dayOfWeek: ${dayOfWeek}`);
-                }
                 
                 return (
                   <Dialog key={`${dateStr}-${index}`}>

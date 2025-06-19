@@ -47,12 +47,12 @@ const DaySelectionForm: React.FC<DaySelectionFormProps> = ({
               />
               <label
                 htmlFor={`day-${day.value}`}
-                className={`text-sm ${isExcluded ? 'text-gray-400 line-through' : 'text-gray-700'}`}
+                className={`text-sm font-medium ${isExcluded ? 'text-gray-400 line-through' : 'text-gray-700'}`}
               >
                 {day.label} ({day.shortLabel}) - Jour {day.value}
               </label>
               {isExcluded && (
-                <span className="text-xs text-red-500 ml-2">
+                <span className="text-xs text-red-500 ml-2 font-medium">
                   [Exclu - aucun créneau ne sera créé]
                 </span>
               )}
@@ -63,7 +63,7 @@ const DaySelectionForm: React.FC<DaySelectionFormProps> = ({
       
       {excludeDays.length > 0 && (
         <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-          <p className="text-sm text-yellow-800">
+          <p className="text-sm text-yellow-800 font-medium">
             <strong>Jours exclus :</strong> {excludeDays.map(day => daysOfWeek[day].label).join(', ')}
           </p>
           <p className="text-xs text-yellow-600 mt-1">
