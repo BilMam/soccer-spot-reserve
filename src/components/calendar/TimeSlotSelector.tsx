@@ -77,9 +77,9 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
   // Réinitialiser l'heure de fin quand l'heure de début change
   useEffect(() => {
     if (selectedStartTime) {
-      setSelectedEndTime('');
+      onEndTimeChange('');
     }
-  }, [selectedStartTime, availableSlots]);
+  }, [selectedStartTime, availableSlots, onEndTimeChange]);
 
   // Initialize utility classes AVEC les réservations complètes
   const slotStatusUtils = new SlotStatusUtils(availableSlots, bookedSlots, bookings);
