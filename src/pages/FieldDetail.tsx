@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -82,6 +81,13 @@ const FieldDetail = () => {
   };
 
   const handleTimeSlotSelect = (date: Date, startTime: string, endTime: string, price: number) => {
+    console.log('🎯 Sélection créneau dans FieldDetail:', {
+      date: date.toISOString(),
+      startTime,
+      endTime,
+      price
+    });
+    
     setSelectedDate(date);
     setSelectedStartTime(startTime);
     setSelectedEndTime(endTime);
@@ -234,7 +240,9 @@ const FieldDetail = () => {
                   fieldName={field.name}
                   pricePerHour={field.price_per_hour}
                   selectedDate={selectedDate!}
-                  selectedTime={selectedStartTime}
+                  selectedStartTime={selectedStartTime}
+                  selectedEndTime={selectedEndTime}
+                  totalPrice={totalPrice}
                   onSuccess={handleBookingSuccess}
                   onCancel={handleBookingCancel}
                 />
