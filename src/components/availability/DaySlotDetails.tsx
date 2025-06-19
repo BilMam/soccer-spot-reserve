@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -168,12 +167,6 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
         <div className="text-sm text-gray-500">
           {slots.length} créneau{slots.length > 1 ? 'x' : ''}
         </div>
-      </div>
-
-      {/* Instructions pour l'utilisateur */}
-      <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
-        📋 Cliquez sur un créneau pour le sélectionner, puis utilisez le bouton pour changer son statut.
-        {loadingBookedSlots && <span className="ml-2">🔄 Vérification des réservations...</span>}
       </div>
 
       <div className="max-h-96 overflow-y-auto space-y-2">
