@@ -23,6 +23,7 @@ interface TimeSlotSelectorProps {
   onStartTimeChange: (time: string) => void;
   onEndTimeChange: (time: string) => void;
   availableSlots: AvailabilitySlot[];
+  fieldId: string;
 }
 
 const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
@@ -30,23 +31,30 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
   selectedEndTime,
   onStartTimeChange,
   onEndTimeChange,
-  availableSlots
+  availableSlots,
+  fieldId
 }) => {
   const [bookedSlots, setBookedSlots] = useState<Set<string>>(new Set());
   const timeOptions = generateTimeOptions();
 
+  console.log('🔍 TimeSlotSelector - Field ID reçu:', fieldId);
+  console.log('🔍 TimeSlotSelector - Créneaux disponibles:', availableSlots.length);
+
   // Récupérer les créneaux réservés
   useEffect(() => {
     const fetchBookedSlots = async () => {
-      if (availableSlots.length === 0) return;
+      if (availableSlots.length === 0 || !fieldId) {
+        console.log('🔍 Pas de créneaux ou pas de fieldId, skip fetch');
+        return;
+      }
       
-      const fieldId = availableSlots[0]?.id ? 
-        availableSlots.find(slot => slot.id)?.id : null;
-      
-      if (!fieldId) return;
-
       const dateStr = availableSlots[0]?.date;
-      if (!dateStr) return;
+      if (!dateStr) {
+        console.log('🔍 Pas de date trouvée dans les créneaux');
+        return;
+      }
+
+      console.log('🔍 Vérification réservations pour:', { fieldId, dateStr });
 
       try {
         const { data: bookings, error } = await supabase
@@ -65,6 +73,7 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
           bookings?.map(booking => `${booking.start_time}-${booking.end_time}`) || []
         );
         
+        console.log('🔍 Créneaux réservés récupérés:', Array.from(bookedSlotKeys));
         setBookedSlots(bookedSlotKeys);
       } catch (error) {
         console.error('Erreur lors de la vérification des réservations:', error);
@@ -72,7 +81,7 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
     };
 
     fetchBookedSlots();
-  }, [availableSlots]);
+  }, [availableSlots, fieldId]);
 
   // Vérifier si un créneau spécifique est réservé
   const isSlotBooked = (startTime: string, endTime: string): boolean => {

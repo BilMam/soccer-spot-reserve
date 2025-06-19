@@ -46,12 +46,19 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   const [unavailableSlots, setUnavailableSlots] = useState<string[]>([]);
   const { toast } = useToast();
 
+  // Debug: Afficher les informations reçues
+  console.log('🔍 SlotBookingInterface - Date sélectionnée:', format(selectedDate, 'yyyy-MM-dd'));
+  console.log('🔍 SlotBookingInterface - Field ID:', fieldId);
+  console.log('🔍 SlotBookingInterface - Créneaux reçus:', availableSlots.length);
+  console.log('🔍 SlotBookingInterface - Détails créneaux:', availableSlots);
+
   // Récupérer les créneaux réservés et indisponibles
   useEffect(() => {
     const fetchSlotStatus = async () => {
       if (!selectedDate) return;
       
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      console.log('🔍 Vérification statut créneaux pour:', dateStr);
       
       try {
         // Récupérer les réservations actives
@@ -66,6 +73,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
           console.error('Erreur lors de la récupération des réservations:', bookingError);
         } else {
           const booked = bookings?.map(booking => `${booking.start_time.slice(0, 5)}-${booking.end_time.slice(0, 5)}`) || [];
+          console.log('🔍 Créneaux réservés trouvés:', booked);
           setBookedSlots(booked);
         }
 
@@ -80,6 +88,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
           })
           .map(slot => `${slot.start_time.slice(0, 5)}-${slot.end_time.slice(0, 5)}`);
         
+        console.log('🔍 Créneaux indisponibles trouvés:', unavailable);
         setUnavailableSlots(unavailable);
       } catch (error) {
         console.error('Erreur lors de la vérification des créneaux:', error);
@@ -156,6 +165,9 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   const rangeIsAvailable = isRangeAvailable(selectedStartTime, selectedEndTime);
   const totalPrice = calculateTotalPrice(selectedStartTime, selectedEndTime);
 
+  // Vérifier si aucun créneau n'a été créé pour ce jour
+  const hasNoSlots = availableSlots.length === 0;
+
   return (
     <Card>
       <CardHeader>
@@ -168,6 +180,18 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
           <div className="space-y-4">
             <div className="h-10 bg-gray-200 rounded animate-pulse" />
             <div className="h-10 bg-gray-200 rounded animate-pulse" />
+          </div>
+        ) : hasNoSlots ? (
+          <div className="text-center py-8 text-gray-500">
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <h3 className="font-medium text-yellow-800 mb-2">
+                Aucun créneau disponible
+              </h3>
+              <p className="text-sm text-yellow-700">
+                Aucun créneau n'a été configuré pour cette date. 
+                Veuillez sélectionner une autre date ou contacter le propriétaire.
+              </p>
+            </div>
           </div>
         ) : (
           <>
@@ -182,6 +206,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               onStartTimeChange={setSelectedStartTime}
               onEndTimeChange={setSelectedEndTime}
               availableSlots={availableSlots}
+              fieldId={fieldId}
             />
 
             <BookingSummary

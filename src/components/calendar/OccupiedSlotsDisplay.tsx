@@ -1,18 +1,34 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Clock } from 'lucide-react';
 
 interface OccupiedSlotsDisplayProps {
   occupiedSlots: string[];
   unavailableSlots?: string[];
+  hasSlots?: boolean;
 }
 
 const OccupiedSlotsDisplay: React.FC<OccupiedSlotsDisplayProps> = ({ 
   occupiedSlots, 
-  unavailableSlots = [] 
+  unavailableSlots = [],
+  hasSlots = true
 }) => {
   const hasOccupiedOrUnavailable = occupiedSlots.length > 0 || unavailableSlots.length > 0;
+
+  // Si aucun créneau n'a été créé
+  if (!hasSlots) {
+    return (
+      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <div className="flex items-center space-x-2">
+          <Clock className="w-4 h-4 text-yellow-600" />
+          <span className="text-sm text-yellow-700 font-medium">
+            Aucun créneau configuré pour cette date
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   if (!hasOccupiedOrUnavailable) {
     return (
