@@ -8,6 +8,7 @@ import OwnerStats from '@/components/OwnerStats';
 import OwnerFields from '@/components/OwnerFields';
 import OwnerBookings from '@/components/OwnerBookings';
 import CinetPayOnboarding from '@/components/CinetPayOnboarding';
+import AvailabilityManagement from '@/components/availability/AvailabilityManagement';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useOwnerStats } from '@/hooks/useOwnerStats';
 import { useOwnerFields } from '@/hooks/useOwnerFields';
@@ -58,6 +59,7 @@ const OwnerDashboard = () => {
           <TabsList>
             <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
             <TabsTrigger value="fields">Mes terrains</TabsTrigger>
+            <TabsTrigger value="availability">Gestion créneaux</TabsTrigger>
             <TabsTrigger value="bookings">Réservations</TabsTrigger>
             <TabsTrigger value="payments">Paiements</TabsTrigger>
           </TabsList>
@@ -70,6 +72,31 @@ const OwnerDashboard = () => {
 
           <TabsContent value="fields">
             <OwnerFields fields={fields} isLoading={fieldsLoading} />
+          </TabsContent>
+
+          <TabsContent value="availability">
+            <div className="space-y-6">
+              {fields && fields.length > 0 ? (
+                <div className="space-y-8">
+                  {fields.map((field) => (
+                    <AvailabilityManagement
+                      key={field.id}
+                      fieldId={field.id}
+                      fieldName={field.name}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <h3 className="text-lg font-medium text-gray-600 mb-2">
+                    Aucun terrain disponible
+                  </h3>
+                  <p className="text-gray-500">
+                    Ajoutez d'abord un terrain pour gérer ses créneaux de disponibilité.
+                  </p>
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="bookings">

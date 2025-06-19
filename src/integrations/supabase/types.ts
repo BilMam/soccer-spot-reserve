@@ -9,6 +9,59 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      availability_period_templates: {
+        Row: {
+          apply_pattern: string | null
+          created_at: string | null
+          created_by: string
+          default_end_time: string
+          default_start_time: string
+          end_date: string
+          excluded_days: number[] | null
+          field_id: string
+          id: string
+          start_date: string
+          template_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          apply_pattern?: string | null
+          created_at?: string | null
+          created_by: string
+          default_end_time: string
+          default_start_time: string
+          end_date: string
+          excluded_days?: number[] | null
+          field_id: string
+          id?: string
+          start_date: string
+          template_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          apply_pattern?: string | null
+          created_at?: string | null
+          created_by?: string
+          default_end_time?: string
+          default_start_time?: string
+          end_date?: string
+          excluded_days?: number[] | null
+          field_id?: string
+          id?: string
+          start_date?: string
+          template_name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_period_templates_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_notifications: {
         Row: {
           booking_id: string
@@ -288,35 +341,50 @@ export type Database = {
       field_availability: {
         Row: {
           created_at: string | null
+          created_by: string | null
           date: string
           end_time: string
           field_id: string
           id: string
           is_available: boolean | null
+          is_maintenance: boolean | null
+          notes: string | null
+          period_template_id: string | null
           price_override: number | null
           start_time: string
+          unavailability_reason: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           date: string
           end_time: string
           field_id: string
           id?: string
           is_available?: boolean | null
+          is_maintenance?: boolean | null
+          notes?: string | null
+          period_template_id?: string | null
           price_override?: number | null
           start_time: string
+          unavailability_reason?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           date?: string
           end_time?: string
           field_id?: string
           id?: string
           is_available?: boolean | null
+          is_maintenance?: boolean | null
+          notes?: string | null
+          period_template_id?: string | null
           price_override?: number | null
           start_time?: string
+          unavailability_reason?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -902,6 +970,19 @@ export type Database = {
         Args: { p_booking_id: string; p_owner_id: string }
         Returns: boolean
       }
+      create_availability_for_period: {
+        Args: {
+          p_field_id: string
+          p_start_date: string
+          p_end_date: string
+          p_start_time: string
+          p_end_time: string
+          p_slot_duration?: number
+          p_exclude_days?: number[]
+          p_template_id?: string
+        }
+        Returns: number
+      }
       generate_unique_confirmation_code: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1039,6 +1120,17 @@ export type Database = {
           p_scheduled_at: string
         }
         Returns: string
+      }
+      set_slots_unavailable: {
+        Args: {
+          p_field_id: string
+          p_date: string
+          p_start_time: string
+          p_end_time: string
+          p_reason?: string
+          p_notes?: string
+        }
+        Returns: number
       }
       update_owner_stats_for_field: {
         Args: { field_uuid: string }
