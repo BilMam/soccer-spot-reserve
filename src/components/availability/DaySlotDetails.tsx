@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, CheckCircle, XCircle } from 'lucide-react';
@@ -28,6 +28,8 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
   onToggleSlotStatus,
   isUpdating = false
 }) => {
+  const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
+
   const getSlotStatusIcon = (slot: AvailabilitySlot) => {
     if (slot.is_available) {
       return <CheckCircle className="w-4 h-4 text-green-600" />;
@@ -41,6 +43,17 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
       return <Badge variant="secondary" className="bg-green-100 text-green-700">Disponible</Badge>;
     } else {
       return <Badge variant="secondary" className="bg-red-100 text-red-700">Indisponible</Badge>;
+    }
+  };
+
+  const handleSlotClick = (slot: AvailabilitySlot) => {
+    setSelectedSlot(selectedSlot?.id === slot.id ? null : slot);
+  };
+
+  const handleToggleStatus = () => {
+    if (selectedSlot) {
+      onToggleSlotStatus(selectedSlot);
+      setSelectedSlot(null); // Désélectionner après l'action
     }
   };
 
@@ -75,46 +88,91 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
         </div>
       </div>
 
+      {/* Instructions pour l'utilisateur */}
+      <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
+        📋 Cliquez sur un créneau pour le sélectionner, puis utilisez le bouton pour changer son statut.
+      </div>
+
       <div className="max-h-96 overflow-y-auto space-y-2">
-        {sortedSlots.map((slot, index) => (
-          <div 
-            key={slot.id || index}
-            className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              {getSlotStatusIcon(slot)}
-              <div>
-                <div className="font-medium">
-                  {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
+        {sortedSlots.map((slot, index) => {
+          const isSelected = selectedSlot?.id === slot.id;
+          
+          return (
+            <div 
+              key={slot.id || index}
+              className={`
+                flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all
+                ${isSelected 
+                  ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-200' 
+                  : 'hover:bg-gray-50 border-gray-200'
+                }
+              `}
+              onClick={() => handleSlotClick(slot)}
+            >
+              <div className="flex items-center space-x-3">
+                {getSlotStatusIcon(slot)}
+                <div>
+                  <div className="font-medium">
+                    {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
+                  </div>
+                  {slot.unavailability_reason && (
+                    <div className="text-sm text-gray-600">
+                      {slot.unavailability_reason}
+                    </div>
+                  )}
+                  {slot.notes && (
+                    <div className="text-xs text-gray-500">
+                      {slot.notes}
+                    </div>
+                  )}
                 </div>
-                {slot.unavailability_reason && (
-                  <div className="text-sm text-gray-600">
-                    {slot.unavailability_reason}
-                  </div>
-                )}
-                {slot.notes && (
-                  <div className="text-xs text-gray-500">
-                    {slot.notes}
-                  </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                {getSlotStatusBadge(slot)}
+                {isSelected && (
+                  <span className="text-xs text-blue-600 font-medium">
+                    Sélectionné
+                  </span>
                 )}
               </div>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              {getSlotStatusBadge(slot)}
+          );
+        })}
+      </div>
+
+      {/* Bouton d'action pour le créneau sélectionné */}
+      {selectedSlot && (
+        <div className="pt-4 border-t bg-gray-50 p-4 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              <div className="font-medium">
+                Créneau sélectionné : {selectedSlot.start_time.slice(0, 5)} - {selectedSlot.end_time.slice(0, 5)}
+              </div>
+              <div className="text-gray-600">
+                Statut actuel : {selectedSlot.is_available ? 'Disponible' : 'Indisponible'}
+              </div>
+            </div>
+            <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onToggleSlotStatus(slot)}
-                disabled={isUpdating}
-                className="text-xs"
+                onClick={() => setSelectedSlot(null)}
               >
-                {slot.is_available ? 'Marquer indispo' : 'Marquer dispo'}
+                Annuler
+              </Button>
+              <Button
+                variant={selectedSlot.is_available ? "destructive" : "default"}
+                size="sm"
+                onClick={handleToggleStatus}
+                disabled={isUpdating}
+              >
+                {selectedSlot.is_available ? 'Marquer indisponible' : 'Marquer disponible'}
               </Button>
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
       {/* Statistiques rapides */}
       <div className="grid grid-cols-2 gap-2 pt-4 border-t">
