@@ -230,7 +230,7 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
             className="flex-1"
           >
             <Save className="w-4 h-4 mr-2" />
-            {createAvailabilityForPeriod.isPending ? 'Création...' : creationStep === 'modify' ? 'Appliquer les modifications' : 'Créer les créneaux'}
+            {createAvailabilityForPeriod.isPending || creationStep === 'creating' ? 'Création...' : creationStep === 'modify' ? 'Appliquer les modifications' : 'Créer les créneaux'}
           </Button>
         </div>
       </CardContent>
