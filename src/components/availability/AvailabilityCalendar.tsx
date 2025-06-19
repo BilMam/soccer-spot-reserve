@@ -1,15 +1,13 @@
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Calendar } from 'lucide-react';
+import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { useAvailabilityManagement } from '@/hooks/useAvailabilityManagement';
-import { supabase } from '@/integrations/supabase/client';
-import DaySlotDetails from './DaySlotDetails';
+import { useBookingData } from '@/hooks/useBookingData';
+import { generateCalendarGrid } from '@/utils/calendarGridUtils';
+import CalendarHeader from './CalendarHeader';
 import CalendarLegend from './CalendarLegend';
-import CalendarDay from './CalendarDay';
+import CalendarGrid from './CalendarGrid';
 
 interface AvailabilityCalendarProps {
   fieldId: string;
@@ -28,67 +26,21 @@ interface AvailabilitySlot {
   notes?: string;
 }
 
-interface CalendarCell {
-  date: Date | null;
-  dateStr: string;
-  slots: AvailabilitySlot[];
-  isEmpty: boolean;
-}
-
 const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
   fieldId,
   startDate,
   endDate
 }) => {
   const { useFieldAvailabilityForPeriod, setSlotsUnavailable, setSlotsAvailable } = useAvailabilityManagement(fieldId);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [bookedSlotsByDate, setBookedSlotsByDate] = useState<Record<string, Set<string>>>({});
 
   const startDateStr = format(startDate, 'yyyy-MM-dd');
   const endDateStr = format(endDate, 'yyyy-MM-dd');
   
   const { data: availabilitySlots = [], isLoading } = useFieldAvailabilityForPeriod(startDateStr, endDateStr);
+  const { bookedSlotsByDate } = useBookingData(fieldId, startDateStr, endDateStr);
 
   console.log('📅 Calendrier - Période:', { startDateStr, endDateStr });
   console.log('📅 Calendrier - Créneaux récupérés:', availabilitySlots.length);
-
-  // Récupérer les réservations pour la période
-  useEffect(() => {
-    const fetchBookedSlots = async () => {
-      try {
-        const { data: bookings, error } = await supabase
-          .from('bookings')
-          .select('booking_date, start_time, end_time')
-          .eq('field_id', fieldId)
-          .gte('booking_date', startDateStr)
-          .lte('booking_date', endDateStr)
-          .in('status', ['pending', 'confirmed', 'owner_confirmed']);
-
-        if (error) {
-          console.error('Erreur lors de la récupération des réservations:', error);
-          return;
-        }
-
-        const bookedByDate: Record<string, Set<string>> = {};
-        bookings?.forEach(booking => {
-          const dateStr = booking.booking_date;
-          if (!bookedByDate[dateStr]) {
-            bookedByDate[dateStr] = new Set();
-          }
-          bookedByDate[dateStr].add(`${booking.start_time}-${booking.end_time}`);
-        });
-
-        setBookedSlotsByDate(bookedByDate);
-        console.log('📅 Réservations récupérées:', bookedByDate);
-      } catch (error) {
-        console.error('Erreur lors de la récupération des réservations:', error);
-      }
-    };
-
-    if (fieldId && startDateStr && endDateStr) {
-      fetchBookedSlots();
-    }
-  }, [fieldId, startDateStr, endDateStr]);
 
   // Grouper les créneaux par date
   const slotsByDate = availabilitySlots.reduce((acc, slot) => {
@@ -98,73 +50,6 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
     acc[slot.date].push(slot);
     return acc;
   }, {} as Record<string, AvailabilitySlot[]>);
-
-  // Générer la grille du calendrier avec alignement correct
-  const generateCalendarGrid = (): CalendarCell[] => {
-    const grid: CalendarCell[] = [];
-    
-    // Générer tous les jours de la période
-    const periodDays: Date[] = [];
-    const current = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-    const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
-    
-    while (current <= end) {
-      periodDays.push(new Date(current));
-      current.setDate(current.getDate() + 1);
-    }
-    
-    console.log('📅 Jours de la période:', periodDays.length);
-    
-    if (periodDays.length === 0) return grid;
-    
-    // Calculer les cellules vides au début pour aligner le premier jour
-    const firstDay = periodDays[0];
-    const firstDayOfWeek = firstDay.getDay(); // 0 = dimanche, 1 = lundi, etc.
-    
-    console.log(`📅 Premier jour: ${format(firstDay, 'yyyy-MM-dd')} (jour ${firstDayOfWeek})`);
-    
-    // Ajouter des cellules vides au début
-    for (let i = 0; i < firstDayOfWeek; i++) {
-      grid.push({
-        date: null,
-        dateStr: '',
-        slots: [],
-        isEmpty: true
-      });
-    }
-    
-    // Ajouter tous les jours de la période
-    periodDays.forEach(day => {
-      const dateStr = format(day, 'yyyy-MM-dd');
-      const daySlots = slotsByDate[dateStr] || [];
-      
-      grid.push({
-        date: day,
-        dateStr,
-        slots: daySlots,
-        isEmpty: false
-      });
-      
-      console.log(`📅 Ajouté: ${dateStr} (${daySlots.length} créneaux)`);
-    });
-    
-    // Ajouter des cellules vides à la fin pour compléter la dernière semaine
-    const remainingCells = 7 - (grid.length % 7);
-    if (remainingCells < 7) {
-      for (let i = 0; i < remainingCells; i++) {
-        grid.push({
-          date: null,
-          dateStr: '',
-          slots: [],
-          isEmpty: true
-        });
-      }
-    }
-    
-    console.log(`📅 Grille générée: ${grid.length} cellules (${periodDays.length} jours + ${grid.length - periodDays.length} cellules vides)`);
-    
-    return grid;
-  };
 
   const handleToggleSlotStatus = async (slot: AvailabilitySlot) => {
     try {
@@ -191,9 +76,7 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>Calendrier des disponibilités</CardTitle>
-        </CardHeader>
+        <CalendarHeader />
         <CardContent>
           <div className="animate-pulse space-y-4">
             <div className="grid grid-cols-7 gap-2">
@@ -207,78 +90,22 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
     );
   }
 
-  const calendarGrid = generateCalendarGrid();
+  const calendarGrid = generateCalendarGrid(startDate, endDate, slotsByDate);
 
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
-            Calendrier des disponibilités
-          </CardTitle>
-        </CardHeader>
+        <CalendarHeader />
         <CardContent>
           <div className="space-y-4">
             <CalendarLegend />
-
-            {/* Calendrier */}
-            <div className="grid grid-cols-7 gap-2">
-              {/* En-têtes des jours */}
-              {['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'].map(day => (
-                <div key={day} className="p-2 text-center font-medium text-gray-500 border-b">
-                  {day}
-                </div>
-              ))}
-              
-              {/* Grille du calendrier */}
-              {calendarGrid.map((cell, index) => {
-                if (cell.isEmpty || !cell.date) {
-                  // Cellule vide pour l'alignement
-                  return (
-                    <div key={`empty-${index}`} className="h-16 bg-gray-50 border border-gray-100 rounded opacity-50">
-                    </div>
-                  );
-                }
-                
-                const dayOfWeek = cell.date.getDay();
-                const dayName = format(cell.date, 'EEEE', { locale: fr });
-                const bookedSlots = bookedSlotsByDate[cell.dateStr] || new Set();
-                
-                console.log(`📅 Rendu cellule ${index}: ${cell.dateStr} (${dayName}, jour ${dayOfWeek}) - ${cell.slots.length} créneaux, ${bookedSlots.size} réservés`);
-                
-                return (
-                  <Dialog key={`${cell.dateStr}-${index}`}>
-                    <DialogTrigger asChild>
-                      <div onClick={() => setSelectedDate(cell.date)}>
-                        <CalendarDay 
-                          day={cell.date} 
-                          slots={cell.slots}
-                          bookedSlots={bookedSlots}
-                          onClick={() => {}}
-                        />
-                      </div>
-                    </DialogTrigger>
-                    
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>
-                          {format(cell.date, 'EEEE dd MMMM yyyy', { locale: fr })}
-                        </DialogTitle>
-                      </DialogHeader>
-                      
-                      <DaySlotDetails
-                        slots={cell.slots}
-                        date={cell.date}  
-                        onToggleSlotStatus={handleToggleSlotStatus}
-                        isUpdating={setSlotsUnavailable.isPending || setSlotsAvailable.isPending}
-                        fieldId={fieldId}
-                      />
-                    </DialogContent>
-                  </Dialog>
-                );
-              })}
-            </div>
+            <CalendarGrid
+              calendarGrid={calendarGrid}
+              bookedSlotsByDate={bookedSlotsByDate}
+              onToggleSlotStatus={handleToggleSlotStatus}
+              isUpdating={setSlotsUnavailable.isPending || setSlotsAvailable.isPending}
+              fieldId={fieldId}
+            />
           </div>
         </CardContent>
       </Card>
