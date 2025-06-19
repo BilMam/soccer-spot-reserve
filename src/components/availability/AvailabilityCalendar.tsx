@@ -54,7 +54,7 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
 
   console.log('📅 Calendrier - Créneaux par date:', Object.keys(slotsByDate));
 
-  // Générer les jours de la période
+  // Générer les jours de la période avec vérification des dates
   const generateDays = () => {
     const days = [];
     const current = new Date(startDate);
@@ -62,16 +62,26 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
     console.log('📅 Génération des jours de', format(startDate, 'yyyy-MM-dd'), 'à', format(endDate, 'yyyy-MM-dd'));
     
     while (current <= endDate) {
-      const dayDate = new Date(current);
+      // Créer une nouvelle instance de Date pour chaque jour
+      const dayDate = new Date(current.getFullYear(), current.getMonth(), current.getDate());
       days.push(dayDate);
       
-      // Log pour débogage
+      // Log détaillé pour débogage
       const dateStr = format(dayDate, 'yyyy-MM-dd');
       const dayOfWeek = dayDate.getDay();
       const dayName = format(dayDate, 'EEEE', { locale: fr });
       const hasSlots = !!slotsByDate[dateStr];
+      const slotsCount = hasSlots ? slotsByDate[dateStr].length : 0;
       
-      console.log(`📅 Jour généré: ${dateStr} (${dayName}, jour ${dayOfWeek}) - Créneaux: ${hasSlots ? slotsByDate[dateStr].length : 0}`);
+      console.log(`📅 Jour généré: ${dateStr} (${dayName}, jour ${dayOfWeek}) - Créneaux: ${slotsCount}`);
+      
+      // Vérification supplémentaire pour s'assurer de la cohérence
+      if (dayName === 'samedi' && dayOfWeek !== 6) {
+        console.error(`❌ ERREUR: ${dateStr} est un ${dayName} mais dayOfWeek=${dayOfWeek}`);
+      }
+      if (dayName === 'mardi' && dayOfWeek !== 2) {
+        console.error(`❌ ERREUR: ${dateStr} est un ${dayName} mais dayOfWeek=${dayOfWeek}`);
+      }
       
       current.setDate(current.getDate() + 1);
     }
@@ -144,14 +154,22 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
               ))}
               
               {days.map((day, index) => {
-                const dateSlots = slotsByDate[format(day, 'yyyy-MM-dd')] || [];
+                const dateStr = format(day, 'yyyy-MM-dd');
+                const dateSlots = slotsByDate[dateStr] || [];
                 const dayOfWeek = day.getDay();
                 const dayName = format(day, 'EEEE', { locale: fr });
                 
-                console.log(`📅 Rendu jour ${index}: ${format(day, 'yyyy-MM-dd')} (${dayName}, jour ${dayOfWeek}) - ${dateSlots.length} créneaux`);
+                // Log pour vérifier la correspondance jour/date
+                console.log(`📅 Rendu jour ${index}: ${dateStr} (${dayName}, jour ${dayOfWeek}) - ${dateSlots.length} créneaux`);
+                
+                // Vérification finale de cohérence
+                const expectedDayName = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'][dayOfWeek];
+                if (dayName !== expectedDayName) {
+                  console.error(`❌ INCOHÉRENCE: ${dateStr} - Nom calculé: ${dayName}, Nom attendu: ${expectedDayName}, dayOfWeek: ${dayOfWeek}`);
+                }
                 
                 return (
-                  <Dialog key={index}>
+                  <Dialog key={`${dateStr}-${index}`}>
                     <DialogTrigger asChild>
                       <div onClick={() => setSelectedDate(day)}>
                         <CalendarDay 

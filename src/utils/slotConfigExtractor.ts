@@ -70,10 +70,17 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
   const daysWithSlots = new Set<number>();
   const dayAnalysis = new Map<number, { count: number, dates: string[] }>();
 
-  // Analyser chaque date de slot existant
+  // Analyser chaque date de slot existant avec vérification de cohérence
   slots.forEach(slot => {
-    const date = new Date(slot.date + 'T00:00:00');
+    // Créer la date correctement pour éviter les problèmes de timezone
+    const [year, month, day] = slot.date.split('-').map(Number);
+    const date = new Date(year, month - 1, day); // month - 1 car les mois sont 0-indexés
     const dayOfWeek = date.getDay();
+    
+    // Vérification de cohérence
+    const dayNames = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+    console.log(`🔍 Analyse slot: ${slot.date} -> jour ${dayOfWeek} (${dayNames[dayOfWeek]})`);
+    
     daysWithSlots.add(dayOfWeek);
     
     if (!dayAnalysis.has(dayOfWeek)) {
@@ -105,6 +112,7 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
     // Si un jour n'a aucun créneau alors qu'il devrait en avoir, c'est qu'il est exclu
     if (expected > 0 && actual === 0) {
       excludeDays.push(dayOfWeek);
+      console.log(`📅 Jour ${dayOfWeek} exclu: attendu ${expected}, trouvé ${actual}`);
     }
   }
 
@@ -120,7 +128,11 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
 };
 
 const getDateRangeFromSlots = (slots: AvailabilitySlot[]): { start: Date, end: Date } => {
-  const dates = slots.map(slot => new Date(slot.date + 'T00:00:00')).sort((a, b) => a.getTime() - b.getTime());
+  const dates = slots.map(slot => {
+    const [year, month, day] = slot.date.split('-').map(Number);
+    return new Date(year, month - 1, day); // month - 1 car les mois sont 0-indexés
+  }).sort((a, b) => a.getTime() - b.getTime());
+  
   return {
     start: dates[0],
     end: dates[dates.length - 1]
@@ -129,7 +141,7 @@ const getDateRangeFromSlots = (slots: AvailabilitySlot[]): { start: Date, end: D
 
 const calculateExpectedDaysInRange = (startDate: Date, endDate: Date): Record<number, number> => {
   const expected: Record<number, number> = {};
-  const current = new Date(startDate);
+  const current = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
 
   while (current <= endDate) {
     const dayOfWeek = current.getDay();
