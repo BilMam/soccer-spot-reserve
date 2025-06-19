@@ -29,29 +29,12 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, onCl
   const available = slots.filter(s => s.is_available).length;
   const unavailable = slots.filter(s => !s.is_available).length;
   
-  // CORRECTION: Améliorer la détection des créneaux réservés avec normalisation cohérente
+  // CORRECTION: Utiliser la même logique partout
   const booked = slots.filter(slot => {
     const normalizedStartTime = normalizeTime(slot.start_time);
     const normalizedEndTime = normalizeTime(slot.end_time);
     const slotKey = `${normalizedStartTime}-${normalizedEndTime}`;
-    
-    const isBooked = bookedSlots.has(slotKey);
-    
-    // Debug spécifique pour le mercredi 25 et tous les créneaux réservés
-    const dateStr = format(day, 'yyyy-MM-dd');
-    if (dateStr === '2025-06-25' || isBooked) {
-      console.log('🔍📅 CalendarDay - Détection créneau:', {
-        date: dateStr,
-        slotOriginal: `${slot.start_time}-${slot.end_time}`,
-        slotNormalized: slotKey,
-        isBooked,
-        slotAvailable: slot.is_available,
-        bookedSlotsCount: bookedSlots.size,
-        bookedSlotsKeys: Array.from(bookedSlots)
-      });
-    }
-    
-    return isBooked;
+    return bookedSlots.has(slotKey);
   }).length;
   
   const hasSlots = total > 0;
@@ -72,19 +55,31 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, onCl
     bgColor = 'bg-green-50 border-green-200';
   }
 
-  // Debug final pour le mercredi 25
+  // DEBUG: Logs ciblés pour les jours avec réservations
   const dateStr = format(day, 'yyyy-MM-dd');
-  if (dateStr === '2025-06-25' || booked > 0) {
-    console.log('🎨📅 CalendarDay - Statistiques finales:', {
-      date: dateStr,
+  if (dateStr === '2025-06-25' || hasBooked) {
+    console.log(`🎨📅 CalendarDay - ${dateStr}:`, {
       total,
       available,
       unavailable,
       booked,
       hasBooked,
       bgColor,
-      bookedSlotsSize: bookedSlots.size,
-      allBookedSlots: Array.from(bookedSlots)
+      bookedSlotsFromSet: bookedSlots.size,
+      bookedSlotsArray: Array.from(bookedSlots),
+      // Vérifier chaque slot individuellement
+      slotChecks: slots.map(slot => {
+        const normalizedStart = normalizeTime(slot.start_time);
+        const normalizedEnd = normalizeTime(slot.end_time);
+        const slotKey = `${normalizedStart}-${normalizedEnd}`;
+        const isInSet = bookedSlots.has(slotKey);
+        return {
+          original: `${slot.start_time}-${slot.end_time}`,
+          normalized: slotKey,
+          isInSet,
+          isAvailable: slot.is_available
+        };
+      })
     });
   }
 

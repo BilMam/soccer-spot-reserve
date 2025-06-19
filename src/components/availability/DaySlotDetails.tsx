@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Clock } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { normalizeTime } from '@/utils/timeUtils';
 import SlotItem from './SlotItem';
 import SlotActions from './SlotActions';
@@ -23,6 +23,7 @@ interface DaySlotDetailsProps {
   onToggleSlotStatus: (slot: AvailabilitySlot) => void;
   isUpdating?: boolean;
   fieldId: string;
+  bookedSlots: Set<string>; // NOUVEAU: Recevoir directement les créneaux réservés
 }
 
 const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
@@ -30,74 +31,26 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
   date,
   onToggleSlotStatus,
   isUpdating = false,
-  fieldId
+  fieldId,
+  bookedSlots // NOUVEAU: Utiliser les données centralisées
 }) => {
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
-  const [bookedSlots, setBookedSlots] = useState<Set<string>>(new Set());
-  const [loadingBookedSlots, setLoadingBookedSlots] = useState(false);
-
-  // Vérifier les créneaux réservés quand les slots changent
-  useEffect(() => {
-    const checkBookedSlots = async () => {
-      if (slots.length === 0) return;
-      
-      setLoadingBookedSlots(true);
-      const dateStr = date.toISOString().split('T')[0];
-      
-      try {
-        const { data: bookings, error } = await supabase
-          .from('bookings')
-          .select('start_time, end_time')
-          .eq('field_id', fieldId)
-          .eq('booking_date', dateStr)
-          .in('status', ['pending', 'confirmed', 'owner_confirmed']);
-
-        if (error) {
-          console.error('Erreur lors de la vérification des réservations:', error);
-          return;
-        }
-
-        // CORRECTION: Normaliser les clés pour correspondre à useBookingData
-        const bookedSlotKeys = new Set(
-          bookings?.map(booking => {
-            const normalizedStart = normalizeTime(booking.start_time);
-            const normalizedEnd = normalizeTime(booking.end_time);
-            const slotKey = `${normalizedStart}-${normalizedEnd}`;
-            
-            console.log('🔍 DaySlotDetails - Slot réservé normalisé:', {
-              original: `${booking.start_time}-${booking.end_time}`,
-              normalized: slotKey,
-              date: dateStr
-            });
-            
-            return slotKey;
-          }) || []
-        );
-        
-        setBookedSlots(bookedSlotKeys);
-        console.log('🔍 DaySlotDetails - Créneaux réservés finaux:', Array.from(bookedSlotKeys));
-      } catch (error) {
-        console.error('Erreur lors de la vérification des réservations:', error);
-      } finally {
-        setLoadingBookedSlots(false);
-      }
-    };
-
-    checkBookedSlots();
-  }, [slots, date, fieldId]);
 
   const isSlotBooked = (slot: AvailabilitySlot): boolean => {
-    // CORRECTION: Utiliser normalizeTime pour créer des clés cohérentes
+    // CORRECTION: Utiliser la même logique que CalendarDay
     const normalizedStart = normalizeTime(slot.start_time);
     const normalizedEnd = normalizeTime(slot.end_time);
     const slotKey = `${normalizedStart}-${normalizedEnd}`;
     const isBooked = bookedSlots.has(slotKey);
     
-    console.log('🔍 DaySlotDetails - isSlotBooked:', {
+    const dateStr = date.toISOString().split('T')[0];
+    console.log('🔍 DaySlotDetails - Vérification créneau:', {
+      date: dateStr,
       slotOriginal: `${slot.start_time}-${slot.end_time}`,
-      slotNormalized: slotKey,
+      slotKey,
       isBooked,
-      bookedSlotsArray: Array.from(bookedSlots)
+      bookedSlotsSize: bookedSlots.size,
+      allBookedSlots: Array.from(bookedSlots)
     });
     
     return isBooked;
@@ -133,6 +86,16 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
       </div>
     );
   }
+
+  // NOUVEAU: Debug pour vérifier les données reçues
+  const dateStr = date.toISOString().split('T')[0];
+  console.log('🔍 DaySlotDetails - DONNÉES REÇUES:', {
+    date: dateStr,
+    slotsCount: slots.length,
+    bookedSlotsCount: bookedSlots.size,
+    bookedSlotsList: Array.from(bookedSlots),
+    firstSlot: slots[0] ? `${slots[0].start_time}-${slots[0].end_time}` : 'none'
+  });
 
   return (
     <div className="space-y-4">

@@ -9,22 +9,23 @@ export const useBookingData = (fieldId: string, startDateStr: string, endDateStr
   useEffect(() => {
     const fetchBookedSlots = async () => {
       try {
-        console.log('🔍🎯 useBookingData - DÉBUT RÉCUPÉRATION - Paramètres:', { fieldId, startDateStr, endDateStr });
+        console.log('🔍🎯 useBookingData - DÉBUT RÉCUPÉRATION:', { fieldId, startDateStr, endDateStr });
         
+        // AMÉLIORATION: Requête plus spécifique et uniforme
         const { data: bookings, error } = await supabase
           .from('bookings')
-          .select('booking_date, start_time, end_time')
+          .select('booking_date, start_time, end_time, status, payment_status')
           .eq('field_id', fieldId)
           .gte('booking_date', startDateStr)
           .lte('booking_date', endDateStr)
-          .in('status', ['pending', 'confirmed', 'owner_confirmed']);
+          .in('status', ['pending', 'confirmed', 'owner_confirmed']); // Statuts "réservés"
 
         if (error) {
-          console.error('Erreur lors de la récupération des réservations:', error);
+          console.error('❌ Erreur lors de la récupération des réservations:', error);
           return;
         }
 
-        console.log('🔍🎯 useBookingData - RÉSERVATIONS BRUTES récupérées:', bookings);
+        console.log('🔍🎯 useBookingData - RÉSERVATIONS BRUTES:', bookings);
 
         const bookedByDate: Record<string, Set<string>> = {};
         bookings?.forEach(booking => {
@@ -33,30 +34,36 @@ export const useBookingData = (fieldId: string, startDateStr: string, endDateStr
             bookedByDate[dateStr] = new Set();
           }
           
-          // CORRECTION: Normaliser les heures pour créer des clés cohérentes
+          // UNIFICATION: Même logique de normalisation partout
           const normalizedStartTime = normalizeTime(booking.start_time);
           const normalizedEndTime = normalizeTime(booking.end_time);
           const slotKey = `${normalizedStartTime}-${normalizedEndTime}`;
           
           bookedByDate[dateStr].add(slotKey);
           
-          console.log('🔍🎯 useBookingData - RÉSERVATION NORMALISÉE:', {
+          console.log('🔍🎯 useBookingData - RÉSERVATION AJOUTÉE:', {
             date: dateStr,
+            status: booking.status,
+            payment_status: booking.payment_status,
             original: `${booking.start_time}-${booking.end_time}`,
-            normalized: slotKey,
-            finalKey: slotKey
+            normalized: slotKey
           });
         });
 
         setBookedSlotsByDate(bookedByDate);
-        console.log('📅🎯 useBookingData - RÉSERVATIONS FINALES par date:', bookedByDate);
         
-        // Debug spécifique pour le 25 juin
-        if (bookedByDate['2025-06-25']) {
-          console.log('🎯✅ useBookingData - RÉSERVATIONS pour le 2025-06-25:', Array.from(bookedByDate['2025-06-25']));
-        }
+        // DEBUG: Log final consolidé
+        console.log('📅🎯 useBookingData - RÉSULTAT FINAL:', {
+          totalDates: Object.keys(bookedByDate).length,
+          bookedByDate: Object.entries(bookedByDate).map(([date, slots]) => ({
+            date,
+            slotsCount: slots.size,
+            slotsList: Array.from(slots)
+          }))
+        });
+        
       } catch (error) {
-        console.error('Erreur lors de la récupération des réservations:', error);
+        console.error('❌ Erreur lors de la récupération des réservations:', error);
       }
     };
 
