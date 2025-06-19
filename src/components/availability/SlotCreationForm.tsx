@@ -154,7 +154,7 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
   }
 
   // Si des créneaux existent déjà et qu'on n'est pas en mode modification
-  if (existingSlots.length > 0 && creationStep === 'preview') {
+  if (existingSlots.length > 0 && creationStep !== 'modify') {
     return (
       <ExistingSlotsPreview
         existingSlots={existingSlots}
