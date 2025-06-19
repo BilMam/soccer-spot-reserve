@@ -9,7 +9,7 @@ export const useBookingData = (fieldId: string, startDateStr: string, endDateStr
   useEffect(() => {
     const fetchBookedSlots = async () => {
       try {
-        console.log('🔍 DÉBUT RÉCUPÉRATION - Paramètres:', { fieldId, startDateStr, endDateStr });
+        console.log('🔍🎯 useBookingData - DÉBUT RÉCUPÉRATION - Paramètres:', { fieldId, startDateStr, endDateStr });
         
         const { data: bookings, error } = await supabase
           .from('bookings')
@@ -24,7 +24,7 @@ export const useBookingData = (fieldId: string, startDateStr: string, endDateStr
           return;
         }
 
-        console.log('🔍 RÉSERVATIONS BRUTES récupérées:', bookings);
+        console.log('🔍🎯 useBookingData - RÉSERVATIONS BRUTES récupérées:', bookings);
 
         const bookedByDate: Record<string, Set<string>> = {};
         bookings?.forEach(booking => {
@@ -40,7 +40,7 @@ export const useBookingData = (fieldId: string, startDateStr: string, endDateStr
           
           bookedByDate[dateStr].add(slotKey);
           
-          console.log('🔍 RÉSERVATION AJOUTÉE:', {
+          console.log('🔍🎯 useBookingData - RÉSERVATION NORMALISÉE:', {
             date: dateStr,
             original: `${booking.start_time}-${booking.end_time}`,
             normalized: slotKey,
@@ -49,11 +49,11 @@ export const useBookingData = (fieldId: string, startDateStr: string, endDateStr
         });
 
         setBookedSlotsByDate(bookedByDate);
-        console.log('📅 RÉSERVATIONS FINALES par date:', bookedByDate);
+        console.log('📅🎯 useBookingData - RÉSERVATIONS FINALES par date:', bookedByDate);
         
         // Debug spécifique pour le 25 juin
         if (bookedByDate['2025-06-25']) {
-          console.log('🎯 RÉSERVATIONS pour le 2025-06-25:', Array.from(bookedByDate['2025-06-25']));
+          console.log('🎯✅ useBookingData - RÉSERVATIONS pour le 2025-06-25:', Array.from(bookedByDate['2025-06-25']));
         }
       } catch (error) {
         console.error('Erreur lors de la récupération des réservations:', error);

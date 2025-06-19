@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { normalizeTime } from '@/utils/timeUtils';
 import SlotItem from './SlotItem';
 import SlotActions from './SlotActions';
 import SlotStatistics from './SlotStatistics';
@@ -57,11 +57,25 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
           return;
         }
 
+        // CORRECTION: Normaliser les clés pour correspondre à useBookingData
         const bookedSlotKeys = new Set(
-          bookings?.map(booking => `${booking.start_time}-${booking.end_time}`) || []
+          bookings?.map(booking => {
+            const normalizedStart = normalizeTime(booking.start_time);
+            const normalizedEnd = normalizeTime(booking.end_time);
+            const slotKey = `${normalizedStart}-${normalizedEnd}`;
+            
+            console.log('🔍 DaySlotDetails - Slot réservé normalisé:', {
+              original: `${booking.start_time}-${booking.end_time}`,
+              normalized: slotKey,
+              date: dateStr
+            });
+            
+            return slotKey;
+          }) || []
         );
         
         setBookedSlots(bookedSlotKeys);
+        console.log('🔍 DaySlotDetails - Créneaux réservés finaux:', Array.from(bookedSlotKeys));
       } catch (error) {
         console.error('Erreur lors de la vérification des réservations:', error);
       } finally {
@@ -73,8 +87,20 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
   }, [slots, date, fieldId]);
 
   const isSlotBooked = (slot: AvailabilitySlot): boolean => {
-    const slotKey = `${slot.start_time}-${slot.end_time}`;
-    return bookedSlots.has(slotKey);
+    // CORRECTION: Utiliser normalizeTime pour créer des clés cohérentes
+    const normalizedStart = normalizeTime(slot.start_time);
+    const normalizedEnd = normalizeTime(slot.end_time);
+    const slotKey = `${normalizedStart}-${normalizedEnd}`;
+    const isBooked = bookedSlots.has(slotKey);
+    
+    console.log('🔍 DaySlotDetails - isSlotBooked:', {
+      slotOriginal: `${slot.start_time}-${slot.end_time}`,
+      slotNormalized: slotKey,
+      isBooked,
+      bookedSlotsArray: Array.from(bookedSlots)
+    });
+    
+    return isBooked;
   };
 
   const canMarkUnavailable = (slot: AvailabilitySlot): boolean => {

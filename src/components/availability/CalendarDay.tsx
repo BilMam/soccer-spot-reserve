@@ -29,7 +29,7 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, onCl
   const available = slots.filter(s => s.is_available).length;
   const unavailable = slots.filter(s => !s.is_available).length;
   
-  // CORRECTION: Améliorer la détection des créneaux réservés avec normalisation
+  // CORRECTION: Améliorer la détection des créneaux réservés avec normalisation cohérente
   const booked = slots.filter(slot => {
     const normalizedStartTime = normalizeTime(slot.start_time);
     const normalizedEndTime = normalizeTime(slot.end_time);
@@ -37,16 +37,17 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, onCl
     
     const isBooked = bookedSlots.has(slotKey);
     
-    // Debug spécifique pour le mercredi 25
+    // Debug spécifique pour le mercredi 25 et tous les créneaux réservés
     const dateStr = format(day, 'yyyy-MM-dd');
     if (dateStr === '2025-06-25' || isBooked) {
-      console.log('🔍 DEBUG DÉTAILLÉ - Créneau:', {
+      console.log('🔍📅 CalendarDay - Détection créneau:', {
         date: dateStr,
         slotOriginal: `${slot.start_time}-${slot.end_time}`,
         slotNormalized: slotKey,
         isBooked,
-        bookedSlotsArray: Array.from(bookedSlots),
-        slotAvailable: slot.is_available
+        slotAvailable: slot.is_available,
+        bookedSlotsCount: bookedSlots.size,
+        bookedSlotsKeys: Array.from(bookedSlots)
       });
     }
     
@@ -71,10 +72,10 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, onCl
     bgColor = 'bg-green-50 border-green-200';
   }
 
-  // Debug spécifique pour le mercredi 25 - CORRECTION: utiliser `booked` au lieu de `hasBooked`
+  // Debug final pour le mercredi 25
   const dateStr = format(day, 'yyyy-MM-dd');
   if (dateStr === '2025-06-25' || booked > 0) {
-    console.log('🎨 DEBUG COULEUR:', {
+    console.log('🎨📅 CalendarDay - Statistiques finales:', {
       date: dateStr,
       total,
       available,
