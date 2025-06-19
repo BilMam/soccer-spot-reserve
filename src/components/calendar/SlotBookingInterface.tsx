@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { useToast } from '@/hooks/use-toast';
-import { timeToMinutes, minutesToTime, normalizeTime } from '@/utils/timeUtils';
 import { supabase } from '@/integrations/supabase/client';
-import OccupiedSlotsDisplay from '@/components/calendar/OccupiedSlotsDisplay';
-import TimeSlotSelector from '@/components/calendar/TimeSlotSelector';
-import BookingSummary from '@/components/calendar/BookingSummary';
+import { normalizeTime } from '@/utils/timeUtils';
+import { SlotValidationLogic } from './SlotValidationLogic';
+import { SlotPriceCalculator } from './SlotPriceCalculator';
+import OccupiedSlotsDisplay from './OccupiedSlotsDisplay';
+import TimeSlotSelector from './TimeSlotSelector';
+import BookingSummary from './BookingSummary';
+import SlotBookingActions from './SlotBookingActions';
 
 interface AvailabilitySlot {
   id: string;
@@ -44,7 +45,6 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   const [selectedEndTime, setSelectedEndTime] = useState<string>('');
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [unavailableSlots, setUnavailableSlots] = useState<string[]>([]);
-  const { toast } = useToast();
 
   // Debug: Afficher les informations reçues
   console.log('🔍 SlotBookingInterface - Date sélectionnée:', format(selectedDate, 'yyyy-MM-dd'));
@@ -97,89 +97,6 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
     fetchSlotStatus();
   }, [selectedDate, fieldId, availableSlots]);
 
-  // RENFORCÉ: Vérifier si une plage horaire est entièrement disponible avec validation stricte
-  const isRangeAvailable = (startTime: string, endTime: string): boolean => {
-    if (!startTime || !endTime) return false;
-    const startMinutes = timeToMinutes(startTime);
-    const endMinutes = timeToMinutes(endTime);
-
-    console.log('🔍🔒 isRangeAvailable STRICT - Vérification plage:', `${startTime}-${endTime}`);
-
-    // Vérifier chaque créneau de 30 minutes dans la plage
-    for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
-      const slotStartTime = minutesToTime(minutes);
-      const slotEndTime = minutesToTime(minutes + 30);
-      
-      // Normaliser les temps pour la comparaison
-      const normalizedSlotStart = normalizeTime(slotStartTime);
-      const normalizedSlotEnd = normalizeTime(slotEndTime);
-      
-      // 1. Vérifier que le créneau existe dans les créneaux disponibles
-      const slot = availableSlots.find(s => {
-        const normalizedDbStart = normalizeTime(s.start_time);
-        const normalizedDbEnd = normalizeTime(s.end_time);
-        return normalizedDbStart === normalizedSlotStart && normalizedDbEnd === normalizedSlotEnd;
-      });
-      
-      if (!slot) {
-        console.log('🔍🔒 Créneau inexistant:', `${normalizedSlotStart}-${normalizedSlotEnd}`);
-        return false;
-      }
-
-      // 2. Vérifier que le créneau est marqué comme disponible
-      if (!slot.is_available) {
-        console.log('🔍🔒 Créneau indisponible:', `${normalizedSlotStart}-${normalizedSlotEnd}`);
-        return false;
-      }
-      
-      // 3. CRITIQUE: Vérifier qu'il n'est pas réservé
-      const slotKey = `${normalizedSlotStart}-${normalizedSlotEnd}`;
-      if (bookedSlots.includes(slotKey)) {
-        console.log('🔍🔒 Créneau RÉSERVÉ détecté:', slotKey);
-        return false;
-      }
-
-      console.log('🔍🔒 Créneau OK:', `${normalizedSlotStart}-${normalizedSlotEnd}`);
-    }
-    
-    console.log('🔍🔒 Plage ENTIÈREMENT disponible:', `${startTime}-${endTime}`);
-    return true;
-  };
-
-  // Calculer le prix total pour une plage horaire
-  const calculateTotalPrice = (startTime: string, endTime: string): number => {
-    if (!startTime || !endTime) return 0;
-    const startMinutes = timeToMinutes(startTime);
-    const endMinutes = timeToMinutes(endTime);
-    let totalPrice = 0;
-
-    console.log('🔍 calculateTotalPrice - Calcul pour:', `${startTime}-${endTime}`);
-
-    // Additionner le prix de chaque créneau de 30 minutes
-    for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
-      const slotStartTime = minutesToTime(minutes);
-      const slotEndTime = minutesToTime(minutes + 30);
-      
-      // Normaliser les temps pour la comparaison
-      const normalizedSlotStart = normalizeTime(slotStartTime);
-      const normalizedSlotEnd = normalizeTime(slotEndTime);
-      
-      const slot = availableSlots.find(s => {
-        const normalizedDbStart = normalizeTime(s.start_time);
-        const normalizedDbEnd = normalizeTime(s.end_time);
-        return normalizedDbStart === normalizedSlotStart && normalizedDbEnd === normalizedSlotEnd;
-      });
-      
-      const slotPrice = slot?.price_override || fieldPrice / 2; // Prix par défaut pour 30 min
-      totalPrice += slotPrice;
-      
-      console.log('🔍 Prix créneau:', `${normalizedSlotStart}-${normalizedSlotEnd}`, 'prix:', slotPrice);
-    }
-    
-    console.log('🔍 Prix total calculé:', totalPrice);
-    return totalPrice;
-  };
-
   // Réinitialiser l'heure de fin quand l'heure de début change
   useEffect(() => {
     if (selectedStartTime) {
@@ -187,32 +104,12 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
     }
   }, [selectedStartTime, availableSlots]);
 
-  const handleConfirmBooking = () => {
-    if (!selectedDate || !selectedStartTime || !selectedEndTime) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner une date et des heures.",
-        variant: "destructive"
-      });
-      return;
-    }
+  // Initialize utility classes
+  const validator = new SlotValidationLogic(availableSlots, bookedSlots);
+  const priceCalculator = new SlotPriceCalculator(availableSlots, fieldPrice);
 
-    // VALIDATION FINALE STRICTE avant confirmation
-    if (!isRangeAvailable(selectedStartTime, selectedEndTime)) {
-      toast({
-        title: "Erreur",
-        description: "Cette plage horaire n'est plus disponible. Veuillez sélectionner d'autres heures.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    const totalPrice = calculateTotalPrice(selectedStartTime, selectedEndTime);
-    onTimeSlotSelect(selectedDate, selectedStartTime, selectedEndTime, totalPrice);
-  };
-
-  const rangeIsAvailable = isRangeAvailable(selectedStartTime, selectedEndTime);
-  const totalPrice = calculateTotalPrice(selectedStartTime, selectedEndTime);
+  const rangeIsAvailable = validator.isRangeAvailable(selectedStartTime, selectedEndTime);
+  const totalPrice = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
 
   // Vérifier si aucun créneau n'a été créé pour ce jour
   const hasNoSlots = availableSlots.length === 0;
@@ -266,14 +163,15 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               rangeIsAvailable={rangeIsAvailable}
             />
 
-            <Button
-              onClick={handleConfirmBooking}
-              disabled={!selectedStartTime || !selectedEndTime || !rangeIsAvailable}
-              className="w-full bg-green-600 hover:bg-green-700"
-              size="lg"
-            >
-              Réserver {selectedStartTime && selectedEndTime && `(${totalPrice.toLocaleString()} XOF)`}
-            </Button>
+            <SlotBookingActions
+              selectedDate={selectedDate}
+              selectedStartTime={selectedStartTime}
+              selectedEndTime={selectedEndTime}
+              availableSlots={availableSlots}
+              bookedSlots={bookedSlots}
+              fieldPrice={fieldPrice}
+              onTimeSlotSelect={onTimeSlotSelect}
+            />
           </>
         )}
       </CardContent>
