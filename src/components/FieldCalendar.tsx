@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,7 +28,12 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
   const [selectedEndTime, setSelectedEndTime] = useState<string>('');
   const { toast } = useToast();
 
-  const { data: availableSlots = [], isLoading } = useFieldAvailability(fieldId, selectedDate, fieldPrice);
+  const { useFieldAvailabilityForPeriod } = useFieldAvailability(fieldId);
+  
+  const startDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
+  const endDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
+  
+  const { data: availableSlots = [], isLoading } = useFieldAvailabilityForPeriod(startDateStr, endDateStr);
 
   // Fonction pour afficher les créneaux occupés
   const getOccupiedSlots = (): string[] => {
@@ -66,7 +70,7 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
       const slotStartTime = minutesToTime(minutes);
       const slotEndTime = minutesToTime(minutes + 30);
       const slot = availableSlots.find(s => s.start_time === slotStartTime && s.end_time === slotEndTime);
-      totalPrice += slot?.price || fieldPrice / 2; // Prix par défaut pour 30 min
+      totalPrice += slot?.price_override || fieldPrice / 2; // Prix par défaut pour 30 min
     }
     return totalPrice;
   };
