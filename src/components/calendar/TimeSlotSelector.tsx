@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { generateTimeOptions, timeToMinutes, minutesToTime } from '@/utils/timeUtils';
+import { generateTimeOptions, timeToMinutes, minutesToTime, normalizeTime } from '@/utils/timeUtils';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AvailabilitySlot {
@@ -26,12 +26,6 @@ interface TimeSlotSelectorProps {
   fieldId: string;
 }
 
-// Fonction utilitaire pour normaliser les formats d'heures (retirer les secondes)
-const normalizeTime = (time: string): string => {
-  if (!time) return '';
-  return time.slice(0, 5); // Garde seulement HH:MM
-};
-
 const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
   selectedStartTime,
   selectedEndTime,
@@ -45,7 +39,6 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
 
   console.log('🔍 TimeSlotSelector - Field ID reçu:', fieldId);
   console.log('🔍 TimeSlotSelector - Créneaux disponibles:', availableSlots.length);
-  console.log('🔍 TimeSlotSelector - Détail créneaux:', availableSlots);
 
   // Récupérer les créneaux réservés
   useEffect(() => {
@@ -114,17 +107,7 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
     const slot = availableSlots.find(s => {
       const slotNormalizedStart = normalizeTime(s.start_time);
       const slotNormalizedEnd = normalizeTime(s.end_time);
-      const match = slotNormalizedStart === normalizedStart && slotNormalizedEnd === normalizedEnd;
-      
-      if (match) {
-        console.log('🔍 Slot trouvé:', {
-          recherché: `${normalizedStart}-${normalizedEnd}`,
-          trouvé: `${slotNormalizedStart}-${slotNormalizedEnd}`,
-          available: s.is_available
-        });
-      }
-      
-      return match;
+      return slotNormalizedStart === normalizedStart && slotNormalizedEnd === normalizedEnd;
     });
     
     const available = slot ? slot.is_available : false;
@@ -162,36 +145,58 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
     return 'available';
   };
 
+  // CORRIGÉ: Cette fonction s'arrête maintenant dès qu'un créneau non disponible est trouvé
   const getAvailableEndTimes = (startTime: string): string[] => {
     if (!startTime) return [];
     const startMinutes = timeToMinutes(startTime);
     const availableEndTimes: string[] = [];
 
+    console.log('🔍 getAvailableEndTimes - Recherche depuis:', startTime);
+
     for (let minutes = startMinutes + 30; minutes <= timeToMinutes('22:00'); minutes += 30) {
+      const currentSlotStart = minutesToTime(minutes - 30);
+      const currentSlotEnd = minutesToTime(minutes);
       const endTime = minutesToTime(minutes);
       
-      if (isRangeAvailable(startTime, endTime)) {
+      const status = getSlotStatus(currentSlotStart, currentSlotEnd);
+      console.log('🔍 Vérification créneau:', `${currentSlotStart}-${currentSlotEnd}`, 'status:', status);
+      
+      if (status === 'available') {
         availableEndTimes.push(endTime);
+        console.log('🔍 Ajouté heure de fin possible:', endTime);
       } else {
+        // ARRÊTER dès qu'on trouve un créneau non disponible
+        console.log('🔍 Arrêt à cause du créneau non disponible:', `${currentSlotStart}-${currentSlotEnd}`, 'status:', status);
         break;
       }
     }
+    
+    console.log('🔍 Heures de fin disponibles finales:', availableEndTimes);
     return availableEndTimes;
   };
 
+  // Cette fonction vérifie si toute une plage est disponible
   const isRangeAvailable = (startTime: string, endTime: string): boolean => {
     if (!startTime || !endTime) return false;
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
 
+    console.log('🔍 isRangeAvailable - Vérification plage:', `${startTime}-${endTime}`);
+
     for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
       const slotStartTime = minutesToTime(minutes);
       const slotEndTime = minutesToTime(minutes + 30);
       const status = getSlotStatus(slotStartTime, slotEndTime);
+      
+      console.log('🔍 Vérification sous-créneau:', `${slotStartTime}-${slotEndTime}`, 'status:', status);
+      
       if (status !== 'available') {
+        console.log('🔍 Plage NON disponible à cause de:', `${slotStartTime}-${slotEndTime}`);
         return false;
       }
     }
+    
+    console.log('🔍 Plage ENTIÈREMENT disponible:', `${startTime}-${endTime}`);
     return true;
   };
 

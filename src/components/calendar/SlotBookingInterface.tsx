@@ -50,7 +50,6 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   console.log('🔍 SlotBookingInterface - Date sélectionnée:', format(selectedDate, 'yyyy-MM-dd'));
   console.log('🔍 SlotBookingInterface - Field ID:', fieldId);
   console.log('🔍 SlotBookingInterface - Créneaux reçus:', availableSlots.length);
-  console.log('🔍 SlotBookingInterface - Détails créneaux:', availableSlots);
 
   // Récupérer les créneaux réservés et indisponibles
   useEffect(() => {
@@ -98,13 +97,13 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
     fetchSlotStatus();
   }, [selectedDate, fieldId, availableSlots]);
 
-  // Vérifier si une plage horaire est entièrement disponible
+  // RENFORCÉ: Vérifier si une plage horaire est entièrement disponible avec validation stricte
   const isRangeAvailable = (startTime: string, endTime: string): boolean => {
     if (!startTime || !endTime) return false;
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
 
-    console.log('🔍 isRangeAvailable - Vérification plage:', `${startTime}-${endTime}`);
+    console.log('🔍🔒 isRangeAvailable STRICT - Vérification plage:', `${startTime}-${endTime}`);
 
     // Vérifier chaque créneau de 30 minutes dans la plage
     for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
@@ -115,37 +114,35 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
       const normalizedSlotStart = normalizeTime(slotStartTime);
       const normalizedSlotEnd = normalizeTime(slotEndTime);
       
+      // 1. Vérifier que le créneau existe dans les créneaux disponibles
       const slot = availableSlots.find(s => {
         const normalizedDbStart = normalizeTime(s.start_time);
         const normalizedDbEnd = normalizeTime(s.end_time);
-        const match = normalizedDbStart === normalizedSlotStart && normalizedDbEnd === normalizedSlotEnd;
-        
-        if (match) {
-          console.log('🔍 Slot trouvé pour vérification:', {
-            recherché: `${normalizedSlotStart}-${normalizedSlotEnd}`,
-            trouvé: `${normalizedDbStart}-${normalizedDbEnd}`,
-            available: s.is_available
-          });
-        }
-        
-        return match;
+        return normalizedDbStart === normalizedSlotStart && normalizedDbEnd === normalizedSlotEnd;
       });
       
-      // Le créneau doit exister ET être disponible ET ne pas être réservé
-      if (!slot || !slot.is_available) {
-        console.log('🔍 Créneau non disponible ou inexistant:', `${normalizedSlotStart}-${normalizedSlotEnd}`);
+      if (!slot) {
+        console.log('🔍🔒 Créneau inexistant:', `${normalizedSlotStart}-${normalizedSlotEnd}`);
+        return false;
+      }
+
+      // 2. Vérifier que le créneau est marqué comme disponible
+      if (!slot.is_available) {
+        console.log('🔍🔒 Créneau indisponible:', `${normalizedSlotStart}-${normalizedSlotEnd}`);
         return false;
       }
       
-      // Vérifier qu'il n'est pas réservé
+      // 3. CRITIQUE: Vérifier qu'il n'est pas réservé
       const slotKey = `${normalizedSlotStart}-${normalizedSlotEnd}`;
       if (bookedSlots.includes(slotKey)) {
-        console.log('🔍 Créneau réservé:', slotKey);
+        console.log('🔍🔒 Créneau RÉSERVÉ détecté:', slotKey);
         return false;
       }
+
+      console.log('🔍🔒 Créneau OK:', `${normalizedSlotStart}-${normalizedSlotEnd}`);
     }
     
-    console.log('🔍 Plage entièrement disponible:', `${startTime}-${endTime}`);
+    console.log('🔍🔒 Plage ENTIÈREMENT disponible:', `${startTime}-${endTime}`);
     return true;
   };
 
@@ -195,6 +192,16 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
       toast({
         title: "Erreur",
         description: "Veuillez sélectionner une date et des heures.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // VALIDATION FINALE STRICTE avant confirmation
+    if (!isRangeAvailable(selectedStartTime, selectedEndTime)) {
+      toast({
+        title: "Erreur",
+        description: "Cette plage horaire n'est plus disponible. Veuillez sélectionner d'autres heures.",
         variant: "destructive"
       });
       return;
