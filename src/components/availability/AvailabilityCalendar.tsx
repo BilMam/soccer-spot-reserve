@@ -150,9 +150,10 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
                       
                       <DaySlotDetails
                         slots={dateSlots}
-                        date={day}
+                        date={day}  
                         onToggleSlotStatus={handleToggleSlotStatus}
                         isUpdating={setSlotsUnavailable.isPending || setSlotsAvailable.isPending}
+                        fieldId={fieldId}
                       />
                     </DialogContent>
                   </Dialog>

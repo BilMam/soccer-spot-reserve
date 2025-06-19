@@ -13,6 +13,23 @@ interface TimeExclusion {
 export const useSlotOperations = (fieldId: string) => {
   const queryClient = useQueryClient();
 
+  // Vérifier si un créneau est réservé
+  const checkSlotBookingStatus = async (date: string, startTime: string, endTime: string): Promise<boolean> => {
+    const { data, error } = await supabase.rpc('check_slot_booking_status', {
+      p_field_id: fieldId,
+      p_date: date,
+      p_start_time: startTime,
+      p_end_time: endTime
+    });
+
+    if (error) {
+      console.error('Erreur vérification réservation:', error);
+      return false;
+    }
+
+    return data || false;
+  };
+
   // Créer des créneaux pour une période avec exclusions
   const createAvailabilityForPeriod = useMutation({
     mutationFn: async (params: {
@@ -100,7 +117,13 @@ export const useSlotOperations = (fieldId: string) => {
     },
     onError: (error) => {
       console.error('Erreur modification créneaux:', error);
-      toast.error('Erreur lors de la modification des créneaux');
+      
+      // Vérifier si l'erreur est due à un conflit de réservation
+      if (error.message && error.message.includes('active booking')) {
+        toast.error('Impossible de marquer indisponible : des réservations actives existent pour cette période');
+      } else {
+        toast.error('Erreur lors de la modification des créneaux');
+      }
     }
   });
 
@@ -141,6 +164,7 @@ export const useSlotOperations = (fieldId: string) => {
   return {
     createAvailabilityForPeriod,
     setSlotsUnavailable,
-    setSlotsAvailable
+    setSlotsAvailable,
+    checkSlotBookingStatus
   };
 };

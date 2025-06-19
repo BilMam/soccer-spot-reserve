@@ -966,6 +966,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_slot_booking_status: {
+        Args: {
+          p_field_id: string
+          p_date: string
+          p_start_time: string
+          p_end_time: string
+        }
+        Returns: boolean
+      }
       confirm_booking_by_owner: {
         Args: { p_booking_id: string; p_owner_id: string }
         Returns: boolean

@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Calendar } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AvailabilitySlot {
   id?: string;
@@ -20,17 +21,63 @@ interface DaySlotDetailsProps {
   date: Date;
   onToggleSlotStatus: (slot: AvailabilitySlot) => void;
   isUpdating?: boolean;
+  fieldId: string;
 }
 
 const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
   slots,
   date,
   onToggleSlotStatus,
-  isUpdating = false
+  isUpdating = false,
+  fieldId
 }) => {
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
+  const [bookedSlots, setBookedSlots] = useState<Set<string>>(new Set());
+  const [loadingBookedSlots, setLoadingBookedSlots] = useState(false);
+
+  // Vérifier les créneaux réservés quand les slots changent
+  useEffect(() => {
+    const checkBookedSlots = async () => {
+      if (slots.length === 0) return;
+      
+      setLoadingBookedSlots(true);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      try {
+        const { data: bookings, error } = await supabase
+          .from('bookings')
+          .select('start_time, end_time')
+          .eq('field_id', fieldId)
+          .eq('booking_date', dateStr)
+          .in('status', ['pending', 'confirmed', 'owner_confirmed']);
+
+        if (error) {
+          console.error('Erreur lors de la vérification des réservations:', error);
+          return;
+        }
+
+        const bookedSlotKeys = new Set(
+          bookings?.map(booking => `${booking.start_time}-${booking.end_time}`) || []
+        );
+        
+        setBookedSlots(bookedSlotKeys);
+      } catch (error) {
+        console.error('Erreur lors de la vérification des réservations:', error);
+      } finally {
+        setLoadingBookedSlots(false);
+      }
+    };
+
+    checkBookedSlots();
+  }, [slots, date, fieldId]);
 
   const getSlotStatusIcon = (slot: AvailabilitySlot) => {
+    const slotKey = `${slot.start_time}-${slot.end_time}`;
+    
+    if (bookedSlots.has(slotKey)) {
+      return <Calendar className="w-4 h-4 text-blue-600" />;
+    }
+    
     if (slot.is_available) {
       return <CheckCircle className="w-4 h-4 text-green-600" />;
     } else {
@@ -39,11 +86,26 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
   };
 
   const getSlotStatusBadge = (slot: AvailabilitySlot) => {
+    const slotKey = `${slot.start_time}-${slot.end_time}`;
+    
+    if (bookedSlots.has(slotKey)) {
+      return <Badge variant="secondary" className="bg-blue-100 text-blue-700">Réservé</Badge>;
+    }
+    
     if (slot.is_available) {
       return <Badge variant="secondary" className="bg-green-100 text-green-700">Disponible</Badge>;
     } else {
       return <Badge variant="secondary" className="bg-red-100 text-red-700">Indisponible</Badge>;
     }
+  };
+
+  const isSlotBooked = (slot: AvailabilitySlot): boolean => {
+    const slotKey = `${slot.start_time}-${slot.end_time}`;
+    return bookedSlots.has(slotKey);
+  };
+
+  const canMarkUnavailable = (slot: AvailabilitySlot): boolean => {
+    return slot.is_available && !isSlotBooked(slot);
   };
 
   const handleSlotClick = (slot: AvailabilitySlot) => {
@@ -55,6 +117,26 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
       onToggleSlotStatus(selectedSlot);
       setSelectedSlot(null); // Désélectionner après l'action
     }
+  };
+
+  const getToggleButtonText = () => {
+    if (!selectedSlot) return '';
+    
+    if (isSlotBooked(selectedSlot)) {
+      return 'Créneau réservé';
+    }
+    
+    return selectedSlot.is_available ? 'Marquer indisponible' : 'Marquer disponible';
+  };
+
+  const getToggleButtonVariant = () => {
+    if (!selectedSlot) return 'default';
+    
+    if (isSlotBooked(selectedSlot)) {
+      return 'secondary';
+    }
+    
+    return selectedSlot.is_available ? 'destructive' : 'default';
   };
 
   const sortedSlots = [...slots].sort((a, b) => a.start_time.localeCompare(b.start_time));
@@ -91,11 +173,13 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
       {/* Instructions pour l'utilisateur */}
       <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
         📋 Cliquez sur un créneau pour le sélectionner, puis utilisez le bouton pour changer son statut.
+        {loadingBookedSlots && <span className="ml-2">🔄 Vérification des réservations...</span>}
       </div>
 
       <div className="max-h-96 overflow-y-auto space-y-2">
         {sortedSlots.map((slot, index) => {
           const isSelected = selectedSlot?.id === slot.id;
+          const slotIsBooked = isSlotBooked(slot);
           
           return (
             <div 
@@ -106,6 +190,7 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
                   ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-200' 
                   : 'hover:bg-gray-50 border-gray-200'
                 }
+                ${slotIsBooked ? 'bg-blue-50 border-blue-200' : ''}
               `}
               onClick={() => handleSlotClick(slot)}
             >
@@ -115,7 +200,12 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
                   <div className="font-medium">
                     {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
                   </div>
-                  {slot.unavailability_reason && (
+                  {slotIsBooked && (
+                    <div className="text-sm text-blue-600 font-medium">
+                      Réservation active
+                    </div>
+                  )}
+                  {slot.unavailability_reason && !slotIsBooked && (
                     <div className="text-sm text-gray-600">
                       {slot.unavailability_reason}
                     </div>
@@ -150,7 +240,10 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
                 Créneau sélectionné : {selectedSlot.start_time.slice(0, 5)} - {selectedSlot.end_time.slice(0, 5)}
               </div>
               <div className="text-gray-600">
-                Statut actuel : {selectedSlot.is_available ? 'Disponible' : 'Indisponible'}
+                {isSlotBooked(selectedSlot) 
+                  ? 'Statut : Réservé (modification impossible)'
+                  : `Statut actuel : ${selectedSlot.is_available ? 'Disponible' : 'Indisponible'}`
+                }
               </div>
             </div>
             <div className="flex gap-2">
@@ -162,25 +255,37 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
                 Annuler
               </Button>
               <Button
-                variant={selectedSlot.is_available ? "destructive" : "default"}
+                variant={getToggleButtonVariant()}
                 size="sm"
                 onClick={handleToggleStatus}
-                disabled={isUpdating}
+                disabled={isUpdating || isSlotBooked(selectedSlot) || (selectedSlot.is_available && !canMarkUnavailable(selectedSlot))}
               >
-                {selectedSlot.is_available ? 'Marquer indisponible' : 'Marquer disponible'}
+                {getToggleButtonText()}
               </Button>
             </div>
           </div>
+          
+          {isSlotBooked(selectedSlot) && (
+            <div className="mt-2 text-xs text-blue-600 bg-blue-100 p-2 rounded">
+              ℹ️ Ce créneau ne peut pas être marqué comme indisponible car il a une réservation active.
+            </div>
+          )}
         </div>
       )}
 
       {/* Statistiques rapides */}
-      <div className="grid grid-cols-2 gap-2 pt-4 border-t">
+      <div className="grid grid-cols-3 gap-2 pt-4 border-t">
         <div className="text-center">
           <div className="text-lg font-bold text-green-600">
-            {slots.filter(s => s.is_available).length}
+            {slots.filter(s => s.is_available && !isSlotBooked(s)).length}
           </div>
           <div className="text-xs text-gray-600">Disponibles</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-bold text-blue-600">
+            {Array.from(bookedSlots).length}
+          </div>
+          <div className="text-xs text-gray-600">Réservés</div>
         </div>
         <div className="text-center">
           <div className="text-lg font-bold text-red-600">
