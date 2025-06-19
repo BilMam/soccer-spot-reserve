@@ -56,7 +56,13 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
         const dayName = format(cell.date, 'EEEE', { locale: fr });
         const bookedSlots = bookedSlotsByDate[cell.dateStr] || new Set();
         
-        console.log(`📅 Rendu cellule ${index}: ${cell.dateStr} (${dayName}, jour ${dayOfWeek}) - ${cell.slots.length} créneaux, ${bookedSlots.size} réservés`);
+        console.log(`📅 Rendu cellule ${index}: ${cell.dateStr} (${dayName}, jour ${dayOfWeek})`, {
+          slots: cell.slots.length,
+          bookedSlotsCount: bookedSlots.size,
+          bookedSlotsList: Array.from(bookedSlots),
+          availableSlots: cell.slots.filter(s => s.is_available).length,
+          unavailableSlots: cell.slots.filter(s => !s.is_available).length
+        });
         
         return (
           <Dialog key={`${cell.dateStr}-${index}`}>

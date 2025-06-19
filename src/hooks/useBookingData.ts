@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { normalizeTime } from '@/utils/timeUtils';
 
 export const useBookingData = (fieldId: string, startDateStr: string, endDateStr: string) => {
   const [bookedSlotsByDate, setBookedSlotsByDate] = useState<Record<string, Set<string>>>({});
@@ -27,11 +28,23 @@ export const useBookingData = (fieldId: string, startDateStr: string, endDateStr
           if (!bookedByDate[dateStr]) {
             bookedByDate[dateStr] = new Set();
           }
-          bookedByDate[dateStr].add(`${booking.start_time}-${booking.end_time}`);
+          
+          // CORRECTION: Normaliser les heures pour créer des clés cohérentes
+          const normalizedStartTime = normalizeTime(booking.start_time);
+          const normalizedEndTime = normalizeTime(booking.end_time);
+          const slotKey = `${normalizedStartTime}-${normalizedEndTime}`;
+          
+          bookedByDate[dateStr].add(slotKey);
+          
+          console.log('🔍 Réservation normalisée ajoutée:', {
+            date: dateStr,
+            original: `${booking.start_time}-${booking.end_time}`,
+            normalized: slotKey
+          });
         });
 
         setBookedSlotsByDate(bookedByDate);
-        console.log('📅 Réservations récupérées:', bookedByDate);
+        console.log('📅 Réservations récupérées et normalisées:', bookedByDate);
       } catch (error) {
         console.error('Erreur lors de la récupération des réservations:', error);
       }

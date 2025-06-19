@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { normalizeTime } from '@/utils/timeUtils';
 
 interface AvailabilitySlot {
   id?: string;
@@ -28,10 +29,23 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, onCl
   const available = slots.filter(s => s.is_available).length;
   const unavailable = slots.filter(s => !s.is_available).length;
   
-  // Calculer les créneaux réservés
+  // CORRECTION: Améliorer la détection des créneaux réservés avec normalisation
   const booked = slots.filter(slot => {
-    const slotKey = `${slot.start_time}-${slot.end_time}`;
-    return bookedSlots.has(slotKey);
+    const normalizedStartTime = normalizeTime(slot.start_time);
+    const normalizedEndTime = normalizeTime(slot.end_time);
+    const slotKey = `${normalizedStartTime}-${normalizedEndTime}`;
+    
+    const isBooked = bookedSlots.has(slotKey);
+    
+    console.log('🔍 Vérification créneau réservé:', {
+      date: format(day, 'yyyy-MM-dd'),
+      slot: `${slot.start_time}-${slot.end_time}`,
+      normalized: slotKey,
+      isBooked,
+      availableBookedSlots: Array.from(bookedSlots)
+    });
+    
+    return isBooked;
   }).length;
   
   const hasSlots = total > 0;
@@ -51,6 +65,15 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, onCl
     // Vert si tout disponible
     bgColor = 'bg-green-50 border-green-200';
   }
+
+  console.log('🎨 Couleur du jour:', {
+    date: format(day, 'yyyy-MM-dd'),
+    total,
+    available,
+    unavailable,
+    booked,
+    bgColor
+  });
 
   return (
     <Button
