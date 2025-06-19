@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,6 +25,13 @@ interface AvailabilitySlot {
   unavailability_reason?: string;
   is_maintenance?: boolean;
   notes?: string;
+}
+
+interface TimeExclusion {
+  date: Date;
+  startTime: string;
+  endTime: string;
+  reason?: string;
 }
 
 export const useAvailabilityManagement = (fieldId: string) => {
@@ -71,7 +77,7 @@ export const useAvailabilityManagement = (fieldId: string) => {
     });
   };
 
-  // Créer des créneaux pour une période
+  // Créer des créneaux pour une période avec exclusions
   const createAvailabilityForPeriod = useMutation({
     mutationFn: async (params: {
       startDate: string;
@@ -81,7 +87,9 @@ export const useAvailabilityManagement = (fieldId: string) => {
       slotDuration?: number;
       excludeDays?: number[];
       templateId?: string;
+      timeExclusions?: TimeExclusion[];
     }) => {
+      // D'abord créer tous les créneaux de base
       const { data, error } = await supabase.rpc('create_availability_for_period', {
         p_field_id: fieldId,
         p_start_date: params.startDate,
@@ -94,11 +102,28 @@ export const useAvailabilityManagement = (fieldId: string) => {
       });
 
       if (error) throw error;
+
+      // Ensuite appliquer les exclusions horaires spécifiques
+      if (params.timeExclusions && params.timeExclusions.length > 0) {
+        for (const exclusion of params.timeExclusions) {
+          const dateStr = exclusion.date.toISOString().split('T')[0];
+          
+          await supabase.rpc('set_slots_unavailable', {
+            p_field_id: fieldId,
+            p_date: dateStr,
+            p_start_time: exclusion.startTime,
+            p_end_time: exclusion.endTime,
+            p_reason: exclusion.reason || 'Exclusion programmée',
+            p_notes: exclusion.reason
+          });
+        }
+      }
+
       return data;
     },
     onSuccess: (slotsCreated) => {
       queryClient.invalidateQueries({ queryKey: ['field-availability-period'] });
-      toast.success(`${slotsCreated} créneaux créés avec succès`);
+      toast.success(`Créneaux créés avec succès (${slotsCreated} créneaux de base + exclusions appliquées)`);
     },
     onError: (error) => {
       console.error('Erreur création créneaux:', error);

@@ -5,14 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Plus, Save } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Clock, Plus, Save, Calendar } from 'lucide-react';
 import { useAvailabilityManagement } from '@/hooks/useAvailabilityManagement';
+import TimeExclusionManager from './TimeExclusionManager';
 
 interface SlotCreationFormProps {
   fieldId: string;
   startDate: Date;
   endDate: Date;
   onSlotsCreated?: () => void;
+}
+
+interface TimeExclusion {
+  date: Date;
+  startTime: string;
+  endTime: string;
+  reason?: string;
 }
 
 const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
@@ -28,6 +37,7 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     slotDuration: 30,
     excludeDays: [] as number[]
   });
+  const [timeExclusions, setTimeExclusions] = useState<TimeExclusion[]>([]);
 
   const daysOfWeek = [
     { value: 0, label: 'Dimanche' },
@@ -48,23 +58,6 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     }));
   };
 
-  const handleCreateSlots = async () => {
-    try {
-      await createAvailabilityForPeriod.mutateAsync({
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-        slotDuration: formData.slotDuration,
-        excludeDays: formData.excludeDays
-      });
-      
-      onSlotsCreated?.();
-    } catch (error) {
-      console.error('Erreur lors de la création des créneaux:', error);
-    }
-  };
-
   const calculateTotalSlots = () => {
     const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     const activeDays = days - Math.floor(days / 7) * formData.excludeDays.length;
@@ -73,7 +66,33 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     const endMinutes = parseInt(formData.endTime.split(':')[0]) * 60 + parseInt(formData.endTime.split(':')[1]);
     const slotsPerDay = Math.floor((endMinutes - startMinutes) / formData.slotDuration);
     
-    return activeDays * slotsPerDay;
+    // Décompter les exclusions horaires
+    const excludedSlots = timeExclusions.reduce((total, exclusion) => {
+      const excStartMinutes = parseInt(exclusion.startTime.split(':')[0]) * 60 + parseInt(exclusion.startTime.split(':')[1]);
+      const excEndMinutes = parseInt(exclusion.endTime.split(':')[0]) * 60 + parseInt(exclusion.endTime.split(':')[1]);
+      const excludedSlotsForDay = Math.floor((excEndMinutes - excStartMinutes) / formData.slotDuration);
+      return total + excludedSlotsForDay;
+    }, 0);
+    
+    return Math.max(0, (activeDays * slotsPerDay) - excludedSlots);
+  };
+
+  const handleCreateSlots = async () => {
+    try {
+      await createAvailabilityForPeriod.mutateAsync({
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        slotDuration: formData.slotDuration,
+        excludeDays: formData.excludeDays,
+        timeExclusions: timeExclusions
+      });
+      
+      onSlotsCreated?.();
+    } catch (error) {
+      console.error('Erreur lors de la création des créneaux:', error);
+    }
   };
 
   return (
@@ -84,74 +103,95 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
           Créer les créneaux pour la période
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Configuration des horaires */}
-        <div className="space-y-4">
-          <h4 className="font-medium">Horaires de disponibilité</h4>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Heure d'ouverture</label>
-              <Input
-                type="time"
-                value={formData.startTime}
-                onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Heure de fermeture</label>
-              <Input
-                type="time"
-                value={formData.endTime}
-                onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
-              />
-            </div>
-          </div>
+      <CardContent>
+        <Tabs defaultValue="basic" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="basic">Configuration de base</TabsTrigger>
+            <TabsTrigger value="advanced">Exclusions avancées</TabsTrigger>
+          </TabsList>
 
-          <div>
-            <label className="text-sm font-medium">Durée des créneaux (minutes)</label>
-            <Input
-              type="number"
-              min="15"
-              max="120"
-              step="15"
-              value={formData.slotDuration}
-              onChange={(e) => setFormData(prev => ({ ...prev, slotDuration: parseInt(e.target.value) }))}
-            />
-          </div>
-        </div>
-
-        {/* Sélection des jours */}
-        <div className="space-y-4">
-          <h4 className="font-medium">Jours d'ouverture</h4>
-          <p className="text-sm text-gray-600">
-            Décochez les jours où votre terrain sera fermé
-          </p>
-          
-          <div className="space-y-2">
-            {daysOfWeek.map((day) => {
-              const isExcluded = formData.excludeDays.includes(day.value);
-              return (
-                <div key={day.value} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`day-${day.value}`}
-                    checked={!isExcluded}
-                    onCheckedChange={(checked) => handleDayToggle(day.value, !!checked)}
+          <TabsContent value="basic" className="space-y-6">
+            {/* Configuration des horaires */}
+            <div className="space-y-4">
+              <h4 className="font-medium">Horaires de disponibilité</h4>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Heure d'ouverture</label>
+                  <Input
+                    type="time"
+                    value={formData.startTime}
+                    onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
                   />
-                  <label
-                    htmlFor={`day-${day.value}`}
-                    className={`text-sm ${isExcluded ? 'text-gray-400 line-through' : 'text-gray-700'}`}
-                  >
-                    {day.label}
-                  </label>
                 </div>
-              );
-            })}
-          </div>
-        </div>
+                <div>
+                  <label className="text-sm font-medium">Heure de fermeture</label>
+                  <Input
+                    type="time"
+                    value={formData.endTime}
+                    onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Durée des créneaux (minutes)</label>
+                <Input
+                  type="number"
+                  min="15"
+                  max="120"
+                  step="15"
+                  value={formData.slotDuration}
+                  onChange={(e) => setFormData(prev => ({ ...prev, slotDuration: parseInt(e.target.value) }))}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Détermine la granularité des réservations (ex: 30min = créneaux de 30 minutes)
+                </p>
+              </div>
+            </div>
+
+            {/* Sélection des jours */}
+            <div className="space-y-4">
+              <h4 className="font-medium">Jours d'ouverture</h4>
+              <p className="text-sm text-gray-600">
+                Décochez les jours où votre terrain sera fermé toute la journée
+              </p>
+              
+              <div className="space-y-2">
+                {daysOfWeek.map((day) => {
+                  const isExcluded = formData.excludeDays.includes(day.value);
+                  return (
+                    <div key={day.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`day-${day.value}`}
+                        checked={!isExcluded}
+                        onCheckedChange={(checked) => handleDayToggle(day.value, !!checked)}
+                      />
+                      <label
+                        htmlFor={`day-${day.value}`}
+                        className={`text-sm ${isExcluded ? 'text-gray-400 line-through' : 'text-gray-700'}`}
+                      >
+                        {day.label}
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="advanced">
+            <TimeExclusionManager
+              startDate={startDate}
+              endDate={endDate}
+              exclusions={timeExclusions}
+              onExclusionsChange={setTimeExclusions}
+            />
+          </TabsContent>
+        </Tabs>
 
         {/* Résumé */}
-        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <h4 className="font-medium text-blue-800 mb-2">Résumé de la création</h4>
           <div className="space-y-2 text-sm text-blue-700">
             <div className="flex justify-between">
@@ -170,6 +210,10 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
               <span>Jours exclus :</span>
               <span>{formData.excludeDays.length > 0 ? `${formData.excludeDays.length} jour(s)` : 'Aucun'}</span>
             </div>
+            <div className="flex justify-between">
+              <span>Exclusions horaires :</span>
+              <span>{timeExclusions.length > 0 ? `${timeExclusions.length} plage(s)` : 'Aucune'}</span>
+            </div>
             <div className="flex justify-between font-medium border-t pt-2">
               <span>Total créneaux estimés :</span>
               <Badge variant="secondary">{calculateTotalSlots()}</Badge>
@@ -178,7 +222,7 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 mt-6">
           <Button 
             onClick={handleCreateSlots}
             disabled={createAvailabilityForPeriod.isPending}
