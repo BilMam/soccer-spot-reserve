@@ -135,7 +135,7 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
                 <div key={day.value} className="flex items-center space-x-2">
                   <Checkbox
                     id={`day-${day.value}`}
-                    checked={!isExc    uded}
+                    checked={!isExcluded}
                     onCheckedChange={(checked) => handleDayToggle(day.value, !!checked)}
                   />
                   <label
