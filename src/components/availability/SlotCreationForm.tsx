@@ -1,8 +1,8 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAvailabilityManagement } from '@/hooks/useAvailabilityManagement';
 import { useExistingSlots } from '@/hooks/useExistingSlots';
+import { extractSlotConfiguration } from '@/utils/slotConfigExtractor';
 import ExistingSlotsPreview from './ExistingSlotsPreview';
 import SlotCreationSuccess from './SlotCreationSuccess';
 import SlotCreationFormHeader from './SlotCreationFormHeader';
@@ -44,6 +44,15 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
   const [timeExclusions, setTimeExclusions] = useState<TimeExclusion[]>([]);
   const [creationStep, setCreationStep] = useState<'preview' | 'creating' | 'success' | 'modify'>('preview');
   const [slotsCreatedCount, setSlotsCreatedCount] = useState(0);
+
+  // Extraire la configuration actuelle quand on passe en mode modification
+  useEffect(() => {
+    if (creationStep === 'modify' && existingSlots.length > 0) {
+      const extractedConfig = extractSlotConfiguration(existingSlots);
+      setFormData(extractedConfig);
+      console.log('Configuration extraite des créneaux existants:', extractedConfig);
+    }
+  }, [creationStep, existingSlots]);
 
   const calculateTotalSlots = () => {
     const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
