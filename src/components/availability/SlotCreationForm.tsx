@@ -2,13 +2,13 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, Plus, Save, Calendar } from 'lucide-react';
+import { Plus, Save } from 'lucide-react';
 import { useAvailabilityManagement } from '@/hooks/useAvailabilityManagement';
 import TimeExclusionManager from './TimeExclusionManager';
+import BasicConfigurationForm from './BasicConfigurationForm';
+import DaySelectionForm from './DaySelectionForm';
+import SlotSummary from './SlotSummary';
 
 interface SlotCreationFormProps {
   fieldId: string;
@@ -38,16 +38,6 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     excludeDays: [] as number[]
   });
   const [timeExclusions, setTimeExclusions] = useState<TimeExclusion[]>([]);
-
-  const daysOfWeek = [
-    { value: 0, label: 'Dimanche' },
-    { value: 1, label: 'Lundi' },
-    { value: 2, label: 'Mardi' },
-    { value: 3, label: 'Mercredi' },
-    { value: 4, label: 'Jeudi' },
-    { value: 5, label: 'Vendredi' },
-    { value: 6, label: 'Samedi' }
-  ];
 
   const handleDayToggle = (dayValue: number, checked: boolean) => {
     setFormData(prev => ({
@@ -111,73 +101,19 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
           </TabsList>
 
           <TabsContent value="basic" className="space-y-6">
-            {/* Configuration des horaires */}
-            <div className="space-y-4">
-              <h4 className="font-medium">Horaires de disponibilité</h4>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Heure d'ouverture</label>
-                  <Input
-                    type="time"
-                    value={formData.startTime}
-                    onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Heure de fermeture</label>
-                  <Input
-                    type="time"
-                    value={formData.endTime}
-                    onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
-                  />
-                </div>
-              </div>
+            <BasicConfigurationForm
+              startTime={formData.startTime}
+              endTime={formData.endTime}
+              slotDuration={formData.slotDuration}
+              onStartTimeChange={(time) => setFormData(prev => ({ ...prev, startTime: time }))}
+              onEndTimeChange={(time) => setFormData(prev => ({ ...prev, endTime: time }))}
+              onSlotDurationChange={(duration) => setFormData(prev => ({ ...prev, slotDuration: duration }))}
+            />
 
-              <div>
-                <label className="text-sm font-medium">Durée des créneaux (minutes)</label>
-                <Input
-                  type="number"
-                  min="15"
-                  max="120"
-                  step="15"
-                  value={formData.slotDuration}
-                  onChange={(e) => setFormData(prev => ({ ...prev, slotDuration: parseInt(e.target.value) }))}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Détermine la granularité des réservations (ex: 30min = créneaux de 30 minutes)
-                </p>
-              </div>
-            </div>
-
-            {/* Sélection des jours */}
-            <div className="space-y-4">
-              <h4 className="font-medium">Jours d'ouverture</h4>
-              <p className="text-sm text-gray-600">
-                Décochez les jours où votre terrain sera fermé toute la journée
-              </p>
-              
-              <div className="space-y-2">
-                {daysOfWeek.map((day) => {
-                  const isExcluded = formData.excludeDays.includes(day.value);
-                  return (
-                    <div key={day.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`day-${day.value}`}
-                        checked={!isExcluded}
-                        onCheckedChange={(checked) => handleDayToggle(day.value, !!checked)}
-                      />
-                      <label
-                        htmlFor={`day-${day.value}`}
-                        className={`text-sm ${isExcluded ? 'text-gray-400 line-through' : 'text-gray-700'}`}
-                      >
-                        {day.label}
-                      </label>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <DaySelectionForm
+              excludeDays={formData.excludeDays}
+              onDayToggle={handleDayToggle}
+            />
           </TabsContent>
 
           <TabsContent value="advanced">
@@ -191,34 +127,17 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
         </Tabs>
 
         {/* Résumé */}
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <h4 className="font-medium text-blue-800 mb-2">Résumé de la création</h4>
-          <div className="space-y-2 text-sm text-blue-700">
-            <div className="flex justify-between">
-              <span>Période :</span>
-              <span>{startDate.toLocaleDateString()} - {endDate.toLocaleDateString()}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Horaires :</span>
-              <span>{formData.startTime} - {formData.endTime}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Durée des créneaux :</span>
-              <span>{formData.slotDuration} minutes</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Jours exclus :</span>
-              <span>{formData.excludeDays.length > 0 ? `${formData.excludeDays.length} jour(s)` : 'Aucun'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Exclusions horaires :</span>
-              <span>{timeExclusions.length > 0 ? `${timeExclusions.length} plage(s)` : 'Aucune'}</span>
-            </div>
-            <div className="flex justify-between font-medium border-t pt-2">
-              <span>Total créneaux estimés :</span>
-              <Badge variant="secondary">{calculateTotalSlots()}</Badge>
-            </div>
-          </div>
+        <div className="mt-6">
+          <SlotSummary
+            startDate={startDate}
+            endDate={endDate}
+            startTime={formData.startTime}
+            endTime={formData.endTime}
+            slotDuration={formData.slotDuration}
+            excludeDays={formData.excludeDays}
+            timeExclusions={timeExclusions}
+            totalSlots={calculateTotalSlots()}
+          />
         </div>
 
         {/* Actions */}
