@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import { timeToMinutes, minutesToTime } from '@/utils/timeUtils';
+import { timeToMinutes, minutesToTime, normalizeTime } from '@/utils/timeUtils';
 import { supabase } from '@/integrations/supabase/client';
 import OccupiedSlotsDisplay from '@/components/calendar/OccupiedSlotsDisplay';
 import TimeSlotSelector from '@/components/calendar/TimeSlotSelector';
@@ -72,7 +72,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
         if (bookingError) {
           console.error('Erreur lors de la récupération des réservations:', bookingError);
         } else {
-          const booked = bookings?.map(booking => `${booking.start_time.slice(0, 5)}-${booking.end_time.slice(0, 5)}`) || [];
+          const booked = bookings?.map(booking => `${normalizeTime(booking.start_time)}-${normalizeTime(booking.end_time)}`) || [];
           console.log('🔍 Créneaux réservés trouvés:', booked);
           setBookedSlots(booked);
         }
@@ -81,12 +81,12 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
         const unavailable = availableSlots
           .filter(slot => !slot.is_available)
           .filter(slot => {
-            const slotKey = `${slot.start_time.slice(0, 5)}-${slot.end_time.slice(0, 5)}`;
+            const slotKey = `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`;
             return !bookings?.some(booking => 
-              `${booking.start_time}-${booking.end_time}` === `${slot.start_time}-${slot.end_time}`
+              `${normalizeTime(booking.start_time)}-${normalizeTime(booking.end_time)}` === slotKey
             );
           })
-          .map(slot => `${slot.start_time.slice(0, 5)}-${slot.end_time.slice(0, 5)}`);
+          .map(slot => `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`);
         
         console.log('🔍 Créneaux indisponibles trouvés:', unavailable);
         setUnavailableSlots(unavailable);
@@ -104,23 +104,48 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
 
+    console.log('🔍 isRangeAvailable - Vérification plage:', `${startTime}-${endTime}`);
+
     // Vérifier chaque créneau de 30 minutes dans la plage
     for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
       const slotStartTime = minutesToTime(minutes);
       const slotEndTime = minutesToTime(minutes + 30);
-      const slot = availableSlots.find(s => s.start_time === slotStartTime && s.end_time === slotEndTime);
+      
+      // Normaliser les temps pour la comparaison
+      const normalizedSlotStart = normalizeTime(slotStartTime);
+      const normalizedSlotEnd = normalizeTime(slotEndTime);
+      
+      const slot = availableSlots.find(s => {
+        const normalizedDbStart = normalizeTime(s.start_time);
+        const normalizedDbEnd = normalizeTime(s.end_time);
+        const match = normalizedDbStart === normalizedSlotStart && normalizedDbEnd === normalizedSlotEnd;
+        
+        if (match) {
+          console.log('🔍 Slot trouvé pour vérification:', {
+            recherché: `${normalizedSlotStart}-${normalizedSlotEnd}`,
+            trouvé: `${normalizedDbStart}-${normalizedDbEnd}`,
+            available: s.is_available
+          });
+        }
+        
+        return match;
+      });
       
       // Le créneau doit exister ET être disponible ET ne pas être réservé
       if (!slot || !slot.is_available) {
+        console.log('🔍 Créneau non disponible ou inexistant:', `${normalizedSlotStart}-${normalizedSlotEnd}`);
         return false;
       }
       
       // Vérifier qu'il n'est pas réservé
-      const slotKey = `${slotStartTime}-${slotEndTime}`;
+      const slotKey = `${normalizedSlotStart}-${normalizedSlotEnd}`;
       if (bookedSlots.includes(slotKey)) {
+        console.log('🔍 Créneau réservé:', slotKey);
         return false;
       }
     }
+    
+    console.log('🔍 Plage entièrement disponible:', `${startTime}-${endTime}`);
     return true;
   };
 
@@ -131,13 +156,30 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
     const endMinutes = timeToMinutes(endTime);
     let totalPrice = 0;
 
+    console.log('🔍 calculateTotalPrice - Calcul pour:', `${startTime}-${endTime}`);
+
     // Additionner le prix de chaque créneau de 30 minutes
     for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
       const slotStartTime = minutesToTime(minutes);
       const slotEndTime = minutesToTime(minutes + 30);
-      const slot = availableSlots.find(s => s.start_time === slotStartTime && s.end_time === slotEndTime);
-      totalPrice += slot?.price_override || fieldPrice / 2; // Prix par défaut pour 30 min
+      
+      // Normaliser les temps pour la comparaison
+      const normalizedSlotStart = normalizeTime(slotStartTime);
+      const normalizedSlotEnd = normalizeTime(slotEndTime);
+      
+      const slot = availableSlots.find(s => {
+        const normalizedDbStart = normalizeTime(s.start_time);
+        const normalizedDbEnd = normalizeTime(s.end_time);
+        return normalizedDbStart === normalizedSlotStart && normalizedDbEnd === normalizedSlotEnd;
+      });
+      
+      const slotPrice = slot?.price_override || fieldPrice / 2; // Prix par défaut pour 30 min
+      totalPrice += slotPrice;
+      
+      console.log('🔍 Prix créneau:', `${normalizedSlotStart}-${normalizedSlotEnd}`, 'prix:', slotPrice);
     }
+    
+    console.log('🔍 Prix total calculé:', totalPrice);
     return totalPrice;
   };
 
