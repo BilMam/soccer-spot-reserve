@@ -8,6 +8,12 @@ interface SlotStatusBadgeProps {
 
 const SlotStatusBadge: React.FC<SlotStatusBadgeProps> = ({ status }) => {
   switch (status) {
+    case 'available':
+      return (
+        <Badge variant="secondary" className="ml-2 text-xs bg-green-100 text-green-700">
+          Disponible
+        </Badge>
+      );
     case 'booked':
       return (
         <Badge variant="secondary" className="ml-2 text-xs bg-red-100 text-red-700">
