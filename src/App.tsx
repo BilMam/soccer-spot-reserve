@@ -36,6 +36,7 @@ function App() {
               <Route path="/edit-field/:id" element={<EditField />} />
               <Route path="/become-owner" element={<BecomeOwner />} />
               <Route path="/owner-dashboard" element={<OwnerDashboard />} />
+              <Route path="/owner/dashboard" element={<OwnerDashboard />} />
               <Route path="/admin-dashboard" element={<AdminDashboard />} />
               <Route path="/super-admin-dashboard" element={<SuperAdminDashboard />} />
               <Route path="/booking-success" element={<BookingSuccess />} />
