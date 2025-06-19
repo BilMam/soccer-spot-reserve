@@ -97,7 +97,7 @@ const FieldCard: React.FC<FieldCardProps> = ({ field }) => {
 
           <div className="flex items-center justify-between pt-2 border-t">
             <div>
-              <span className="text-xl font-bold text-gray-900">{field.price}€</span>
+              <span className="text-xl font-bold text-gray-900">{field.price.toLocaleString()} XOF</span>
               <span className="text-gray-500 text-sm">/heure</span>
             </div>
           </div>

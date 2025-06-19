@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -72,7 +73,7 @@ export const FieldCard: React.FC<FieldCardProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div><strong>Type :</strong> {field.field_type}</div>
           <div><strong>Capacité :</strong> {field.capacity} personnes</div>
-          <div><strong>Prix :</strong> {field.price_per_hour}€/h</div>
+          <div><strong>Prix :</strong> {field.price_per_hour.toLocaleString()} XOF/h</div>
         </div>
 
         {field.description && (

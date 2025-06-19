@@ -59,7 +59,7 @@ export const FieldDetailDialog: React.FC<FieldDetailDialogProps> = ({
               
               <div className="flex items-center space-x-2">
                 <Euro className="w-4 h-4 text-gray-500" />
-                <span className="text-sm">{field.price_per_hour}€/heure</span>
+                <span className="text-sm">{field.price_per_hour.toLocaleString()} XOF/heure</span>
               </div>
               
               <div className="flex items-center space-x-2">

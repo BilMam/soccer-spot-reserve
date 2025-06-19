@@ -110,7 +110,7 @@ const OwnerFields = ({ fields, isLoading }: OwnerFieldsProps) => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center space-x-2">
                   <Euro className="w-4 h-4 text-green-600" />
-                  <span className="font-medium">{field.price_per_hour}€/h</span>
+                  <span className="font-medium">{field.price_per_hour.toLocaleString()} XOF/h</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Star className="w-4 h-4 text-yellow-500 fill-current" />

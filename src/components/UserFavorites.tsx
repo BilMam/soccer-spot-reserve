@@ -92,7 +92,7 @@ const UserFavorites: React.FC = () => {
                       
                       <div className="flex items-center space-x-1">
                         <Euro className="w-4 h-4 text-green-600" />
-                        <span className="font-medium">{field.price_per_hour}€/h</span>
+                        <span className="font-medium">{field.price_per_hour.toLocaleString()} XOF/h</span>
                       </div>
 
                       {field.rating > 0 && (
