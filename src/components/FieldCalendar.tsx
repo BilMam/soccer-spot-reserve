@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +17,19 @@ interface FieldCalendarProps {
   fieldId: string;
   fieldPrice: number;
   onTimeSlotSelect: (date: Date, startTime: string, endTime: string, price: number) => void;
+}
+
+// Define the interface to match the database structure
+interface AvailabilitySlot {
+  id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  is_available: boolean;
+  price_override?: number;
+  unavailability_reason?: string;
+  is_maintenance?: boolean;
+  notes?: string;
 }
 
 const FieldCalendar: React.FC<FieldCalendarProps> = ({

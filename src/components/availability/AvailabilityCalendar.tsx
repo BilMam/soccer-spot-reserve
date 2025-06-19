@@ -9,7 +9,6 @@ import { useAvailabilityManagement } from '@/hooks/useAvailabilityManagement';
 import DaySlotDetails from './DaySlotDetails';
 import CalendarLegend from './CalendarLegend';
 import CalendarDay from './CalendarDay';
-import UnavailabilityForm from './UnavailabilityForm';
 
 interface AvailabilityCalendarProps {
   fieldId: string;
@@ -61,24 +60,6 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
     }
     
     return days;
-  };
-
-  const handleSetUnavailable = async (formData: { startTime: string; endTime: string; reason: string; notes: string }) => {
-    if (!selectedDate) return;
-
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    
-    try {
-      await setSlotsUnavailable.mutateAsync({
-        date: dateStr,
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-        reason: formData.reason,
-        notes: formData.notes
-      });
-    } catch (error) {
-      console.error('Erreur lors de la définition d\'indisponibilité:', error);
-    }
   };
 
   const handleToggleSlotStatus = async (slot: AvailabilitySlot) => {
@@ -167,21 +148,12 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
                         </DialogTitle>
                       </DialogHeader>
                       
-                      <div className="space-y-6">
-                        <DaySlotDetails
-                          slots={dateSlots}
-                          date={day}
-                          onToggleSlotStatus={handleToggleSlotStatus}
-                          isUpdating={setSlotsUnavailable.isPending || setSlotsAvailable.isPending}
-                        />
-
-                        {dateSlots.length > 0 && (
-                          <UnavailabilityForm
-                            onSubmit={handleSetUnavailable}
-                            isLoading={setSlotsUnavailable.isPending}
-                          />
-                        )}
-                      </div>
+                      <DaySlotDetails
+                        slots={dateSlots}
+                        date={day}
+                        onToggleSlotStatus={handleToggleSlotStatus}
+                        isUpdating={setSlotsUnavailable.isPending || setSlotsAvailable.isPending}
+                      />
                     </DialogContent>
                   </Dialog>
                 );
