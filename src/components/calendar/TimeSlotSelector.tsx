@@ -26,6 +26,12 @@ interface TimeSlotSelectorProps {
   fieldId: string;
 }
 
+// Fonction utilitaire pour normaliser les formats d'heures (retirer les secondes)
+const normalizeTime = (time: string): string => {
+  if (!time) return '';
+  return time.slice(0, 5); // Garde seulement HH:MM
+};
+
 const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
   selectedStartTime,
   selectedEndTime,
@@ -39,6 +45,7 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
 
   console.log('🔍 TimeSlotSelector - Field ID reçu:', fieldId);
   console.log('🔍 TimeSlotSelector - Créneaux disponibles:', availableSlots.length);
+  console.log('🔍 TimeSlotSelector - Détail créneaux:', availableSlots);
 
   // Récupérer les créneaux réservés
   useEffect(() => {
@@ -70,7 +77,13 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
         }
 
         const bookedSlotKeys = new Set(
-          bookings?.map(booking => `${booking.start_time}-${booking.end_time}`) || []
+          bookings?.map(booking => {
+            const normalizedStart = normalizeTime(booking.start_time);
+            const normalizedEnd = normalizeTime(booking.end_time);
+            const slotKey = `${normalizedStart}-${normalizedEnd}`;
+            console.log('🔍 Slot réservé normalisé:', slotKey, 'depuis:', booking.start_time, booking.end_time);
+            return slotKey;
+          }) || []
         );
         
         console.log('🔍 Créneaux réservés récupérés:', Array.from(bookedSlotKeys));
@@ -85,23 +98,67 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
 
   // Vérifier si un créneau spécifique est réservé
   const isSlotBooked = (startTime: string, endTime: string): boolean => {
-    const slotKey = `${startTime}-${endTime}`;
-    return bookedSlots.has(slotKey);
+    const normalizedStart = normalizeTime(startTime);
+    const normalizedEnd = normalizeTime(endTime);
+    const slotKey = `${normalizedStart}-${normalizedEnd}`;
+    const isBooked = bookedSlots.has(slotKey);
+    console.log('🔍 Vérification réservation:', slotKey, 'isBooked:', isBooked);
+    return isBooked;
   };
 
   // Vérifier si un créneau est disponible (existe et is_available = true)
   const isSlotAvailable = (startTime: string, endTime: string): boolean => {
-    const slot = availableSlots.find(s => s.start_time === startTime && s.end_time === endTime);
-    return slot ? slot.is_available : false;
+    const normalizedStart = normalizeTime(startTime);
+    const normalizedEnd = normalizeTime(endTime);
+    
+    const slot = availableSlots.find(s => {
+      const slotNormalizedStart = normalizeTime(s.start_time);
+      const slotNormalizedEnd = normalizeTime(s.end_time);
+      const match = slotNormalizedStart === normalizedStart && slotNormalizedEnd === normalizedEnd;
+      
+      if (match) {
+        console.log('🔍 Slot trouvé:', {
+          recherché: `${normalizedStart}-${normalizedEnd}`,
+          trouvé: `${slotNormalizedStart}-${slotNormalizedEnd}`,
+          available: s.is_available
+        });
+      }
+      
+      return match;
+    });
+    
+    const available = slot ? slot.is_available : false;
+    console.log('🔍 isSlotAvailable:', `${normalizedStart}-${normalizedEnd}`, 'available:', available);
+    return available;
   };
 
   // Déterminer le statut d'un créneau
   const getSlotStatus = (startTime: string, endTime: string): 'available' | 'booked' | 'unavailable' | 'not_created' => {
-    const slot = availableSlots.find(s => s.start_time === startTime && s.end_time === endTime);
+    const normalizedStart = normalizeTime(startTime);
+    const normalizedEnd = normalizeTime(endTime);
     
-    if (!slot) return 'not_created';
-    if (isSlotBooked(startTime, endTime)) return 'booked';
-    if (!slot.is_available) return 'unavailable';
+    const slot = availableSlots.find(s => {
+      const slotNormalizedStart = normalizeTime(s.start_time);
+      const slotNormalizedEnd = normalizeTime(s.end_time);
+      return slotNormalizedStart === normalizedStart && slotNormalizedEnd === normalizedEnd;
+    });
+    
+    if (!slot) {
+      console.log('🔍 getSlotStatus: not_created pour', `${normalizedStart}-${normalizedEnd}`);
+      return 'not_created';
+    }
+    
+    if (isSlotBooked(startTime, endTime)) {
+      console.log('🔍 getSlotStatus: booked pour', `${normalizedStart}-${normalizedEnd}`);
+      return 'booked';
+    }
+    
+    if (!slot.is_available) {
+      console.log('🔍 getSlotStatus: unavailable pour', `${normalizedStart}-${normalizedEnd}`);
+      return 'unavailable';
+    }
+    
+    console.log('🔍 getSlotStatus: available pour', `${normalizedStart}-${normalizedEnd}`);
     return 'available';
   };
 

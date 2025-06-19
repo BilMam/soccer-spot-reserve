@@ -42,3 +42,9 @@ export const calculateDuration = (startTime: string, endTime: string): {
   
   return { hours, minutes, display };
 };
+
+// Fonction utilitaire pour normaliser les formats d'heures (retirer les secondes)
+export const normalizeTime = (time: string): string => {
+  if (!time) return '';
+  return time.slice(0, 5); // Garde seulement HH:MM
+};
