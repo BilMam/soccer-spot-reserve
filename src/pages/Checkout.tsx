@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -6,16 +5,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Calendar, 
   Clock, 
-  Users, 
   MapPin, 
   Star, 
   CreditCard, 
@@ -54,8 +49,6 @@ const Checkout = () => {
 
   const checkoutData = location.state as CheckoutState;
   
-  const [playerCount, setPlayerCount] = useState<string>('');
-  const [specialRequests, setSpecialRequests] = useState('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
 
   // Rediriger si pas de données de checkout
@@ -98,11 +91,9 @@ const Checkout = () => {
           booking_date: checkoutData.selectedDate.toISOString().split('T')[0],
           start_time: checkoutData.selectedStartTime,
           end_time: checkoutData.selectedEndTime,
-          player_count: parseInt(playerCount),
           total_price: checkoutData.totalPrice,
           platform_fee: platformFee,
           owner_amount: ownerAmount,
-          special_requests: specialRequests || null,
           status: 'pending',
           payment_status: 'pending',
           escrow_status: 'none',
@@ -164,15 +155,6 @@ const Checkout = () => {
   });
 
   const handlePayment = () => {
-    if (!playerCount || parseInt(playerCount) < 1) {
-      toast({
-        title: "Nombre de joueurs requis",
-        description: "Veuillez indiquer le nombre de joueurs",
-        variant: "destructive"
-      });
-      return;
-    }
-
     if (!selectedPaymentMethod) {
       toast({
         title: "Moyen de paiement requis",
@@ -249,35 +231,11 @@ const Checkout = () => {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl">Finaliser votre réservation</CardTitle>
+                <CardTitle className="text-2xl">Choisir votre moyen de paiement</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Nombre de joueurs */}
-                <div>
-                  <Label htmlFor="playerCount" className="text-base font-medium">
-                    Nombre de joueurs *
-                  </Label>
-                  <div className="flex items-center space-x-2 mt-2">
-                    <Users className="w-4 h-4 text-gray-500" />
-                    <Input
-                      id="playerCount"
-                      type="number"
-                      min="1"
-                      max="20"
-                      value={playerCount}
-                      onChange={(e) => setPlayerCount(e.target.value)}
-                      placeholder="ex: 10"
-                      required
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-
                 {/* Moyens de paiement */}
                 <div>
-                  <Label className="text-base font-medium mb-4 block">
-                    Choisir votre moyen de paiement *
-                  </Label>
                   <div className="grid grid-cols-1 gap-3">
                     {paymentMethods.map((method) => (
                       <button
@@ -302,21 +260,6 @@ const Checkout = () => {
                       </button>
                     ))}
                   </div>
-                </div>
-
-                {/* Demandes spéciales */}
-                <div>
-                  <Label htmlFor="specialRequests" className="text-base font-medium">
-                    Demandes spéciales (optionnel)
-                  </Label>
-                  <Textarea
-                    id="specialRequests"
-                    value={specialRequests}
-                    onChange={(e) => setSpecialRequests(e.target.value)}
-                    placeholder="Équipements supplémentaires, préférences particulières..."
-                    rows={3}
-                    className="mt-2"
-                  />
                 </div>
 
                 {/* Info sécurité */}
