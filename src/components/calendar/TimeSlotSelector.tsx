@@ -4,11 +4,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { generateTimeOptions, timeToMinutes, minutesToTime } from '@/utils/timeUtils';
 
-interface TimeSlot {
+interface AvailabilitySlot {
+  id: string;
+  date: string;
   start_time: string;
   end_time: string;
   is_available: boolean;
-  price: number;
+  price_override?: number;
+  unavailability_reason?: string;
+  is_maintenance?: boolean;
+  notes?: string;
 }
 
 interface TimeSlotSelectorProps {
@@ -16,7 +21,7 @@ interface TimeSlotSelectorProps {
   selectedEndTime: string;
   onStartTimeChange: (time: string) => void;
   onEndTimeChange: (time: string) => void;
-  availableSlots: TimeSlot[];
+  availableSlots: AvailabilitySlot[];
 }
 
 const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
