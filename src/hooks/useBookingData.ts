@@ -9,6 +9,8 @@ export const useBookingData = (fieldId: string, startDateStr: string, endDateStr
   useEffect(() => {
     const fetchBookedSlots = async () => {
       try {
+        console.log('🔍 DÉBUT RÉCUPÉRATION - Paramètres:', { fieldId, startDateStr, endDateStr });
+        
         const { data: bookings, error } = await supabase
           .from('bookings')
           .select('booking_date, start_time, end_time')
@@ -21,6 +23,8 @@ export const useBookingData = (fieldId: string, startDateStr: string, endDateStr
           console.error('Erreur lors de la récupération des réservations:', error);
           return;
         }
+
+        console.log('🔍 RÉSERVATIONS BRUTES récupérées:', bookings);
 
         const bookedByDate: Record<string, Set<string>> = {};
         bookings?.forEach(booking => {
@@ -36,15 +40,21 @@ export const useBookingData = (fieldId: string, startDateStr: string, endDateStr
           
           bookedByDate[dateStr].add(slotKey);
           
-          console.log('🔍 Réservation normalisée ajoutée:', {
+          console.log('🔍 RÉSERVATION AJOUTÉE:', {
             date: dateStr,
             original: `${booking.start_time}-${booking.end_time}`,
-            normalized: slotKey
+            normalized: slotKey,
+            finalKey: slotKey
           });
         });
 
         setBookedSlotsByDate(bookedByDate);
-        console.log('📅 Réservations récupérées et normalisées:', bookedByDate);
+        console.log('📅 RÉSERVATIONS FINALES par date:', bookedByDate);
+        
+        // Debug spécifique pour le 25 juin
+        if (bookedByDate['2025-06-25']) {
+          console.log('🎯 RÉSERVATIONS pour le 2025-06-25:', Array.from(bookedByDate['2025-06-25']));
+        }
       } catch (error) {
         console.error('Erreur lors de la récupération des réservations:', error);
       }

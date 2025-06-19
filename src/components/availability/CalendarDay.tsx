@@ -37,13 +37,18 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, onCl
     
     const isBooked = bookedSlots.has(slotKey);
     
-    console.log('🔍 Vérification créneau réservé:', {
-      date: format(day, 'yyyy-MM-dd'),
-      slot: `${slot.start_time}-${slot.end_time}`,
-      normalized: slotKey,
-      isBooked,
-      availableBookedSlots: Array.from(bookedSlots)
-    });
+    // Debug spécifique pour le mercredi 25
+    const dateStr = format(day, 'yyyy-MM-dd');
+    if (dateStr === '2025-06-25' || isBooked) {
+      console.log('🔍 DEBUG DÉTAILLÉ - Créneau:', {
+        date: dateStr,
+        slotOriginal: `${slot.start_time}-${slot.end_time}`,
+        slotNormalized: slotKey,
+        isBooked,
+        bookedSlotsArray: Array.from(bookedSlots),
+        slotAvailable: slot.is_available
+      });
+    }
     
     return isBooked;
   }).length;
@@ -66,14 +71,21 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, onCl
     bgColor = 'bg-green-50 border-green-200';
   }
 
-  console.log('🎨 Couleur du jour:', {
-    date: format(day, 'yyyy-MM-dd'),
-    total,
-    available,
-    unavailable,
-    booked,
-    bgColor
-  });
+  // Debug spécifique pour le mercredi 25
+  const dateStr = format(day, 'yyyy-MM-dd');
+  if (dateStr === '2025-06-25' || hasBooked > 0) {
+    console.log('🎨 DEBUG COULEUR:', {
+      date: dateStr,
+      total,
+      available,
+      unavailable,
+      booked,
+      hasBooked,
+      bgColor,
+      bookedSlotsSize: bookedSlots.size,
+      allBookedSlots: Array.from(bookedSlots)
+    });
+  }
 
   return (
     <Button
