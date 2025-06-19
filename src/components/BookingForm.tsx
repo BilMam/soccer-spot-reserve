@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,9 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Clock, Users, CreditCard, AlertCircle, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Users, CreditCard, Loader2 } from 'lucide-react';
 
 interface BookingFormProps {
   fieldId: string;
@@ -32,8 +32,18 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const { user } = useAuth();
   const { toast } = useToast();
   const [playerCount, setPlayerCount] = useState<string>('');
-  const [duration, setDuration] = useState<string>('1');
   const [specialRequests, setSpecialRequests] = useState('');
+
+  // Calculer la durée à partir des heures de début et fin
+  const calculateDurationFromTime = () => {
+    if (!selectedTime.includes(' - ')) return 1;
+    const [startTime, endTime] = selectedTime.split(' - ');
+    const startHour = parseInt(startTime.split(':')[0]);
+    const endHour = parseInt(endTime.split(':')[0]);
+    return endHour - startHour;
+  };
+
+  const duration = calculateDurationFromTime();
 
   const createBookingAndPayMutation = useMutation({
     mutationFn: async (bookingData: any) => {
@@ -43,7 +53,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
         pricePerHour,
         selectedDate: selectedDate.toISOString(),
         selectedTime,
-        duration: parseInt(duration),
+        duration,
         playerCount: parseInt(playerCount)
       });
       
@@ -55,11 +65,11 @@ const BookingForm: React.FC<BookingFormProps> = ({
       console.log('✅ Utilisateur authentifié:', user.id);
 
       // CORRECTION MAJEURE : Calcul correct du prix total
-      const startTime = selectedTime;
+      const [startTime, endTime] = selectedTime.includes(' - ') ? selectedTime.split(' - ') : [selectedTime, selectedTime];
       const startHour = parseInt(startTime.split(':')[0]);
-      const durationNum = parseInt(duration);
+      const durationNum = duration;
       const endHour = startHour + durationNum;
-      const endTime = `${endHour.toString().padStart(2, '0')}:00`;
+      const finalEndTime = `${endHour.toString().padStart(2, '0')}:00`;
       
       // Prix correct = prix par heure × nombre d'heures
       const correctTotalPrice = pricePerHour * durationNum;
@@ -84,7 +94,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
           user_id: user.id,
           booking_date: selectedDate.toISOString().split('T')[0],
           start_time: startTime,
-          end_time: endTime,
+          end_time: finalEndTime,
           player_count: parseInt(playerCount),
           total_price: correctTotalPrice, // PRIX CORRIGÉ
           platform_fee: platformFee,
@@ -116,7 +126,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
         amount: correctTotalPrice, // MONTANT CORRECT
         field_name: fieldName,
         date: selectedDate.toLocaleDateString('fr-FR'),
-        time: `${startTime} - ${endTime}`
+        time: selectedTime
       };
 
       console.log('💳 Appel Edge Function avec données corrigées:', paymentRequestData);
@@ -266,16 +276,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
       return;
     }
 
-    if (!duration || parseInt(duration) < 1) {
-      console.error('❌ Durée invalide:', duration);
-      toast({
-        title: "Erreur de validation",
-        description: "Veuillez sélectionner une durée valide",
-        variant: "destructive"
-      });
-      return;
-    }
-
     if (calculateTotal() <= 0) {
       console.error('❌ Prix total invalide:', calculateTotal());
       toast({
@@ -291,8 +291,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
   };
 
   const calculateTotal = () => {
-    const durationNum = parseInt(duration || '1');
-    return pricePerHour * durationNum;
+    return pricePerHour * duration;
   };
 
   const formatDate = (date: Date) => {
@@ -317,33 +316,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
         
         <div className="flex items-center space-x-2 text-gray-600">
           <Clock className="w-4 h-4" />
-          <span>{selectedTime} - {
-            (() => {
-              const startHour = parseInt(selectedTime.split(':')[0]);
-              const endHour = startHour + parseInt(duration || '1');
-              return `${endHour.toString().padStart(2, '0')}:00`;
-            })()
-          }</span>
+          <span>{selectedTime}</span>
         </div>
       </div>
 
       {/* Formulaire */}
       <div className="space-y-4">
-        <div>
-          <Label htmlFor="duration">Durée (heures)</Label>
-          <Select value={duration} onValueChange={setDuration}>
-            <SelectTrigger>
-              <SelectValue placeholder="Sélectionner la durée" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">1 heure</SelectItem>
-              <SelectItem value="2">2 heures</SelectItem>
-              <SelectItem value="3">3 heures</SelectItem>
-              <SelectItem value="4">4 heures</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
         <div>
           <Label htmlFor="playerCount">Nombre de joueurs</Label>
           <div className="flex items-center space-x-2">
