@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -108,7 +109,7 @@ export const useAvailabilityManagement = (fieldId: string) => {
         for (const exclusion of params.timeExclusions) {
           const dateStr = exclusion.date.toISOString().split('T')[0];
           
-          await supabase.rpc('set_slots_unavailable', {
+          const { error: exclusionError } = await supabase.rpc('set_slots_unavailable', {
             p_field_id: fieldId,
             p_date: dateStr,
             p_start_time: exclusion.startTime,
@@ -116,13 +117,18 @@ export const useAvailabilityManagement = (fieldId: string) => {
             p_reason: exclusion.reason || 'Exclusion programmée',
             p_notes: exclusion.reason
           });
+
+          if (exclusionError) {
+            console.error('Erreur exclusion:', exclusionError);
+          }
         }
       }
 
       return data;
     },
     onSuccess: (slotsCreated) => {
-      queryClient.invalidateQueries({ queryKey: ['field-availability-period'] });
+      // Invalider toutes les requêtes liées aux créneaux pour forcer le rafraîchissement
+      queryClient.invalidateQueries({ queryKey: ['field-availability-period', fieldId] });
       toast.success(`Créneaux créés avec succès (${slotsCreated} créneaux de base + exclusions appliquées)`);
     },
     onError: (error) => {
@@ -153,8 +159,43 @@ export const useAvailabilityManagement = (fieldId: string) => {
       return data;
     },
     onSuccess: (affectedCount) => {
-      queryClient.invalidateQueries({ queryKey: ['field-availability-period'] });
+      // Invalider toutes les requêtes liées aux créneaux
+      queryClient.invalidateQueries({ queryKey: ['field-availability-period', fieldId] });
       toast.success(`${affectedCount} créneaux marqués comme indisponibles`);
+    },
+    onError: (error) => {
+      console.error('Erreur modification créneaux:', error);
+      toast.error('Erreur lors de la modification des créneaux');
+    }
+  });
+
+  // Marquer des créneaux comme disponibles
+  const setSlotsAvailable = useMutation({
+    mutationFn: async (params: {
+      date: string;
+      startTime: string;
+      endTime: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('field_availability')
+        .update({
+          is_available: true,
+          unavailability_reason: null,
+          notes: null,
+          is_maintenance: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('field_id', fieldId)
+        .eq('date', params.date)
+        .gte('start_time', params.startTime)
+        .lte('start_time', params.endTime);
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['field-availability-period', fieldId] });
+      toast.success('Créneaux marqués comme disponibles');
     },
     onError: (error) => {
       console.error('Erreur modification créneaux:', error);
@@ -192,6 +233,7 @@ export const useAvailabilityManagement = (fieldId: string) => {
     usePeriodTemplates,
     createAvailabilityForPeriod,
     setSlotsUnavailable,
+    setSlotsAvailable,
     savePeriodTemplate
   };
 };
