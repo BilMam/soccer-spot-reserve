@@ -20,9 +20,23 @@ const AvailabilityManagement: React.FC<AvailabilityManagementProps> = ({
     startDate: Date;
     endDate: Date;
   } | null>(null);
+  const [activeTab, setActiveTab] = useState('period');
 
   const handlePeriodSelect = (startDate: Date, endDate: Date) => {
     setSelectedPeriod({ startDate, endDate });
+    setActiveTab('creation');
+  };
+
+  const handleSlotsCreated = (slotsCount: number) => {
+    console.log(`${slotsCount} créneaux créés avec succès`);
+    // Passer automatiquement au calendrier après création
+    setTimeout(() => {
+      setActiveTab('calendar');
+    }, 2000);
+  };
+
+  const handleViewCalendar = () => {
+    setActiveTab('calendar');
   };
 
   return (
@@ -36,7 +50,7 @@ const AvailabilityManagement: React.FC<AvailabilityManagementProps> = ({
         </CardHeader>
       </Card>
 
-      <Tabs defaultValue="period" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="period">Sélection période</TabsTrigger>
           <TabsTrigger value="creation">Création créneaux</TabsTrigger>
@@ -57,9 +71,8 @@ const AvailabilityManagement: React.FC<AvailabilityManagementProps> = ({
               fieldId={fieldId}
               startDate={selectedPeriod.startDate}
               endDate={selectedPeriod.endDate}
-              onSlotsCreated={() => {
-                // Optionnel: passer automatiquement à l'onglet calendrier
-              }}
+              onSlotsCreated={handleSlotsCreated}
+              onViewCalendar={handleViewCalendar}
             />
           ) : (
             <Card>

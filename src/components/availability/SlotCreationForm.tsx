@@ -3,18 +3,22 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Save } from 'lucide-react';
+import { Plus, Save, RefreshCw } from 'lucide-react';
 import { useAvailabilityManagement } from '@/hooks/useAvailabilityManagement';
+import { useExistingSlots } from '@/hooks/useExistingSlots';
 import TimeExclusionManager from './TimeExclusionManager';
 import BasicConfigurationForm from './BasicConfigurationForm';
 import DaySelectionForm from './DaySelectionForm';
 import SlotSummary from './SlotSummary';
+import ExistingSlotsPreview from './ExistingSlotsPreview';
+import SlotCreationSuccess from './SlotCreationSuccess';
 
 interface SlotCreationFormProps {
   fieldId: string;
   startDate: Date;
   endDate: Date;
-  onSlotsCreated?: () => void;
+  onSlotsCreated?: (slotsCount: number) => void;
+  onViewCalendar?: () => void;
 }
 
 interface TimeExclusion {
@@ -28,9 +32,12 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
   fieldId,
   startDate,
   endDate,
-  onSlotsCreated
+  onSlotsCreated,
+  onViewCalendar
 }) => {
   const { createAvailabilityForPeriod } = useAvailabilityManagement(fieldId);
+  const { data: existingSlots = [], isLoading: checkingExisting, refetch } = useExistingSlots(fieldId, startDate, endDate);
+  
   const [formData, setFormData] = useState({
     startTime: '08:00',
     endTime: '22:00',
@@ -38,6 +45,9 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     excludeDays: [] as number[]
   });
   const [timeExclusions, setTimeExclusions] = useState<TimeExclusion[]>([]);
+  const [creationStep, setCreationStep] = useState<'preview' | 'creating' | 'success'>('preview');
+  const [slotsCreatedCount, setSlotsCreatedCount] = useState(0);
+  const [replaceMode, setReplaceMode] = useState(false);
 
   const handleDayToggle = (dayValue: number, checked: boolean) => {
     setFormData(prev => ({
@@ -56,7 +66,6 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     const endMinutes = parseInt(formData.endTime.split(':')[0]) * 60 + parseInt(formData.endTime.split(':')[1]);
     const slotsPerDay = Math.floor((endMinutes - startMinutes) / formData.slotDuration);
     
-    // Décompter les exclusions horaires
     const excludedSlots = timeExclusions.reduce((total, exclusion) => {
       const excStartMinutes = parseInt(exclusion.startTime.split(':')[0]) * 60 + parseInt(exclusion.startTime.split(':')[1]);
       const excEndMinutes = parseInt(exclusion.endTime.split(':')[0]) * 60 + parseInt(exclusion.endTime.split(':')[1]);
@@ -67,9 +76,12 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     return Math.max(0, (activeDays * slotsPerDay) - excludedSlots);
   };
 
-  const handleCreateSlots = async () => {
+  const handleCreateSlots = async (replace: boolean = false) => {
     try {
-      await createAvailabilityForPeriod.mutateAsync({
+      setCreationStep('creating');
+      setReplaceMode(replace);
+      
+      const result = await createAvailabilityForPeriod.mutateAsync({
         startDate: startDate.toISOString().split('T')[0],
         endDate: endDate.toISOString().split('T')[0],
         startTime: formData.startTime,
@@ -79,11 +91,73 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
         timeExclusions: timeExclusions
       });
       
-      onSlotsCreated?.();
+      setSlotsCreatedCount(result || calculateTotalSlots());
+      setCreationStep('success');
+      refetch();
+      onSlotsCreated?.(result || calculateTotalSlots());
     } catch (error) {
       console.error('Erreur lors de la création des créneaux:', error);
+      setCreationStep('preview');
     }
   };
+
+  const handleReplace = () => handleCreateSlots(true);
+  const handleComplete = () => handleCreateSlots(false);
+  const handleCancel = () => setCreationStep('preview');
+
+  const handleCreateNew = () => {
+    setCreationStep('preview');
+    setSlotsCreatedCount(0);
+    setFormData({
+      startTime: '08:00',
+      endTime: '22:00',
+      slotDuration: 30,
+      excludeDays: []
+    });
+    setTimeExclusions([]);
+  };
+
+  const handleViewCalendar = () => {
+    onViewCalendar?.();
+  };
+
+  if (checkingExisting) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <RefreshCw className="w-6 h-6 animate-spin mr-2" />
+          <span>Vérification des créneaux existants...</span>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (creationStep === 'success') {
+    return (
+      <SlotCreationSuccess
+        slotsCreated={slotsCreatedCount}
+        startDate={startDate}
+        endDate={endDate}
+        onViewCalendar={handleViewCalendar}
+        onCreateNew={handleCreateNew}
+      />
+    );
+  }
+
+  // Si des créneaux existent déjà, montrer l'aperçu
+  if (existingSlots.length > 0 && creationStep === 'preview') {
+    return (
+      <ExistingSlotsPreview
+        existingSlots={existingSlots}
+        startDate={startDate}
+        endDate={endDate}
+        onReplace={handleReplace}
+        onComplete={handleComplete}
+        onCancel={handleCancel}
+        isLoading={creationStep === 'creating'}
+      />
+    );
+  }
 
   return (
     <Card>
@@ -126,7 +200,6 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
           </TabsContent>
         </Tabs>
 
-        {/* Résumé */}
         <div className="mt-6">
           <SlotSummary
             startDate={startDate}
@@ -140,11 +213,10 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
           />
         </div>
 
-        {/* Actions */}
         <div className="flex gap-2 mt-6">
           <Button 
-            onClick={handleCreateSlots}
-            disabled={createAvailabilityForPeriod.isPending}
+            onClick={() => handleCreateSlots(false)}
+            disabled={createAvailabilityForPeriod.isPending || creationStep === 'creating'}
             className="flex-1"
           >
             <Save className="w-4 h-4 mr-2" />
