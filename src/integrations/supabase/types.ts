@@ -58,6 +58,7 @@ export type Database = {
           cancellation_reason: string | null
           cancelled_at: string | null
           cinetpay_transaction_id: string | null
+          confirmation_code: string | null
           confirmation_deadline: string | null
           confirmation_email_sent: boolean | null
           confirmation_window_type: string | null
@@ -93,6 +94,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cinetpay_transaction_id?: string | null
+          confirmation_code?: string | null
           confirmation_deadline?: string | null
           confirmation_email_sent?: boolean | null
           confirmation_window_type?: string | null
@@ -128,6 +130,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cinetpay_transaction_id?: string | null
+          confirmation_code?: string | null
           confirmation_deadline?: string | null
           confirmation_email_sent?: boolean | null
           confirmation_window_type?: string | null
@@ -898,6 +901,10 @@ export type Database = {
       confirm_booking_by_owner: {
         Args: { p_booking_id: string; p_owner_id: string }
         Returns: boolean
+      }
+      generate_unique_confirmation_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       get_all_owner_applications: {
         Args: Record<PropertyKey, never>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,27 +33,52 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
   const [selectedEndTime, setSelectedEndTime] = useState<string>('');
 
-  // Générer les heures disponibles (8h-22h)
+  // Générer les heures disponibles avec intervalles de 30 minutes (8h-22h)
   const generateTimeOptions = (): string[] => {
     const times: string[] = [];
     for (let hour = 8; hour <= 22; hour++) {
       times.push(`${hour.toString().padStart(2, '0')}:00`);
+      if (hour < 22) { // Ne pas ajouter 22:30 car c'est après l'heure de fermeture
+        times.push(`${hour.toString().padStart(2, '0')}:30`);
+      }
     }
     return times;
   };
 
-  // Générer les créneaux par défaut (8h-22h, créneaux d'1h)
+  // Générer les créneaux par défaut avec intervalles de 30 minutes
   const generateDefaultTimeSlots = (): TimeSlot[] => {
     const slots: TimeSlot[] = [];
     for (let hour = 8; hour < 22; hour++) {
+      // Créneau de XX:00 à XX:30
       slots.push({
         start_time: `${hour.toString().padStart(2, '0')}:00`,
+        end_time: `${hour.toString().padStart(2, '0')}:30`,
+        is_available: true,
+        price: fieldPrice / 2 // Prix pour 30 minutes = prix horaire divisé par 2
+      });
+      
+      // Créneau de XX:30 à (XX+1):00
+      slots.push({
+        start_time: `${hour.toString().padStart(2, '0')}:30`,
         end_time: `${(hour + 1).toString().padStart(2, '0')}:00`,
         is_available: true,
-        price: fieldPrice
+        price: fieldPrice / 2 // Prix pour 30 minutes
       });
     }
     return slots;
+  };
+
+  // Convertir le temps en minutes depuis minuit pour faciliter les calculs
+  const timeToMinutes = (time: string): number => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  // Convertir les minutes en format HH:MM
+  const minutesToTime = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
   };
 
   const { data: availableSlots = generateDefaultTimeSlots(), isLoading } = useQuery({
@@ -85,9 +111,18 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
       
       // Marquer les créneaux déjà réservés comme non disponibles
       return defaultSlots.map(slot => {
-        const isBooked = bookings?.some(booking => 
-          booking.start_time === slot.start_time && booking.end_time === slot.end_time
-        );
+        // Vérifier si ce créneau est dans une réservation existante
+        const isBooked = bookings?.some(booking => {
+          const bookingStart = timeToMinutes(booking.start_time);
+          const bookingEnd = timeToMinutes(booking.end_time);
+          const slotStart = timeToMinutes(slot.start_time);
+          const slotEnd = timeToMinutes(slot.end_time);
+          
+          // Vérifier si le créneau chevauche avec une réservation
+          return (slotStart >= bookingStart && slotStart < bookingEnd) || 
+                 (slotEnd > bookingStart && slotEnd <= bookingEnd) ||
+                 (slotStart <= bookingStart && slotEnd >= bookingEnd);
+        });
         
         // Vérifier s'il y a une disponibilité personnalisée pour ce créneau
         const customSlot = existingSlots?.find(es => 
@@ -104,7 +139,7 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
     enabled: !!selectedDate
   });
 
-  // Fonction pour afficher les créneaux occupés de manière claire
+  // Fonction pour afficher les créneaux occupés
   const getOccupiedSlots = (): string[] => {
     return availableSlots
       .filter(slot => !slot.is_available)
@@ -115,13 +150,13 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
   const isRangeAvailable = (startTime: string, endTime: string): boolean => {
     if (!startTime || !endTime) return false;
     
-    const startHour = parseInt(startTime.split(':')[0]);
-    const endHour = parseInt(endTime.split(':')[0]);
+    const startMinutes = timeToMinutes(startTime);
+    const endMinutes = timeToMinutes(endTime);
     
-    // Vérifier chaque créneau horaire dans la plage
-    for (let hour = startHour; hour < endHour; hour++) {
-      const slotStartTime = `${hour.toString().padStart(2, '0')}:00`;
-      const slotEndTime = `${(hour + 1).toString().padStart(2, '0')}:00`;
+    // Vérifier chaque créneau de 30 minutes dans la plage
+    for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
+      const slotStartTime = minutesToTime(minutes);
+      const slotEndTime = minutesToTime(minutes + 30);
       
       const slot = availableSlots.find(s => s.start_time === slotStartTime && s.end_time === slotEndTime);
       if (!slot || !slot.is_available) {
@@ -135,36 +170,50 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
   const calculateTotalPrice = (startTime: string, endTime: string): number => {
     if (!startTime || !endTime) return 0;
     
-    const startHour = parseInt(startTime.split(':')[0]);
-    const endHour = parseInt(endTime.split(':')[0]);
+    const startMinutes = timeToMinutes(startTime);
+    const endMinutes = timeToMinutes(endTime);
     let totalPrice = 0;
     
-    for (let hour = startHour; hour < endHour; hour++) {
-      const slotStartTime = `${hour.toString().padStart(2, '0')}:00`;
-      const slotEndTime = `${(hour + 1).toString().padStart(2, '0')}:00`;
+    // Additionner le prix de chaque créneau de 30 minutes
+    for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
+      const slotStartTime = minutesToTime(minutes);
+      const slotEndTime = minutesToTime(minutes + 30);
       
       const slot = availableSlots.find(s => s.start_time === slotStartTime && s.end_time === slotEndTime);
-      totalPrice += slot?.price || fieldPrice;
+      totalPrice += slot?.price || (fieldPrice / 2); // Prix par défaut pour 30 min
     }
     return totalPrice;
   };
 
-  // Calculer la durée en heures
-  const calculateDuration = (startTime: string, endTime: string): number => {
-    if (!startTime || !endTime) return 0;
-    return parseInt(endTime.split(':')[0]) - parseInt(startTime.split(':')[0]);
+  // Calculer la durée en heures et minutes
+  const calculateDuration = (startTime: string, endTime: string): { hours: number; minutes: number; display: string } => {
+    if (!startTime || !endTime) return { hours: 0, minutes: 0, display: '0h' };
+    
+    const startMinutes = timeToMinutes(startTime);
+    const endMinutes = timeToMinutes(endTime);
+    const totalMinutes = endMinutes - startMinutes;
+    
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    let display = '';
+    if (hours > 0) display += `${hours}h`;
+    if (minutes > 0) display += `${minutes}min`;
+    if (display === '') display = '0h';
+    
+    return { hours, minutes, display };
   };
 
   // Obtenir les heures de fin disponibles selon l'heure de début
   const getAvailableEndTimes = (startTime: string): string[] => {
     if (!startTime) return [];
     
-    const startHour = parseInt(startTime.split(':')[0]);
+    const startMinutes = timeToMinutes(startTime);
     const availableEndTimes: string[] = [];
     
-    // Vérifier chaque heure possible après l'heure de début
-    for (let hour = startHour + 1; hour <= 22; hour++) {
-      const endTime = `${hour.toString().padStart(2, '0')}:00`;
+    // Vérifier chaque créneau de 30 minutes après l'heure de début
+    for (let minutes = startMinutes + 30; minutes <= timeToMinutes('22:00'); minutes += 30) {
+      const endTime = minutesToTime(minutes);
       
       // Vérifier si la plage est disponible
       if (isRangeAvailable(startTime, endTime)) {
@@ -234,6 +283,9 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
             <CardTitle>
               Sélectionner les heures - {format(selectedDate, 'EEEE dd MMMM yyyy', { locale: fr })}
             </CardTitle>
+            <p className="text-sm text-gray-600 mt-1">
+              Créneaux disponibles par intervalles de 30 minutes
+            </p>
           </CardHeader>
           <CardContent className="space-y-4">
             {isLoading ? (
@@ -268,8 +320,8 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
                       </SelectTrigger>
                       <SelectContent>
                         {timeOptions.slice(0, -1).map((time) => {
-                          const hour = parseInt(time.split(':')[0]);
-                          const nextTime = `${(hour + 1).toString().padStart(2, '0')}:00`;
+                          // Vérifier si au moins un créneau de 30 min est disponible à partir de cette heure
+                          const nextTime = minutesToTime(timeToMinutes(time) + 30);
                           const isSlotAvailable = availableSlots.find(s => 
                             s.start_time === time && s.end_time === nextTime
                           )?.is_available;
@@ -323,17 +375,23 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">Durée :</span>
-                          <span className="font-medium">{duration} heure{duration > 1 ? 's' : ''}</span>
+                          <span className="font-medium">{duration.display}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">Créneau :</span>
                           <span className="font-medium">{selectedStartTime} - {selectedEndTime}</span>
                         </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Prix :</span>
+                          <span className="text-sm text-gray-500">
+                            {fieldPrice.toLocaleString()} XOF/heure • {(fieldPrice/2).toLocaleString()} XOF/30min
+                          </span>
+                        </div>
                         <div className="flex justify-between items-center border-t pt-2">
                           <span className="text-sm text-gray-600">Prix total :</span>
                           <span className="text-lg font-bold text-green-600 flex items-center">
                             <Euro className="w-4 h-4 mr-1" />
-                            {totalPrice}€
+                            {totalPrice.toLocaleString()} XOF
                           </span>
                         </div>
                       </div>
@@ -354,7 +412,7 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
                   className="w-full bg-green-600 hover:bg-green-700"
                   size="lg"
                 >
-                  Réserver {selectedStartTime && selectedEndTime && `(${totalPrice}€)`}
+                  Réserver {selectedStartTime && selectedEndTime && `(${totalPrice.toLocaleString()} XOF)`}
                 </Button>
               </>
             )}
