@@ -33,15 +33,6 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
   isUpdating,
   fieldId
 }) => {
-  console.log('📅🎯 CalendarGrid - DONNÉES REÇUES:', {
-    calendarGrid: calendarGrid.length,
-    bookedSlotsByDate: Object.entries(bookedSlotsByDate).map(([date, slots]) => ({
-      date,
-      slotsCount: slots.size,
-      slots: Array.from(slots)
-    }))
-  });
-
   return (
     <div className="grid grid-cols-7 gap-2">
       {/* En-têtes des jours */}
@@ -54,21 +45,27 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
       {/* Grille du calendrier */}
       {calendarGrid.map((cell, index) => {
         if (cell.isEmpty || !cell.date) {
+          // Cellule vide pour l'alignement
           return (
             <div key={`empty-${index}`} className="h-16 bg-gray-50 border border-gray-100 rounded opacity-50">
             </div>
           );
         }
         
+        const dayOfWeek = cell.date.getDay();
+        const dayName = format(cell.date, 'EEEE', { locale: fr });
         const bookedSlots = bookedSlotsByDate[cell.dateStr] || new Set();
         
-        console.log(`📅🎯 CalendarGrid - CELLULE ${cell.dateStr}:`, {
-          slots: cell.slots.length,
-          bookedSlotsCount: bookedSlots.size,
-          bookedSlotsList: Array.from(bookedSlots),
-          availableSlots: cell.slots.filter(s => s.is_available).length,
-          unavailableSlots: cell.slots.filter(s => !s.is_available).length
-        });
+        // AMÉLIORATION: Debug plus ciblé
+        if (cell.dateStr === '2025-06-25' || bookedSlots.size > 0) {
+          console.log(`📅 GRID - Rendu cellule: ${cell.dateStr}`, {
+            slots: cell.slots.length,
+            bookedSlotsCount: bookedSlots.size,
+            bookedSlotsList: Array.from(bookedSlots),
+            availableSlots: cell.slots.filter(s => s.is_available).length,
+            unavailableSlots: cell.slots.filter(s => !s.is_available).length
+          });
+        }
         
         return (
           <Dialog key={`${cell.dateStr}-${index}`}>

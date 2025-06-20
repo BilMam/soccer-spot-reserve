@@ -36,17 +36,11 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
   const startDateStr = format(startDate, 'yyyy-MM-dd');
   const endDateStr = format(endDate, 'yyyy-MM-dd');
   
-  const { data: availabilitySlots = [], isLoading: slotsLoading } = useFieldAvailabilityForPeriod(startDateStr, endDateStr);
-  const { bookedSlotsByDate, isLoading: bookingsLoading } = useBookingData(fieldId, startDateStr, endDateStr);
+  const { data: availabilitySlots = [], isLoading } = useFieldAvailabilityForPeriod(startDateStr, endDateStr);
+  const { bookedSlotsByDate } = useBookingData(fieldId, startDateStr, endDateStr);
 
-  console.log('📅🔄 AvailabilityCalendar - ÉTAT GLOBAL:', {
-    fieldId,
-    période: { startDateStr, endDateStr },
-    availabilitySlots: availabilitySlots.length,
-    bookedSlotsByDate: Object.keys(bookedSlotsByDate).length,
-    isLoadingSlots: slotsLoading,
-    isLoadingBookings: bookingsLoading
-  });
+  console.log('📅 Calendrier - Période:', { startDateStr, endDateStr });
+  console.log('📅 Calendrier - Créneaux récupérés:', availabilitySlots.length);
 
   // Grouper les créneaux par date
   const slotsByDate = availabilitySlots.reduce((acc, slot) => {
@@ -79,7 +73,7 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
     }
   };
 
-  if (slotsLoading || bookingsLoading) {
+  if (isLoading) {
     return (
       <Card>
         <CalendarHeader />
@@ -97,15 +91,6 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
   }
 
   const calendarGrid = generateCalendarGrid(startDate, endDate, slotsByDate);
-
-  console.log('📅🔄 AvailabilityCalendar - TRANSMISSION VERS CalendarGrid:', {
-    calendarGrid: calendarGrid.length,
-    bookedSlotsByDate: Object.entries(bookedSlotsByDate).map(([date, slots]) => ({
-      date,
-      slotsCount: slots.size,
-      slots: Array.from(slots)
-    }))
-  });
 
   return (
     <div className="space-y-4">
