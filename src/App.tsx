@@ -8,6 +8,7 @@ import Profile from '@/pages/Profile';
 import Search from '@/pages/Search';
 import FieldDetail from '@/pages/FieldDetail';
 import Checkout from '@/pages/Checkout';
+import PaymentPage from '@/pages/PaymentPage';
 import AddField from '@/pages/AddField';
 import EditField from '@/pages/EditField';
 import BecomeOwner from '@/pages/BecomeOwner';
@@ -32,6 +33,7 @@ function App() {
               <Route path="/profile" element={<Profile />} />
               <Route path="/search" element={<Search />} />
               <Route path="/field/:id" element={<FieldDetail />} />
+              <Route path="/payment/:id" element={<PaymentPage />} />
               <Route path="/checkout/:id" element={<Checkout />} />
               <Route path="/add-field" element={<AddField />} />
               <Route path="/edit-field/:id" element={<EditField />} />
