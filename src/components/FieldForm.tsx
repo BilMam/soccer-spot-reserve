@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -87,6 +88,16 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     { value: 'natural_grass', label: 'Pelouse naturelle' },
     { value: 'synthetic', label: 'Synthétique' },
     { value: 'street', label: 'Street' }
+  ];
+
+  const gameFormats = [
+    { value: '10', label: '5v5 (10 joueurs)' },
+    { value: '12', label: '6v6 (12 joueurs)' },
+    { value: '14', label: '7v7 (14 joueurs)' },
+    { value: '16', label: '8v8 (16 joueurs)' },
+    { value: '18', label: '9v9 (18 joueurs)' },
+    { value: '20', label: '10v10 (20 joueurs)' },
+    { value: '22', label: '11v11 (22 joueurs)' }
   ];
 
   const amenitiesList = [
@@ -192,15 +203,22 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="capacity">Capacité (nombre de joueurs) *</Label>
-              <Input
-                id="capacity"
-                type="number"
-                value={formData.capacity}
-                onChange={(e) => handleInputChange('capacity', e.target.value)}
-                placeholder="Ex: 22"
-                min="1"
+              <Select 
+                value={formData.capacity || undefined} 
+                onValueChange={(value) => handleInputChange('capacity', value)}
                 required
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner le format" />
+                </SelectTrigger>
+                <SelectContent>
+                  {gameFormats.map((format) => (
+                    <SelectItem key={format.value} value={format.value}>
+                      {format.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
@@ -295,3 +313,4 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
 };
 
 export default FieldForm;
+

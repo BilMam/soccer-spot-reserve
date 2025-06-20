@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,16 @@ const fieldTypes = [
   { value: 'volleyball', label: 'Volleyball' },
   { value: 'badminton', label: 'Badminton' },
   { value: 'futsal', label: 'Futsal' }
+];
+
+const gameFormats = [
+  { value: '10', label: '5v5 (10 joueurs)' },
+  { value: '12', label: '6v6 (12 joueurs)' },
+  { value: '14', label: '7v7 (14 joueurs)' },
+  { value: '16', label: '8v8 (16 joueurs)' },
+  { value: '18', label: '9v9 (18 joueurs)' },
+  { value: '20', label: '10v10 (20 joueurs)' },
+  { value: '22', label: '11v11 (22 joueurs)' }
 ];
 
 const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInputChange }) => {
@@ -65,15 +76,22 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
 
         <div className="space-y-2">
           <Label htmlFor="capacity">Capacité (nombre de joueurs) *</Label>
-          <Input
-            id="capacity"
-            type="number"
-            min="1"
-            value={formData.capacity}
-            onChange={(e) => onInputChange('capacity', e.target.value)}
-            placeholder="Ex: 22"
+          <Select 
+            value={formData.capacity || undefined} 
+            onValueChange={(value) => onInputChange('capacity', value)}
             required
-          />
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Sélectionner le format" />
+            </SelectTrigger>
+            <SelectContent>
+              {gameFormats.map((format) => (
+                <SelectItem key={format.value} value={format.value}>
+                  {format.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">
@@ -139,3 +157,4 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
 };
 
 export default FieldBasicInfoForm;
+
