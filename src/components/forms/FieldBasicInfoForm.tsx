@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -76,15 +77,15 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="price_per_hour">Prix par heure (€) *</Label>
+          <Label htmlFor="price_per_hour">Prix par heure (XOF) *</Label>
           <Input
             id="price_per_hour"
             type="number"
             min="0"
-            step="0.01"
+            step="1"
             value={formData.price_per_hour}
             onChange={(e) => onInputChange('price_per_hour', e.target.value)}
-            placeholder="Ex: 50.00"
+            placeholder="Ex: 25000"
             required
           />
         </div>

@@ -20,7 +20,7 @@ interface FieldFormData {
   city: string;
   price_per_hour: number;
   capacity: number;
-  field_type: 'natural_grass' | 'synthetic' | 'indoor' | 'street';
+  field_type: 'natural_grass' | 'synthetic' | 'street';
   availability_start: string;
   availability_end: string;
   amenities: string[];

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,7 @@ interface FieldFormData {
   city: string;
   price_per_hour: number;
   capacity: number;
-  field_type: 'natural_grass' | 'synthetic' | 'indoor' | 'street';
+  field_type: 'natural_grass' | 'synthetic' | 'street';
   availability_start: string;
   availability_end: string;
   amenities: string[];
@@ -35,7 +36,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     location: '',
     address: '',
     city: '',
-    field_type: 'natural_grass', // Set default value instead of empty string
+    field_type: 'natural_grass',
     capacity: '',
     price_per_hour: '',
     availability_start: '08:00',
@@ -70,7 +71,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
       location: formData.location,
       address: formData.address,
       city: formData.city,
-      field_type: formData.field_type as 'natural_grass' | 'synthetic' | 'indoor' | 'street',
+      field_type: formData.field_type as 'natural_grass' | 'synthetic' | 'street',
       capacity: parseInt(formData.capacity),
       price_per_hour: parseFloat(formData.price_per_hour),
       availability_start: formData.availability_start,
@@ -85,19 +86,22 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
   const fieldTypes = [
     { value: 'natural_grass', label: 'Pelouse naturelle' },
     { value: 'synthetic', label: 'Synthétique' },
-    { value: 'indoor', label: 'Couvert' },
     { value: 'street', label: 'Street' }
   ];
 
   const amenitiesList = [
-    'Parking',
+    'Parking gratuit',
     'Vestiaires',
     'Douches',
     'Éclairage',
     'Terrain couvert',
-    'Restaurant',
+    'Chasubles',
+    'Balles',
+    'Arbitrage',
+    'Boissons disponibles',
+    'Restauration',
     'WiFi',
-    'Matériel fourni'
+    'Climatisation'
   ];
 
   return (
@@ -200,14 +204,14 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
             </div>
 
             <div>
-              <Label htmlFor="price_per_hour">Prix par heure (€) *</Label>
+              <Label htmlFor="price_per_hour">Prix par heure (XOF) *</Label>
               <Input
                 id="price_per_hour"
                 type="number"
-                step="0.01"
+                step="1"
                 value={formData.price_per_hour}
                 onChange={(e) => handleInputChange('price_per_hour', e.target.value)}
-                placeholder="Ex: 50.00"
+                placeholder="Ex: 25000"
                 min="0"
                 required
               />
