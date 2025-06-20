@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
@@ -215,12 +214,6 @@ const AddField = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Ajouter un terrain</h1>
               <p className="text-gray-600">Créez votre annonce de terrain de football</p>
-              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Information :</strong> Votre terrain sera soumis pour approbation. 
-                  Il sera visible sur la plateforme une fois validé par notre équipe.
-                </p>
-              </div>
             </div>
           </div>
 
