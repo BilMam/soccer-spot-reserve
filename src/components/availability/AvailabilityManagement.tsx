@@ -1,11 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Calendar, Clock, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Settings, Calendar, Clock, AlertTriangle, RotateCcw } from 'lucide-react';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import PeriodSelector from './PeriodSelector';
 import SlotCreationForm from './SlotCreationForm';
 import AvailabilityCalendar from './AvailabilityCalendar';
+import { usePersistentPeriod } from '@/hooks/usePersistentPeriod';
 
 interface AvailabilityManagementProps {
   fieldId: string;
@@ -16,14 +20,20 @@ const AvailabilityManagement: React.FC<AvailabilityManagementProps> = ({
   fieldId,
   fieldName
 }) => {
-  const [selectedPeriod, setSelectedPeriod] = useState<{
-    startDate: Date;
-    endDate: Date;
-  } | null>(null);
+  const { selectedPeriod, updatePeriod, clearPeriod } = usePersistentPeriod(fieldId);
   const [activeTab, setActiveTab] = useState('period');
+  const [isPeriodRestored, setIsPeriodRestored] = useState(false);
+
+  useEffect(() => {
+    // Si une période a été restaurée, passer automatiquement à la création
+    if (selectedPeriod && !isPeriodRestored) {
+      setIsPeriodRestored(true);
+      setActiveTab('creation');
+    }
+  }, [selectedPeriod, isPeriodRestored]);
 
   const handlePeriodSelect = (startDate: Date, endDate: Date) => {
-    setSelectedPeriod({ startDate, endDate });
+    updatePeriod(startDate, endDate);
     setActiveTab('creation');
   };
 
@@ -39,6 +49,12 @@ const AvailabilityManagement: React.FC<AvailabilityManagementProps> = ({
     setActiveTab('calendar');
   };
 
+  const handleClearPeriod = () => {
+    clearPeriod();
+    setIsPeriodRestored(false);
+    setActiveTab('period');
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -46,7 +62,27 @@ const AvailabilityManagement: React.FC<AvailabilityManagementProps> = ({
           <CardTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5" />
             Gestion des créneaux - {fieldName}
+            {selectedPeriod && isPeriodRestored && (
+              <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700">
+                <RotateCcw className="w-3 h-3 mr-1" />
+                Période restaurée
+              </Badge>
+            )}
           </CardTitle>
+          {selectedPeriod && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                Période active : Du {format(selectedPeriod.startDate, 'dd MMMM yyyy', { locale: fr })} 
+                {' '}au {format(selectedPeriod.endDate, 'dd MMMM yyyy', { locale: fr })}
+              </p>
+              <button
+                onClick={handleClearPeriod}
+                className="text-xs text-gray-500 hover:text-gray-700 underline"
+              >
+                Changer de période
+              </button>
+            </div>
+          )}
         </CardHeader>
       </Card>
 
