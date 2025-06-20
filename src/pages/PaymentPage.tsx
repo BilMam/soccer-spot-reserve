@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { 
   CreditCard, 
   Smartphone, 
@@ -77,10 +79,6 @@ const PaymentPage = () => {
     }
   ];
 
-  const handlePaymentMethodSelect = (methodId: string) => {
-    setSelectedMethod(methodId);
-  };
-
   const handleProceedToPayment = () => {
     if (!selectedMethod || !paymentData) return;
 
@@ -126,113 +124,125 @@ const PaymentPage = () => {
               Retour
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">Choisir un moyen de paiement</h1>
-              <p className="text-gray-600">Sélectionnez votre méthode de paiement préférée</p>
+              <h1 className="text-2xl font-bold">Confirmer et payer</h1>
+              <p className="text-gray-600">Choisissez votre mode de paiement</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Méthodes de paiement */}
-            <div className="lg:col-span-2 space-y-4">
-              <h2 className="text-lg font-semibold">Moyens de paiement</h2>
-              
-              {paymentMethods.map((method) => (
-                <Card 
-                  key={method.id}
-                  className={`cursor-pointer transition-all ${
-                    selectedMethod === method.id 
-                      ? 'ring-2 ring-green-500 border-green-500' 
-                      : 'hover:border-gray-300'
-                  }`}
-                  onClick={() => handlePaymentMethodSelect(method.id)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className={`p-3 rounded-lg ${
-                          selectedMethod === method.id 
-                            ? 'bg-green-100 text-green-600' 
-                            : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          <method.icon className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <h3 className="font-medium">{method.name}</h3>
-                            {method.popular && (
-                              <Badge variant="secondary" className="text-xs">
-                                Populaire
-                              </Badge>
-                            )}
+            {/* Section paiement */}
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">1. Ajoutez un mode de paiement</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <RadioGroup value={selectedMethod} onValueChange={setSelectedMethod}>
+                    {paymentMethods.map((method) => (
+                      <div key={method.id} className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <RadioGroupItem value={method.id} id={method.id} />
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className="p-2 bg-gray-100 rounded">
+                            <method.icon className="w-5 h-5 text-gray-600" />
                           </div>
-                          <p className="text-sm text-gray-600">{method.description}</p>
+                          <div className="flex-1">
+                            <Label htmlFor={method.id} className="flex items-center space-x-2 cursor-pointer">
+                              <span className="font-medium">{method.name}</span>
+                              {method.popular && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Populaire
+                                </Badge>
+                              )}
+                            </Label>
+                            <p className="text-sm text-gray-600">{method.description}</p>
+                          </div>
                         </div>
                       </div>
-                      
-                      {selectedMethod === method.id && (
-                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    ))}
+                  </RadioGroup>
 
-              {/* Informations de sécurité */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
-                <div className="flex items-start space-x-3">
-                  <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium text-blue-900">Paiement sécurisé</h4>
-                    <p className="text-sm text-blue-800 mt-1">
-                      Vos informations de paiement sont protégées par un cryptage de niveau bancaire. 
-                      Nous ne stockons jamais vos données de carte bancaire.
-                    </p>
+                  {/* Informations de sécurité */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+                    <div className="flex items-start space-x-3">
+                      <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-blue-900">Paiement sécurisé</h4>
+                        <p className="text-sm text-blue-800 mt-1">
+                          Vos informations de paiement sont protégées par un cryptage de niveau bancaire. 
+                          Le paiement se fait directement avec le propriétaire du terrain.
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+
+              {/* Bouton continuer */}
+              <div className="mt-6">
+                <Button 
+                  className="w-full bg-pink-600 hover:bg-pink-700 text-white py-3 text-lg"
+                  onClick={handleProceedToPayment}
+                  disabled={!selectedMethod}
+                  size="lg"
+                >
+                  Continuer
+                </Button>
               </div>
             </div>
 
             {/* Récapitulatif de la réservation */}
             <div className="lg:col-span-1">
               <Card className="sticky top-4">
-                <CardHeader>
-                  <CardTitle>Récapitulatif</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <MapPin className="w-4 h-4 text-gray-500" />
+                <CardContent className="p-6">
+                  <div className="flex items-start space-x-4 mb-4">
+                    <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <MapPin className="w-8 h-8 text-gray-400" />
+                    </div>
                     <div>
-                      <div className="font-medium">{field.name}</div>
-                      <div className="text-sm text-gray-600">{field.location}</div>
+                      <h3 className="font-semibold">{field.name}</h3>
+                      <p className="text-sm text-gray-600">{field.location}</p>
+                      <div className="flex items-center mt-1">
+                        <div className="flex items-center">
+                          {[...Array(5)].map((_, i) => (
+                            <div key={i} className="w-3 h-3 bg-gray-300 rounded-full mr-1"></div>
+                          ))}
+                        </div>
+                        <span className="text-sm text-gray-600 ml-2">4.8 (12)</span>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm">
-                      {paymentData.selectedDate.toLocaleDateString('fr-FR', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <Clock className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm">
-                      {paymentData.selectedStartTime} - {paymentData.selectedEndTime}
-                    </span>
+
+                  <Separator className="my-4" />
+
+                  <div className="space-y-3">
+                    <h4 className="font-medium">Informations sur la réservation</h4>
+                    
+                    <div className="flex items-center space-x-2 text-sm">
+                      <Calendar className="w-4 h-4 text-gray-500" />
+                      <span>
+                        {paymentData.selectedDate.toLocaleDateString('fr-FR', {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 text-sm">
+                      <Clock className="w-4 h-4 text-gray-500" />
+                      <span>
+                        {paymentData.selectedStartTime} - {paymentData.selectedEndTime}
+                      </span>
+                    </div>
                   </div>
 
-                  <Separator />
+                  <Separator className="my-4" />
                   
                   <div className="space-y-2">
+                    <h4 className="font-medium">Détail du prix</h4>
                     <div className="flex justify-between text-sm">
-                      <span>Prix du terrain</span>
+                      <span>Terrain ({paymentData.playerCount} joueur{paymentData.playerCount > 1 ? 's' : ''})</span>
                       <span>{paymentData.totalPrice.toLocaleString()} XOF</span>
                     </div>
                     <div className="flex justify-between text-sm">
@@ -240,26 +250,18 @@ const PaymentPage = () => {
                       <span>0 XOF</span>
                     </div>
                     <Separator />
-                    <div className="flex justify-between font-medium">
-                      <span>Total</span>
+                    <div className="flex justify-between font-semibold">
+                      <span>Total (XOF)</span>
                       <span>{paymentData.totalPrice.toLocaleString()} XOF</span>
                     </div>
                   </div>
 
-                  <Button 
-                    className="w-full bg-green-600 hover:bg-green-700"
-                    onClick={handleProceedToPayment}
-                    disabled={!selectedMethod}
-                  >
-                    Continuer vers le paiement
-                  </Button>
-
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
                     <div className="flex items-start space-x-2">
                       <Clock className="w-4 h-4 text-yellow-600 mt-0.5" />
                       <div className="text-xs text-yellow-800">
-                        <p className="font-medium mb-1">Paiement direct au propriétaire</p>
-                        <p>Le paiement se fait directement avec le propriétaire du terrain selon la méthode choisie.</p>
+                        <p className="font-medium mb-1">Paiement direct</p>
+                        <p>Le paiement se fait directement avec le propriétaire selon la méthode choisie.</p>
                       </div>
                     </div>
                   </div>
