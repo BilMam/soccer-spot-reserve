@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Users, Clock, CheckCircle, AlertCircle, Plus } from 'lucide-react';
+import { MapPin, Users, Clock, AlertCircle, Plus } from 'lucide-react';
 
 interface Field {
   id: string;
@@ -46,14 +46,7 @@ const OwnerFields: React.FC<OwnerFieldsProps> = ({ fields, isLoading }) => {
   }
 
   const getStatusBadge = (isActive: boolean) => {
-    if (isActive) {
-      return (
-        <Badge variant="default" className="bg-green-100 text-green-800 border-green-300">
-          <CheckCircle className="w-4 h-4 mr-1" />
-          Approuvé
-        </Badge>
-      );
-    } else {
+    if (!isActive) {
       return (
         <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
           <Clock className="w-4 h-4 mr-1" />
@@ -61,6 +54,7 @@ const OwnerFields: React.FC<OwnerFieldsProps> = ({ fields, isLoading }) => {
         </Badge>
       );
     }
+    return null;
   };
 
   return (
@@ -90,28 +84,6 @@ const OwnerFields: React.FC<OwnerFieldsProps> = ({ fields, isLoading }) => {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Résumé des statuts */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">
-                  {fields.length}
-                </div>
-                <div className="text-sm text-gray-600">Total</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {fields.filter(f => f.is_active).length}
-                </div>
-                <div className="text-sm text-gray-600">Approuvés</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-600">
-                  {fields.filter(f => !f.is_active).length}
-                </div>
-                <div className="text-sm text-gray-600">En attente</div>
-              </div>
-            </div>
-
             {/* Liste des terrains */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {fields.map((field) => (
