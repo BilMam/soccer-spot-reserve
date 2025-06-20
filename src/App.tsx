@@ -15,7 +15,6 @@ import OwnerDashboard from '@/pages/OwnerDashboard';
 import AdminDashboard from '@/pages/AdminDashboard';
 import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
 import BookingSuccess from '@/pages/BookingSuccess';
-import PaymentPage from '@/pages/PaymentPage';
 import NotFound from '@/pages/NotFound';
 import { AuthProvider } from '@/hooks/useAuth';
 
@@ -42,7 +41,6 @@ function App() {
               <Route path="/admin-dashboard" element={<AdminDashboard />} />
               <Route path="/super-admin-dashboard" element={<SuperAdminDashboard />} />
               <Route path="/booking-success" element={<BookingSuccess />} />
-              <Route path="/payment/:token" element={<PaymentPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

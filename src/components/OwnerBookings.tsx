@@ -3,7 +3,6 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
-import PendingConfirmationsSection from './PendingConfirmationsSection';
 import AllBookingsSection from './AllBookingsSection';
 
 interface OwnerBookingsProps {
@@ -30,19 +29,6 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
     enabled: !!ownerId
   });
 
-  // Séparer les réservations qui nécessitent une confirmation
-  const pendingConfirmations = bookings?.filter(booking => 
-    booking.status === 'confirmed' && 
-    booking.escrow_status === 'funds_held' && 
-    !booking.owner_confirmed_at
-  ) || [];
-
-  const otherBookings = bookings?.filter(booking => 
-    !(booking.status === 'confirmed' && 
-      booking.escrow_status === 'funds_held' && 
-      !booking.owner_confirmed_at)
-  ) || [];
-
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -63,11 +49,7 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
 
   return (
     <div className="space-y-6">
-      <PendingConfirmationsSection 
-        pendingConfirmations={pendingConfirmations}
-        onConfirm={() => refetch()}
-      />
-      <AllBookingsSection bookings={otherBookings} />
+      <AllBookingsSection bookings={bookings || []} />
     </div>
   );
 };
