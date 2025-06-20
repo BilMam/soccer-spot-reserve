@@ -8,7 +8,7 @@ import Navbar from '@/components/Navbar';
 import FieldForm from '@/components/FieldForm';
 import ErrorAlert from '@/components/ErrorAlert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -77,7 +77,7 @@ const AddField = () => {
         }
       }
 
-      // Créer le terrain
+      // Créer le terrain - EN ATTENTE D'APPROBATION
       const { data, error } = await supabase
         .from('fields')
         .insert({
@@ -94,7 +94,7 @@ const AddField = () => {
           images: fieldData.images,
           availability_start: fieldData.availability_start,
           availability_end: fieldData.availability_end,
-          is_active: true,
+          is_active: false, // Terrain en attente d'approbation
           rating: 0,
           total_reviews: 0
         })
@@ -106,19 +106,19 @@ const AddField = () => {
         throw error;
       }
 
-      console.log('Field created successfully:', data);
+      console.log('Field created successfully (pending approval):', data);
       return data;
     },
     onSuccess: (data) => {
-      console.log('Field created successfully:', data);
+      console.log('Field created successfully (pending approval):', data);
       setSuccess(true);
       setError(null);
-      toast.success('Terrain créé avec succès !');
+      toast.success('Terrain soumis avec succès ! En attente d\'approbation.');
       
-      // Rediriger vers le dashboard après 2 secondes
+      // Rediriger vers le dashboard après 3 secondes
       setTimeout(() => {
         navigate('/owner-dashboard');
-      }, 2000);
+      }, 3000);
     },
     onError: (error: any) => {
       console.error('Mutation error:', error);
@@ -139,7 +139,7 @@ const AddField = () => {
       
       setError(errorMessage);
       setSuccess(false);
-      toast.error('Échec de la création du terrain');
+      toast.error('Échec de la soumission du terrain');
     }
   });
 
@@ -174,11 +174,19 @@ const AddField = () => {
         <div className="container mx-auto px-4 py-8">
           <Card className="max-w-md mx-auto">
             <CardContent className="text-center py-8">
-              <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Terrain créé !</h2>
+              <Clock className="w-16 h-16 text-yellow-600 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Terrain soumis !</h2>
               <p className="text-gray-600 mb-4">
-                Votre terrain a été créé avec succès. Redirection vers votre dashboard...
+                Votre terrain a été soumis avec succès. Il est maintenant en attente d'approbation par notre équipe.
               </p>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-yellow-800">
+                  <strong>Prochaines étapes :</strong><br />
+                  • Notre équipe va examiner votre terrain<br />
+                  • Vous recevrez une notification par email<br />
+                  • Une fois approuvé, il sera visible sur la plateforme
+                </p>
+              </div>
               <Button onClick={() => navigate('/owner-dashboard')}>
                 Aller au dashboard
               </Button>
@@ -207,6 +215,12 @@ const AddField = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Ajouter un terrain</h1>
               <p className="text-gray-600">Créez votre annonce de terrain de football</p>
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Information :</strong> Votre terrain sera soumis pour approbation. 
+                  Il sera visible sur la plateforme une fois validé par notre équipe.
+                </p>
+              </div>
             </div>
           </div>
 

@@ -24,10 +24,10 @@ const FieldFormActions: React.FC<FieldFormActionsProps> = ({ isLoading, onCancel
         {isLoading ? (
           <>
             <Loader className="mr-2 h-4 w-4 animate-spin" />
-            Ajout en cours...
+            Soumission en cours...
           </>
         ) : (
-          'Ajouter le terrain'
+          'Soumettre pour approbation'
         )}
       </Button>
     </div>
