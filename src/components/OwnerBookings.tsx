@@ -3,6 +3,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
+import PendingConfirmationsSection from './PendingConfirmationsSection';
 import AllBookingsSection from './AllBookingsSection';
 
 interface OwnerBookingsProps {
@@ -13,28 +14,34 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
   const { data: bookings, isLoading, refetch } = useQuery({
     queryKey: ['owner-bookings', ownerId],
     queryFn: async () => {
-      console.log('🔍 Récupération des réservations pour le propriétaire:', ownerId);
-      
       const { data, error } = await supabase
         .from('bookings')
         .select(`
           *,
-          profiles!bookings_user_id_fkey(full_name, email),
-          fields!bookings_field_id_fkey(name, location, owner_id)
+          profiles!inner(full_name, email),
+          fields!inner(name, location, owner_id)
         `)
         .eq('fields.owner_id', ownerId)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('❌ Erreur lors de la récupération des réservations:', error);
-        throw error;
-      }
-      
-      console.log('📋 Réservations récupérées:', data);
+      if (error) throw error;
       return data;
     },
     enabled: !!ownerId
   });
+
+  // Séparer les réservations qui nécessitent une confirmation
+  const pendingConfirmations = bookings?.filter(booking => 
+    booking.status === 'confirmed' && 
+    booking.escrow_status === 'funds_held' && 
+    !booking.owner_confirmed_at
+  ) || [];
+
+  const otherBookings = bookings?.filter(booking => 
+    !(booking.status === 'confirmed' && 
+      booking.escrow_status === 'funds_held' && 
+      !booking.owner_confirmed_at)
+  ) || [];
 
   if (isLoading) {
     return (
@@ -56,7 +63,11 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
 
   return (
     <div className="space-y-6">
-      <AllBookingsSection bookings={bookings || []} />
+      <PendingConfirmationsSection 
+        pendingConfirmations={pendingConfirmations}
+        onConfirm={() => refetch()}
+      />
+      <AllBookingsSection bookings={otherBookings} />
     </div>
   );
 };

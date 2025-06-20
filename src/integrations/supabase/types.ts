@@ -105,18 +105,28 @@ export type Database = {
       }
       bookings: {
         Row: {
+          auto_action: string | null
+          auto_refund_processed: boolean | null
           booking_date: string
           cancellation_reason: string | null
           cancelled_at: string | null
+          cinetpay_transaction_id: string | null
           confirmation_code: string | null
+          confirmation_deadline: string | null
           confirmation_email_sent: boolean | null
+          confirmation_window_type: string | null
           created_at: string | null
           currency: string | null
           end_time: string
+          escrow_status: string | null
           field_id: string
+          final_reminder_sent_at: string | null
           id: string
           owner_amount: number | null
+          owner_confirmation_sent_at: string | null
+          owner_confirmed_at: string | null
           payment_intent_id: string | null
+          payment_provider: string | null
           payment_status: string | null
           platform_fee: number | null
           player_count: number | null
@@ -124,23 +134,35 @@ export type Database = {
           start_time: string
           status: string | null
           stripe_transfer_id: string | null
+          time_until_slot: unknown | null
           total_price: number
+          transfer_scheduled_at: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          auto_action?: string | null
+          auto_refund_processed?: boolean | null
           booking_date: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          cinetpay_transaction_id?: string | null
           confirmation_code?: string | null
+          confirmation_deadline?: string | null
           confirmation_email_sent?: boolean | null
+          confirmation_window_type?: string | null
           created_at?: string | null
           currency?: string | null
           end_time: string
+          escrow_status?: string | null
           field_id: string
+          final_reminder_sent_at?: string | null
           id?: string
           owner_amount?: number | null
+          owner_confirmation_sent_at?: string | null
+          owner_confirmed_at?: string | null
           payment_intent_id?: string | null
+          payment_provider?: string | null
           payment_status?: string | null
           platform_fee?: number | null
           player_count?: number | null
@@ -148,23 +170,35 @@ export type Database = {
           start_time: string
           status?: string | null
           stripe_transfer_id?: string | null
+          time_until_slot?: unknown | null
           total_price: number
+          transfer_scheduled_at?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          auto_action?: string | null
+          auto_refund_processed?: boolean | null
           booking_date?: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          cinetpay_transaction_id?: string | null
           confirmation_code?: string | null
+          confirmation_deadline?: string | null
           confirmation_email_sent?: boolean | null
+          confirmation_window_type?: string | null
           created_at?: string | null
           currency?: string | null
           end_time?: string
+          escrow_status?: string | null
           field_id?: string
+          final_reminder_sent_at?: string | null
           id?: string
           owner_amount?: number | null
+          owner_confirmation_sent_at?: string | null
+          owner_confirmed_at?: string | null
           payment_intent_id?: string | null
+          payment_provider?: string | null
           payment_status?: string | null
           platform_fee?: number | null
           player_count?: number | null
@@ -172,7 +206,9 @@ export type Database = {
           start_time?: string
           status?: string | null
           stripe_transfer_id?: string | null
+          time_until_slot?: unknown | null
           total_price?: number
+          transfer_scheduled_at?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -189,6 +225,115 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escrow_automation_tasks: {
+        Row: {
+          booking_id: string
+          created_at: string | null
+          error_message: string | null
+          executed_at: string | null
+          id: string
+          max_retries: number | null
+          retry_count: number | null
+          scheduled_at: string
+          status: string
+          task_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          max_retries?: number | null
+          retry_count?: number | null
+          scheduled_at: string
+          status?: string
+          task_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          max_retries?: number | null
+          retry_count?: number | null
+          scheduled_at?: string
+          status?: string
+          task_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escrow_automation_tasks_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escrow_transactions: {
+        Row: {
+          amount: number
+          booking_id: string
+          cinetpay_transaction_id: string | null
+          cinetpay_transfer_id: string | null
+          created_at: string | null
+          currency: string
+          error_message: string | null
+          id: string
+          owner_amount: number | null
+          platform_fee: number | null
+          processed_at: string | null
+          status: string
+          transaction_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          booking_id: string
+          cinetpay_transaction_id?: string | null
+          cinetpay_transfer_id?: string | null
+          created_at?: string | null
+          currency?: string
+          error_message?: string | null
+          id?: string
+          owner_amount?: number | null
+          platform_fee?: number | null
+          processed_at?: string | null
+          status?: string
+          transaction_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          booking_id?: string
+          cinetpay_transaction_id?: string | null
+          cinetpay_transfer_id?: string | null
+          created_at?: string | null
+          currency?: string
+          error_message?: string | null
+          id?: string
+          owner_amount?: number | null
+          platform_fee?: number | null
+          processed_at?: string | null
+          status?: string
+          transaction_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escrow_transactions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
         ]
@@ -430,53 +575,190 @@ export type Database = {
       }
       payment_accounts: {
         Row: {
+          account_status: string
+          account_type: string | null
+          charges_enabled: boolean | null
           created_at: string
+          details_submitted: boolean | null
+          external_account_id: string
           id: string
+          merchant_id: string | null
+          onboarding_url: string | null
           owner_id: string
+          payment_provider: string
+          payouts_enabled: boolean | null
           updated_at: string
         }
         Insert: {
+          account_status?: string
+          account_type?: string | null
+          charges_enabled?: boolean | null
           created_at?: string
+          details_submitted?: boolean | null
+          external_account_id: string
           id?: string
+          merchant_id?: string | null
+          onboarding_url?: string | null
           owner_id: string
+          payment_provider?: string
+          payouts_enabled?: boolean | null
           updated_at?: string
         }
         Update: {
+          account_status?: string
+          account_type?: string | null
+          charges_enabled?: boolean | null
           created_at?: string
+          details_submitted?: boolean | null
+          external_account_id?: string
           id?: string
+          merchant_id?: string | null
+          onboarding_url?: string | null
           owner_id?: string
+          payment_provider?: string
+          payouts_enabled?: boolean | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_links: {
+        Row: {
+          booking_id: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          is_active: boolean | null
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          is_active?: boolean | null
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          is_active?: boolean | null
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_balance: {
+        Row: {
+          available_balance: number
+          currency: string
+          id: string
+          last_updated: string | null
+          reserved_balance: number
+          total_balance: number
+          updated_by: string | null
+        }
+        Insert: {
+          available_balance?: number
+          currency?: string
+          id?: string
+          last_updated?: string | null
+          reserved_balance?: number
+          total_balance?: number
+          updated_by?: string | null
+        }
+        Update: {
+          available_balance?: number
+          currency?: string
+          id?: string
+          last_updated?: string | null
+          reserved_balance?: number
+          total_balance?: number
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      platform_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          setting_key: string
+          setting_type: string
+          setting_value: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_type?: string
+          setting_value: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_type?: string
+          setting_value?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
       profiles: {
         Row: {
           avatar_url: string | null
+          cinetpay_account_verified: boolean | null
+          cinetpay_onboarding_completed: boolean | null
           created_at: string | null
           email: string | null
           full_name: string | null
           id: string
           phone: string | null
+          stripe_account_verified: boolean | null
+          stripe_onboarding_completed: boolean | null
           updated_at: string | null
           user_type: string | null
         }
         Insert: {
           avatar_url?: string | null
+          cinetpay_account_verified?: boolean | null
+          cinetpay_onboarding_completed?: boolean | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id: string
           phone?: string | null
+          stripe_account_verified?: boolean | null
+          stripe_onboarding_completed?: boolean | null
           updated_at?: string | null
           user_type?: string | null
         }
         Update: {
           avatar_url?: string | null
+          cinetpay_account_verified?: boolean | null
+          cinetpay_onboarding_completed?: boolean | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
           phone?: string | null
+          stripe_account_verified?: boolean | null
+          stripe_onboarding_completed?: boolean | null
           updated_at?: string | null
           user_type?: string | null
         }
@@ -654,6 +936,10 @@ export type Database = {
         Args: { application_id: string; notes?: string }
         Returns: undefined
       }
+      calculate_smart_confirmation_deadline: {
+        Args: { p_booking_date: string; p_start_time: string }
+        Returns: Record<string, unknown>
+      }
       can_promote_user: {
         Args: {
           promoter_id: string
@@ -687,6 +973,10 @@ export type Database = {
           p_start_time: string
           p_end_time: string
         }
+        Returns: boolean
+      }
+      confirm_booking_by_owner: {
+        Args: { p_booking_id: string; p_owner_id: string }
         Returns: boolean
       }
       create_availability_for_period: {
@@ -782,6 +1072,44 @@ export type Database = {
         }
         Returns: boolean
       }
+      process_automation_tasks: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          task_id: string
+          booking_id: string
+          task_type: string
+          result: string
+        }[]
+      }
+      process_escrow_transaction: {
+        Args: {
+          p_booking_id: string
+          p_transaction_type: string
+          p_amount: number
+          p_cinetpay_transaction_id?: string
+          p_platform_fee?: number
+        }
+        Returns: string
+      }
+      process_smart_automation_tasks: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          task_id: string
+          booking_id: string
+          task_type: string
+          result: string
+        }[]
+      }
+      process_smart_booking_confirmation: {
+        Args: {
+          p_booking_id: string
+          p_transaction_type: string
+          p_amount: number
+          p_cinetpay_transaction_id?: string
+          p_platform_fee?: number
+        }
+        Returns: string
+      }
       reject_owner_application: {
         Args: { application_id: string; notes: string }
         Returns: undefined
@@ -793,6 +1121,14 @@ export type Database = {
           reason?: string
         }
         Returns: undefined
+      }
+      schedule_escrow_task: {
+        Args: {
+          p_booking_id: string
+          p_task_type: string
+          p_scheduled_at: string
+        }
+        Returns: string
       }
       set_slots_unavailable: {
         Args: {
@@ -808,6 +1144,10 @@ export type Database = {
       update_owner_stats_for_field: {
         Args: { field_uuid: string }
         Returns: undefined
+      }
+      validate_payment_link: {
+        Args: { p_token: string }
+        Returns: string
       }
     }
     Enums: {
