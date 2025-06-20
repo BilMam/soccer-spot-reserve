@@ -13,7 +13,7 @@ import AvailabilityManagement from '@/components/availability/AvailabilityManage
 import { usePermissions } from '@/hooks/usePermissions';
 import { useOwnerStats } from '@/hooks/useOwnerStats';
 import { useOwnerFields } from '@/hooks/useOwnerFields';
-import { Settings, Calendar } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 
 const OwnerDashboard = () => {
   const { user, loading } = useAuth();
@@ -81,52 +81,30 @@ const OwnerDashboard = () => {
 
           <TabsContent value="availability">
             <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
-                    Sélection du terrain
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="max-w-md">
-                      <label className="text-sm font-medium mb-2 block">
-                        Choisissez le terrain à gérer :
-                      </label>
-                      <Select value={selectedFieldId} onValueChange={setSelectedFieldId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner un terrain..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {fields && fields.length > 0 ? (
-                            fields.map((field) => (
-                              <SelectItem key={field.id} value={field.id}>
-                                {field.name}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="" disabled>
-                              Aucun terrain disponible
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    {selectedField && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <h4 className="font-medium text-blue-900 mb-1">
-                          Terrain sélectionné : {selectedField.name}
-                        </h4>
-                        <p className="text-sm text-blue-700">
-                          {selectedField.location} • {selectedField.price_per_hour} XOF/heure
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="flex items-center gap-4 mb-6">
+                <h2 className="text-xl font-semibold">Gestion des créneaux</h2>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Terrain :</span>
+                  <Select value={selectedFieldId} onValueChange={setSelectedFieldId}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Sélectionner..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fields && fields.length > 0 ? (
+                        fields.map((field) => (
+                          <SelectItem key={field.id} value={field.id}>
+                            {field.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>
+                          Aucun terrain disponible
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
               {selectedFieldId ? (
                 <AvailabilityManagement
