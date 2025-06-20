@@ -34,7 +34,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     location: '',
     address: '',
     city: '',
-    field_type: 'football',
+    field_type: 'synthetic',
     capacity: '',
     price_per_hour: '',
     availability_start: '08:00',

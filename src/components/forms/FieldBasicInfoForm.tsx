@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -21,12 +20,9 @@ interface FieldBasicInfoFormProps {
 }
 
 const fieldTypes = [
-  { value: 'football', label: 'Football' },
-  { value: 'basketball', label: 'Basketball' },
-  { value: 'tennis', label: 'Tennis' },
-  { value: 'volleyball', label: 'Volleyball' },
-  { value: 'badminton', label: 'Badminton' },
-  { value: 'futsal', label: 'Futsal' }
+  { value: 'synthetic', label: 'Synthétique' },
+  { value: 'natural_grass', label: 'Pelouse naturelle' },
+  { value: 'street', label: 'Street' }
 ];
 
 const gameFormats = [
@@ -55,14 +51,14 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="field_type">Type de terrain *</Label>
+          <Label htmlFor="field_type">Type de surface *</Label>
           <Select 
             value={formData.field_type || undefined} 
             onValueChange={(value) => onInputChange('field_type', value)}
             required
           >
             <SelectTrigger>
-              <SelectValue placeholder="Sélectionner un type" />
+              <SelectValue placeholder="Sélectionner le type de surface" />
             </SelectTrigger>
             <SelectContent>
               {fieldTypes.map((type) => (
@@ -157,4 +153,3 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
 };
 
 export default FieldBasicInfoForm;
-
