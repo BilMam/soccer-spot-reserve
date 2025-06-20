@@ -13,17 +13,24 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
   const { data: bookings, isLoading, refetch } = useQuery({
     queryKey: ['owner-bookings', ownerId],
     queryFn: async () => {
+      console.log('🔍 Récupération des réservations pour le propriétaire:', ownerId);
+      
       const { data, error } = await supabase
         .from('bookings')
         .select(`
           *,
-          profiles!inner(full_name, email),
-          fields!inner(name, location, owner_id)
+          profiles!bookings_user_id_fkey(full_name, email),
+          fields!bookings_field_id_fkey(name, location, owner_id)
         `)
         .eq('fields.owner_id', ownerId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erreur lors de la récupération des réservations:', error);
+        throw error;
+      }
+      
+      console.log('📋 Réservations récupérées:', data);
       return data;
     },
     enabled: !!ownerId

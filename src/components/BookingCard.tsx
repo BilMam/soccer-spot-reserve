@@ -12,11 +12,13 @@ interface BookingCardProps {
 }
 
 const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
+  console.log('BookingCard - Données reçues:', booking);
+  
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">{booking.fields.name}</CardTitle>
+          <CardTitle className="text-lg">{booking.fields?.name || 'Terrain non spécifié'}</CardTitle>
           <BookingStatusBadge status={booking.status} />
         </div>
       </CardHeader>
@@ -25,12 +27,12 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex items-center space-x-2">
             <User className="w-4 h-4 text-gray-500" />
-            <span>{booking.profiles.full_name}</span>
+            <span>{booking.profiles?.full_name || 'Utilisateur non spécifié'}</span>
           </div>
           
           <div className="flex items-center space-x-2">
             <MapPin className="w-4 h-4 text-gray-500" />
-            <span>{booking.fields.location}</span>
+            <span>{booking.fields?.location || 'Lieu non spécifié'}</span>
           </div>
           
           <div className="flex items-center space-x-2">
