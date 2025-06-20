@@ -9,16 +9,1156 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      availability_period_templates: {
+        Row: {
+          apply_pattern: string | null
+          created_at: string | null
+          created_by: string
+          default_end_time: string
+          default_start_time: string
+          end_date: string
+          excluded_days: number[] | null
+          field_id: string
+          id: string
+          start_date: string
+          template_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          apply_pattern?: string | null
+          created_at?: string | null
+          created_by: string
+          default_end_time: string
+          default_start_time: string
+          end_date: string
+          excluded_days?: number[] | null
+          field_id: string
+          id?: string
+          start_date: string
+          template_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          apply_pattern?: string | null
+          created_at?: string | null
+          created_by?: string
+          default_end_time?: string
+          default_start_time?: string
+          end_date?: string
+          excluded_days?: number[] | null
+          field_id?: string
+          id?: string
+          start_date?: string
+          template_name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_period_templates_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_notifications: {
+        Row: {
+          booking_id: string
+          created_at: string | null
+          error_message: string | null
+          id: string
+          notification_type: string
+          recipient_email: string
+          sent_at: string | null
+          status: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          notification_type: string
+          recipient_email: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          notification_type?: string
+          recipient_email?: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bookings: {
+        Row: {
+          auto_action: string | null
+          auto_refund_processed: boolean | null
+          booking_date: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cinetpay_transaction_id: string | null
+          confirmation_code: string | null
+          confirmation_deadline: string | null
+          confirmation_email_sent: boolean | null
+          confirmation_window_type: string | null
+          created_at: string | null
+          currency: string | null
+          end_time: string
+          escrow_status: string | null
+          field_id: string
+          final_reminder_sent_at: string | null
+          id: string
+          owner_amount: number | null
+          owner_confirmation_sent_at: string | null
+          owner_confirmed_at: string | null
+          payment_intent_id: string | null
+          payment_provider: string | null
+          payment_status: string | null
+          platform_fee: number | null
+          player_count: number | null
+          special_requests: string | null
+          start_time: string
+          status: string | null
+          stripe_transfer_id: string | null
+          time_until_slot: unknown | null
+          total_price: number
+          transfer_scheduled_at: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auto_action?: string | null
+          auto_refund_processed?: boolean | null
+          booking_date: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cinetpay_transaction_id?: string | null
+          confirmation_code?: string | null
+          confirmation_deadline?: string | null
+          confirmation_email_sent?: boolean | null
+          confirmation_window_type?: string | null
+          created_at?: string | null
+          currency?: string | null
+          end_time: string
+          escrow_status?: string | null
+          field_id: string
+          final_reminder_sent_at?: string | null
+          id?: string
+          owner_amount?: number | null
+          owner_confirmation_sent_at?: string | null
+          owner_confirmed_at?: string | null
+          payment_intent_id?: string | null
+          payment_provider?: string | null
+          payment_status?: string | null
+          platform_fee?: number | null
+          player_count?: number | null
+          special_requests?: string | null
+          start_time: string
+          status?: string | null
+          stripe_transfer_id?: string | null
+          time_until_slot?: unknown | null
+          total_price: number
+          transfer_scheduled_at?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auto_action?: string | null
+          auto_refund_processed?: boolean | null
+          booking_date?: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cinetpay_transaction_id?: string | null
+          confirmation_code?: string | null
+          confirmation_deadline?: string | null
+          confirmation_email_sent?: boolean | null
+          confirmation_window_type?: string | null
+          created_at?: string | null
+          currency?: string | null
+          end_time?: string
+          escrow_status?: string | null
+          field_id?: string
+          final_reminder_sent_at?: string | null
+          id?: string
+          owner_amount?: number | null
+          owner_confirmation_sent_at?: string | null
+          owner_confirmed_at?: string | null
+          payment_intent_id?: string | null
+          payment_provider?: string | null
+          payment_status?: string | null
+          platform_fee?: number | null
+          player_count?: number | null
+          special_requests?: string | null
+          start_time?: string
+          status?: string | null
+          stripe_transfer_id?: string | null
+          time_until_slot?: unknown | null
+          total_price?: number
+          transfer_scheduled_at?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escrow_automation_tasks: {
+        Row: {
+          booking_id: string
+          created_at: string | null
+          error_message: string | null
+          executed_at: string | null
+          id: string
+          max_retries: number | null
+          retry_count: number | null
+          scheduled_at: string
+          status: string
+          task_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          max_retries?: number | null
+          retry_count?: number | null
+          scheduled_at: string
+          status?: string
+          task_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          max_retries?: number | null
+          retry_count?: number | null
+          scheduled_at?: string
+          status?: string
+          task_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escrow_automation_tasks_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escrow_transactions: {
+        Row: {
+          amount: number
+          booking_id: string
+          cinetpay_transaction_id: string | null
+          cinetpay_transfer_id: string | null
+          created_at: string | null
+          currency: string
+          error_message: string | null
+          id: string
+          owner_amount: number | null
+          platform_fee: number | null
+          processed_at: string | null
+          status: string
+          transaction_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          booking_id: string
+          cinetpay_transaction_id?: string | null
+          cinetpay_transfer_id?: string | null
+          created_at?: string | null
+          currency?: string
+          error_message?: string | null
+          id?: string
+          owner_amount?: number | null
+          platform_fee?: number | null
+          processed_at?: string | null
+          status?: string
+          transaction_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          booking_id?: string
+          cinetpay_transaction_id?: string | null
+          cinetpay_transfer_id?: string | null
+          created_at?: string | null
+          currency?: string
+          error_message?: string | null
+          id?: string
+          owner_amount?: number | null
+          platform_fee?: number | null
+          processed_at?: string | null
+          status?: string
+          transaction_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escrow_transactions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      field_availability: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          date: string
+          end_time: string
+          field_id: string
+          id: string
+          is_available: boolean | null
+          is_maintenance: boolean | null
+          notes: string | null
+          period_template_id: string | null
+          price_override: number | null
+          start_time: string
+          unavailability_reason: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          date: string
+          end_time: string
+          field_id: string
+          id?: string
+          is_available?: boolean | null
+          is_maintenance?: boolean | null
+          notes?: string | null
+          period_template_id?: string | null
+          price_override?: number | null
+          start_time: string
+          unavailability_reason?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          end_time?: string
+          field_id?: string
+          id?: string
+          is_available?: boolean | null
+          is_maintenance?: boolean | null
+          notes?: string | null
+          period_template_id?: string | null
+          price_override?: number | null
+          start_time?: string
+          unavailability_reason?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "field_availability_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fields: {
+        Row: {
+          address: string
+          amenities: string[] | null
+          availability_end: string | null
+          availability_start: string | null
+          capacity: number
+          city: string
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          field_type: string
+          id: string
+          images: string[] | null
+          is_active: boolean | null
+          location: string
+          name: string
+          owner_id: string
+          price_per_hour: number
+          rating: number | null
+          total_reviews: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          address: string
+          amenities?: string[] | null
+          availability_end?: string | null
+          availability_start?: string | null
+          capacity: number
+          city: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          field_type: string
+          id?: string
+          images?: string[] | null
+          is_active?: boolean | null
+          location: string
+          name: string
+          owner_id: string
+          price_per_hour: number
+          rating?: number | null
+          total_reviews?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string
+          amenities?: string[] | null
+          availability_end?: string | null
+          availability_start?: string | null
+          capacity?: number
+          city?: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          field_type?: string
+          id?: string
+          images?: string[] | null
+          is_active?: boolean | null
+          location?: string
+          name?: string
+          owner_id?: string
+          price_per_hour?: number
+          rating?: number | null
+          total_reviews?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fields_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      owner_applications: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          experience: string | null
+          full_name: string
+          id: string
+          motivation: string | null
+          phone: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          experience?: string | null
+          full_name: string
+          id?: string
+          motivation?: string | null
+          phone: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          experience?: string | null
+          full_name?: string
+          id?: string
+          motivation?: string | null
+          phone?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      owner_stats: {
+        Row: {
+          avg_rating: number | null
+          confirmed_bookings: number | null
+          field_id: string
+          field_name: string
+          owner_id: string
+          pending_bookings: number | null
+          total_bookings: number | null
+          total_revenue: number | null
+          total_reviews: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          avg_rating?: number | null
+          confirmed_bookings?: number | null
+          field_id: string
+          field_name: string
+          owner_id: string
+          pending_bookings?: number | null
+          total_bookings?: number | null
+          total_revenue?: number | null
+          total_reviews?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          avg_rating?: number | null
+          confirmed_bookings?: number | null
+          field_id?: string
+          field_name?: string
+          owner_id?: string
+          pending_bookings?: number | null
+          total_bookings?: number | null
+          total_revenue?: number | null
+          total_reviews?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "owner_stats_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "owner_stats_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_accounts: {
+        Row: {
+          account_status: string
+          account_type: string | null
+          charges_enabled: boolean | null
+          created_at: string
+          details_submitted: boolean | null
+          external_account_id: string
+          id: string
+          merchant_id: string | null
+          onboarding_url: string | null
+          owner_id: string
+          payment_provider: string
+          payouts_enabled: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          account_status?: string
+          account_type?: string | null
+          charges_enabled?: boolean | null
+          created_at?: string
+          details_submitted?: boolean | null
+          external_account_id: string
+          id?: string
+          merchant_id?: string | null
+          onboarding_url?: string | null
+          owner_id: string
+          payment_provider?: string
+          payouts_enabled?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          account_status?: string
+          account_type?: string | null
+          charges_enabled?: boolean | null
+          created_at?: string
+          details_submitted?: boolean | null
+          external_account_id?: string
+          id?: string
+          merchant_id?: string | null
+          onboarding_url?: string | null
+          owner_id?: string
+          payment_provider?: string
+          payouts_enabled?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_links: {
+        Row: {
+          booking_id: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          is_active: boolean | null
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          is_active?: boolean | null
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          is_active?: boolean | null
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_balance: {
+        Row: {
+          available_balance: number
+          currency: string
+          id: string
+          last_updated: string | null
+          reserved_balance: number
+          total_balance: number
+          updated_by: string | null
+        }
+        Insert: {
+          available_balance?: number
+          currency?: string
+          id?: string
+          last_updated?: string | null
+          reserved_balance?: number
+          total_balance?: number
+          updated_by?: string | null
+        }
+        Update: {
+          available_balance?: number
+          currency?: string
+          id?: string
+          last_updated?: string | null
+          reserved_balance?: number
+          total_balance?: number
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      platform_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          setting_key: string
+          setting_type: string
+          setting_value: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_type?: string
+          setting_value: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_type?: string
+          setting_value?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          cinetpay_account_verified: boolean | null
+          cinetpay_onboarding_completed: boolean | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          stripe_account_verified: boolean | null
+          stripe_onboarding_completed: boolean | null
+          updated_at: string | null
+          user_type: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          cinetpay_account_verified?: boolean | null
+          cinetpay_onboarding_completed?: boolean | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          stripe_account_verified?: boolean | null
+          stripe_onboarding_completed?: boolean | null
+          updated_at?: string | null
+          user_type?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          cinetpay_account_verified?: boolean | null
+          cinetpay_onboarding_completed?: boolean | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          stripe_account_verified?: boolean | null
+          stripe_onboarding_completed?: boolean | null
+          updated_at?: string | null
+          user_type?: string | null
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          booking_id: string
+          comment: string | null
+          created_at: string | null
+          field_id: string
+          id: string
+          rating: number
+          user_id: string
+        }
+        Insert: {
+          booking_id: string
+          comment?: string | null
+          created_at?: string | null
+          field_id: string
+          id?: string
+          rating: number
+          user_id: string
+        }
+        Update: {
+          booking_id?: string
+          comment?: string | null
+          created_at?: string | null
+          field_id?: string
+          id?: string
+          rating?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      role_audit_log: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          new_value: string | null
+          old_value: string | null
+          performed_by: string
+          reason: string | null
+          target_user_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          new_value?: string | null
+          old_value?: string | null
+          performed_by: string
+          reason?: string | null
+          target_user_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          new_value?: string | null
+          old_value?: string | null
+          performed_by?: string
+          reason?: string | null
+          target_user_id?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      user_favorites: {
+        Row: {
+          created_at: string
+          field_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          field_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          field_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_favorites_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          granted_at: string | null
+          granted_by: string | null
+          id: string
+          is_active: boolean | null
+          notes: string | null
+          role: Database["public"]["Enums"]["user_role_type"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          role: Database["public"]["Enums"]["user_role_type"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          role?: Database["public"]["Enums"]["user_role_type"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      approve_field: {
+        Args: { field_id: string; notes?: string }
+        Returns: undefined
+      }
+      approve_owner_application: {
+        Args: { application_id: string; notes?: string }
+        Returns: undefined
+      }
+      calculate_smart_confirmation_deadline: {
+        Args: { p_booking_date: string; p_start_time: string }
+        Returns: Record<string, unknown>
+      }
+      can_promote_user: {
+        Args: {
+          promoter_id: string
+          target_role: Database["public"]["Enums"]["user_role_type"]
+        }
+        Returns: boolean
+      }
+      change_user_type: {
+        Args: {
+          target_user_id: string
+          new_user_type: string
+          new_role?: Database["public"]["Enums"]["user_role_type"]
+          reason?: string
+        }
+        Returns: undefined
+      }
+      check_booking_conflict: {
+        Args: {
+          p_field_id: string
+          p_booking_date: string
+          p_start_time: string
+          p_end_time: string
+          p_booking_id?: string
+        }
+        Returns: boolean
+      }
+      check_slot_booking_status: {
+        Args: {
+          p_field_id: string
+          p_date: string
+          p_start_time: string
+          p_end_time: string
+        }
+        Returns: boolean
+      }
+      confirm_booking_by_owner: {
+        Args: { p_booking_id: string; p_owner_id: string }
+        Returns: boolean
+      }
+      create_availability_for_period: {
+        Args: {
+          p_field_id: string
+          p_start_date: string
+          p_end_date: string
+          p_start_time: string
+          p_end_time: string
+          p_slot_duration?: number
+          p_exclude_days?: number[]
+          p_template_id?: string
+        }
+        Returns: number
+      }
+      generate_unique_confirmation_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_all_owner_applications: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          user_id: string
+          full_name: string
+          phone: string
+          experience: string
+          motivation: string
+          status: string
+          admin_notes: string
+          reviewed_by: string
+          reviewed_at: string
+          created_at: string
+          updated_at: string
+          user_email: string
+        }[]
+      }
+      get_owner_recent_bookings: {
+        Args: { owner_uuid: string }
+        Returns: {
+          booking_id: string
+          field_name: string
+          user_name: string
+          booking_date: string
+          start_time: string
+          end_time: string
+          status: string
+          total_price: number
+          player_count: number
+        }[]
+      }
+      get_user_owner_application: {
+        Args: { p_user_id: string }
+        Returns: {
+          id: string
+          user_id: string
+          full_name: string
+          phone: string
+          experience: string
+          motivation: string
+          status: string
+          admin_notes: string
+          reviewed_by: string
+          reviewed_at: string
+          created_at: string
+          updated_at: string
+        }[]
+      }
+      get_users_with_roles: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          email: string
+          full_name: string
+          user_type: string
+          roles: Database["public"]["Enums"]["user_role_type"][]
+          created_at: string
+        }[]
+      }
+      grant_role_to_user: {
+        Args: {
+          target_user_id: string
+          role_to_grant: Database["public"]["Enums"]["user_role_type"]
+          reason?: string
+          expires_at?: string
+        }
+        Returns: undefined
+      }
+      has_role: {
+        Args: {
+          user_uuid: string
+          role_name: Database["public"]["Enums"]["user_role_type"]
+        }
+        Returns: boolean
+      }
+      process_automation_tasks: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          task_id: string
+          booking_id: string
+          task_type: string
+          result: string
+        }[]
+      }
+      process_escrow_transaction: {
+        Args: {
+          p_booking_id: string
+          p_transaction_type: string
+          p_amount: number
+          p_cinetpay_transaction_id?: string
+          p_platform_fee?: number
+        }
+        Returns: string
+      }
+      process_smart_automation_tasks: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          task_id: string
+          booking_id: string
+          task_type: string
+          result: string
+        }[]
+      }
+      process_smart_booking_confirmation: {
+        Args: {
+          p_booking_id: string
+          p_transaction_type: string
+          p_amount: number
+          p_cinetpay_transaction_id?: string
+          p_platform_fee?: number
+        }
+        Returns: string
+      }
+      reject_owner_application: {
+        Args: { application_id: string; notes: string }
+        Returns: undefined
+      }
+      revoke_role_from_user: {
+        Args: {
+          target_user_id: string
+          role_to_revoke: Database["public"]["Enums"]["user_role_type"]
+          reason?: string
+        }
+        Returns: undefined
+      }
+      schedule_escrow_task: {
+        Args: {
+          p_booking_id: string
+          p_task_type: string
+          p_scheduled_at: string
+        }
+        Returns: string
+      }
+      set_slots_unavailable: {
+        Args: {
+          p_field_id: string
+          p_date: string
+          p_start_time: string
+          p_end_time: string
+          p_reason?: string
+          p_notes?: string
+        }
+        Returns: number
+      }
+      update_owner_stats_for_field: {
+        Args: { field_uuid: string }
+        Returns: undefined
+      }
+      validate_payment_link: {
+        Args: { p_token: string }
+        Returns: string
+      }
     }
     Enums: {
-      [_ in never]: never
+      user_role_type:
+        | "super_admin"
+        | "admin_general"
+        | "admin_fields"
+        | "admin_users"
+        | "moderator"
+        | "owner"
+        | "player"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +1273,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role_type: [
+        "super_admin",
+        "admin_general",
+        "admin_fields",
+        "admin_users",
+        "moderator",
+        "owner",
+        "player",
+      ],
+    },
   },
 } as const
