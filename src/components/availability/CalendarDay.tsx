@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { normalizeTime } from '@/utils/timeUtils';
+import { isSlotOverlappingWithBooking } from '@/utils/slotOverlapUtils';
 
 interface AvailabilitySlot {
   id?: string;
@@ -16,25 +16,28 @@ interface AvailabilitySlot {
   notes?: string;
 }
 
+interface BookingSlot {
+  start_time: string;
+  end_time: string;
+}
+
 interface CalendarDayProps {
   day: Date;
   slots: AvailabilitySlot[];
   bookedSlots: Set<string>;
+  bookings: BookingSlot[];
   onClick: () => void;
 }
 
-const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, onClick }) => {
+const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, bookings, onClick }) => {
   // Calculer les statistiques pour ce jour
   const total = slots.length;
   const available = slots.filter(s => s.is_available).length;
   const unavailable = slots.filter(s => !s.is_available).length;
   
-  // CORRECTION: Utiliser la même logique partout
+  // NOUVELLE LOGIQUE: Utiliser la détection de chevauchement
   const booked = slots.filter(slot => {
-    const normalizedStartTime = normalizeTime(slot.start_time);
-    const normalizedEndTime = normalizeTime(slot.end_time);
-    const slotKey = `${normalizedStartTime}-${normalizedEndTime}`;
-    return bookedSlots.has(slotKey);
+    return isSlotOverlappingWithBooking(slot.start_time, slot.end_time, bookings);
   }).length;
   
   const hasSlots = total > 0;
@@ -57,7 +60,7 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, onCl
 
   // DEBUG: Logs ciblés pour les jours avec réservations
   const dateStr = format(day, 'yyyy-MM-dd');
-  if (dateStr === '2025-06-25' || hasBooked) {
+  if (dateStr === '2025-06-25' || hasBooked || bookings.length > 0) {
     console.log(`🎨📅 CalendarDay - ${dateStr}:`, {
       total,
       available,
@@ -65,19 +68,15 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, onCl
       booked,
       hasBooked,
       bgColor,
-      bookedSlotsFromSet: bookedSlots.size,
-      bookedSlotsArray: Array.from(bookedSlots),
+      bookingsReceived: bookings.length,
+      bookingsList: bookings,
       // Vérifier chaque slot individuellement
       slotChecks: slots.map(slot => {
-        const normalizedStart = normalizeTime(slot.start_time);
-        const normalizedEnd = normalizeTime(slot.end_time);
-        const slotKey = `${normalizedStart}-${normalizedEnd}`;
-        const isInSet = bookedSlots.has(slotKey);
+        const overlaps = isSlotOverlappingWithBooking(slot.start_time, slot.end_time, bookings);
         return {
-          original: `${slot.start_time}-${slot.end_time}`,
-          normalized: slotKey,
-          isInSet,
-          isAvailable: slot.is_available
+          slotTime: `${slot.start_time}-${slot.end_time}`,
+          isAvailable: slot.is_available,
+          overlapsWithBooking: overlaps
         };
       })
     });

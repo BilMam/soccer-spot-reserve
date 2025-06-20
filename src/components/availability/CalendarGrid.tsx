@@ -18,9 +18,15 @@ interface AvailabilitySlot {
   notes?: string;
 }
 
+interface BookingSlot {
+  start_time: string;
+  end_time: string;
+}
+
 interface CalendarGridProps {
   calendarGrid: CalendarCell[];
   bookedSlotsByDate: Record<string, Set<string>>;
+  bookingsByDate: Record<string, BookingSlot[]>;
   onToggleSlotStatus: (slot: AvailabilitySlot) => void;
   isUpdating: boolean;
   fieldId: string;
@@ -29,6 +35,7 @@ interface CalendarGridProps {
 const CalendarGrid: React.FC<CalendarGridProps> = ({
   calendarGrid,
   bookedSlotsByDate,
+  bookingsByDate,
   onToggleSlotStatus,
   isUpdating,
   fieldId
@@ -52,16 +59,17 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
           );
         }
         
-        const dayOfWeek = cell.date.getDay();
-        const dayName = format(cell.date, 'EEEE', { locale: fr });
         const bookedSlots = bookedSlotsByDate[cell.dateStr] || new Set();
+        const bookings = bookingsByDate[cell.dateStr] || [];
         
-        // AMÉLIORATION: Debug plus ciblé
-        if (cell.dateStr === '2025-06-25' || bookedSlots.size > 0) {
+        // DEBUG: Logs pour vérifier les données transmises
+        if (cell.dateStr === '2025-06-25' || bookings.length > 0) {
           console.log(`📅 GRID - Rendu cellule: ${cell.dateStr}`, {
             slots: cell.slots.length,
             bookedSlotsCount: bookedSlots.size,
             bookedSlotsList: Array.from(bookedSlots),
+            bookingsCount: bookings.length,
+            bookingsList: bookings,
             availableSlots: cell.slots.filter(s => s.is_available).length,
             unavailableSlots: cell.slots.filter(s => !s.is_available).length
           });
@@ -75,6 +83,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
                   day={cell.date} 
                   slots={cell.slots}
                   bookedSlots={bookedSlots}
+                  bookings={bookings}
                   onClick={() => {}}
                 />
               </div>
@@ -94,6 +103,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
                 isUpdating={isUpdating}
                 fieldId={fieldId}
                 bookedSlots={bookedSlots}
+                bookings={bookings}
               />
             </DialogContent>
           </Dialog>

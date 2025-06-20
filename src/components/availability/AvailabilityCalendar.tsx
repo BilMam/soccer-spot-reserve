@@ -37,10 +37,11 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
   const endDateStr = format(endDate, 'yyyy-MM-dd');
   
   const { data: availabilitySlots = [], isLoading } = useFieldAvailabilityForPeriod(startDateStr, endDateStr);
-  const { bookedSlotsByDate } = useBookingData(fieldId, startDateStr, endDateStr);
+  const { bookedSlotsByDate, bookingsByDate } = useBookingData(fieldId, startDateStr, endDateStr);
 
   console.log('📅 Calendrier - Période:', { startDateStr, endDateStr });
   console.log('📅 Calendrier - Créneaux récupérés:', availabilitySlots.length);
+  console.log('📅 Calendrier - Réservations par date:', bookingsByDate);
 
   // Grouper les créneaux par date
   const slotsByDate = availabilitySlots.reduce((acc, slot) => {
@@ -102,6 +103,7 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
             <CalendarGrid
               calendarGrid={calendarGrid}
               bookedSlotsByDate={bookedSlotsByDate}
+              bookingsByDate={bookingsByDate}
               onToggleSlotStatus={handleToggleSlotStatus}
               isUpdating={setSlotsUnavailable.isPending || setSlotsAvailable.isPending}
               fieldId={fieldId}

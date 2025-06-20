@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Clock } from 'lucide-react';
-import { normalizeTime } from '@/utils/timeUtils';
+import { isSlotOverlappingWithBooking } from '@/utils/slotOverlapUtils';
 import SlotItem from './SlotItem';
 import SlotActions from './SlotActions';
 import SlotStatistics from './SlotStatistics';
@@ -17,13 +17,19 @@ interface AvailabilitySlot {
   notes?: string;
 }
 
+interface BookingSlot {
+  start_time: string;
+  end_time: string;
+}
+
 interface DaySlotDetailsProps {
   slots: AvailabilitySlot[];
   date: Date;
   onToggleSlotStatus: (slot: AvailabilitySlot) => void;
   isUpdating?: boolean;
   fieldId: string;
-  bookedSlots: Set<string>; // NOUVEAU: Recevoir directement les créneaux réservés
+  bookedSlots: Set<string>;
+  bookings: BookingSlot[];
 }
 
 const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
@@ -32,26 +38,25 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
   onToggleSlotStatus,
   isUpdating = false,
   fieldId,
-  bookedSlots // NOUVEAU: Utiliser les données centralisées
+  bookedSlots,
+  bookings
 }) => {
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
 
   const isSlotBooked = (slot: AvailabilitySlot): boolean => {
-    // CORRECTION: Utiliser la même logique que CalendarDay
-    const normalizedStart = normalizeTime(slot.start_time);
-    const normalizedEnd = normalizeTime(slot.end_time);
-    const slotKey = `${normalizedStart}-${normalizedEnd}`;
-    const isBooked = bookedSlots.has(slotKey);
+    // NOUVELLE LOGIQUE: Utiliser la détection de chevauchement
+    const isBooked = isSlotOverlappingWithBooking(slot.start_time, slot.end_time, bookings);
     
     const dateStr = date.toISOString().split('T')[0];
-    console.log('🔍 DaySlotDetails - Vérification créneau:', {
-      date: dateStr,
-      slotOriginal: `${slot.start_time}-${slot.end_time}`,
-      slotKey,
-      isBooked,
-      bookedSlotsSize: bookedSlots.size,
-      allBookedSlots: Array.from(bookedSlots)
-    });
+    if (dateStr === '2025-06-25' || isBooked) {
+      console.log('🔍 DaySlotDetails - Vérification créneau:', {
+        date: dateStr,
+        slotTime: `${slot.start_time}-${slot.end_time}`,
+        isBooked,
+        bookingsCount: bookings.length,
+        bookingsList: bookings
+      });
+    }
     
     return isBooked;
   };
@@ -87,15 +92,18 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
     );
   }
 
-  // NOUVEAU: Debug pour vérifier les données reçues
+  // DEBUG: Vérifier les données reçues
   const dateStr = date.toISOString().split('T')[0];
-  console.log('🔍 DaySlotDetails - DONNÉES REÇUES:', {
-    date: dateStr,
-    slotsCount: slots.length,
-    bookedSlotsCount: bookedSlots.size,
-    bookedSlotsList: Array.from(bookedSlots),
-    firstSlot: slots[0] ? `${slots[0].start_time}-${slots[0].end_time}` : 'none'
-  });
+  if (dateStr === '2025-06-25' || bookings.length > 0) {
+    console.log('🔍 DaySlotDetails - DONNÉES REÇUES:', {
+      date: dateStr,
+      slotsCount: slots.length,
+      bookingsCount: bookings.length,
+      bookingsList: bookings,
+      bookedSlotsCount: bookedSlots.size,
+      bookedSlotsList: Array.from(bookedSlots)
+    });
+  }
 
   return (
     <div className="space-y-4">
@@ -138,7 +146,7 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
 
       <SlotStatistics
         slots={slots}
-        bookedSlotsCount={Array.from(bookedSlots).length}
+        bookedSlotsCount={bookings.length}
         isSlotBooked={isSlotBooked}
       />
     </div>
