@@ -17,10 +17,14 @@ export const useOwnerFields = () => {
           id,
           name,
           location,
+          city,
           price_per_hour,
+          capacity,
+          field_type,
           is_active,
           rating,
-          total_reviews
+          total_reviews,
+          images
         `)
         .eq('owner_id', user.id)
         .order('created_at', { ascending: false });
