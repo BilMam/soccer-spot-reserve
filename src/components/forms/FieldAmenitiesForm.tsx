@@ -15,7 +15,6 @@ const availableAmenities = [
   'Éclairage',
   'Terrain couvert',
   'Chasubles',
-  'Balles',
   'Arbitrage',
   'Boissons disponibles',
   'Restauration',
