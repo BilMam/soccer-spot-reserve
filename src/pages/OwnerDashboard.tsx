@@ -1,9 +1,10 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import OwnerStats from '@/components/OwnerStats';
 import OwnerFields from '@/components/OwnerFields';
 import OwnerBookings from '@/components/OwnerBookings';
@@ -12,12 +13,14 @@ import AvailabilityManagement from '@/components/availability/AvailabilityManage
 import { usePermissions } from '@/hooks/usePermissions';
 import { useOwnerStats } from '@/hooks/useOwnerStats';
 import { useOwnerFields } from '@/hooks/useOwnerFields';
+import { Settings, Calendar } from 'lucide-react';
 
 const OwnerDashboard = () => {
   const { user, loading } = useAuth();
   const { isOwner, loading: permissionsLoading } = usePermissions();
   const { data: stats, isLoading: statsLoading } = useOwnerStats();
   const { data: fields, isLoading: fieldsLoading } = useOwnerFields();
+  const [selectedFieldId, setSelectedFieldId] = useState<string>('');
 
   if (loading || permissionsLoading) {
     return (
@@ -40,6 +43,8 @@ const OwnerDashboard = () => {
   if (!user || !isOwner) {
     return <Navigate to="/become-owner" replace />;
   }
+
+  const selectedField = fields?.find(field => field.id === selectedFieldId);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -76,25 +81,76 @@ const OwnerDashboard = () => {
 
           <TabsContent value="availability">
             <div className="space-y-6">
-              {fields && fields.length > 0 ? (
-                <div className="space-y-8">
-                  {fields.map((field) => (
-                    <AvailabilityManagement
-                      key={field.id}
-                      fieldId={field.id}
-                      fieldName={field.name}
-                    />
-                  ))}
-                </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    Sélection du terrain
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="max-w-md">
+                      <label className="text-sm font-medium mb-2 block">
+                        Choisissez le terrain à gérer :
+                      </label>
+                      <Select value={selectedFieldId} onValueChange={setSelectedFieldId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un terrain..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {fields && fields.length > 0 ? (
+                            fields.map((field) => (
+                              <SelectItem key={field.id} value={field.id}>
+                                {field.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="" disabled>
+                              Aucun terrain disponible
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {selectedField && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 className="font-medium text-blue-900 mb-1">
+                          Terrain sélectionné : {selectedField.name}
+                        </h4>
+                        <p className="text-sm text-blue-700">
+                          {selectedField.location} • {selectedField.price_per_hour} XOF/heure
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {selectedFieldId ? (
+                <AvailabilityManagement
+                  fieldId={selectedFieldId}
+                  fieldName={selectedField?.name || 'Terrain'}
+                />
               ) : (
-                <div className="text-center py-12">
-                  <h3 className="text-lg font-medium text-gray-600 mb-2">
-                    Aucun terrain disponible
-                  </h3>
-                  <p className="text-gray-500">
-                    Ajoutez d'abord un terrain pour gérer ses créneaux de disponibilité.
-                  </p>
-                </div>
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <Calendar className="w-16 h-16 text-gray-400 mb-4" />
+                    <h3 className="text-xl font-medium text-gray-600 mb-2">
+                      Sélectionnez un terrain
+                    </h3>
+                    <p className="text-gray-500 text-center max-w-md">
+                      Choisissez le terrain dont vous souhaitez gérer les créneaux 
+                      de disponibilité dans le sélecteur ci-dessus.
+                    </p>
+                    {(!fields || fields.length === 0) && (
+                      <p className="text-sm text-orange-600 mt-4">
+                        Vous devez d'abord ajouter un terrain dans l'onglet "Mes terrains".
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
               )}
             </div>
           </TabsContent>
