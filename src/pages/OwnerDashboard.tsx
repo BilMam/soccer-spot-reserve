@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
@@ -97,7 +98,7 @@ const OwnerDashboard = () => {
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="" disabled>
+                        <SelectItem value="no-fields" disabled>
                           Aucun terrain disponible
                         </SelectItem>
                       )}
