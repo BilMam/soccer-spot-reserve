@@ -32,7 +32,6 @@ const CinetPayOnboarding = () => {
         .from('payment_accounts')
         .select('*')
         .eq('owner_id', user.id)
-        .eq('payment_provider', 'cinetpay')
         .single();
       
       if (error && error.code !== 'PGRST116') {
@@ -50,24 +49,27 @@ const CinetPayOnboarding = () => {
 
     setIsCreatingAccount(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-cinetpay-merchant', {
-        body: formData
-      });
-      
-      if (error) throw error;
+      // Créer un enregistrement simple dans payment_accounts
+      const { error: accountError } = await supabase
+        .from('payment_accounts')
+        .insert({
+          owner_id: user.id
+        });
+
+      if (accountError) throw accountError;
       
       toast({
-        title: "Compte marchand créé avec succès",
-        description: "Votre compte CinetPay est en cours de vérification. Vous pourrez recevoir des paiements une fois approuvé.",
+        title: "Compte configuré avec succès",
+        description: "Votre compte de paiement est maintenant configuré.",
       });
       
       setShowForm(false);
       refetch();
     } catch (error: any) {
-      console.error('Erreur création compte marchand:', error);
+      console.error('Erreur configuration compte:', error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de créer le compte marchand",
+        description: error.message || "Impossible de configurer le compte",
         variant: "destructive"
       });
     } finally {
@@ -77,38 +79,17 @@ const CinetPayOnboarding = () => {
 
   const getStatusIcon = () => {
     if (!paymentAccount) return <Clock className="w-5 h-5 text-gray-500" />;
-    
-    if (paymentAccount.charges_enabled && paymentAccount.payouts_enabled) {
-      return <CheckCircle className="w-5 h-5 text-green-600" />;
-    } else if (paymentAccount.details_submitted) {
-      return <Clock className="w-5 h-5 text-yellow-600" />;
-    } else {
-      return <AlertCircle className="w-5 h-5 text-red-600" />;
-    }
+    return <CheckCircle className="w-5 h-5 text-green-600" />;
   };
 
   const getStatusText = () => {
     if (!paymentAccount) return "Non configuré";
-    
-    if (paymentAccount.charges_enabled && paymentAccount.payouts_enabled) {
-      return "Compte vérifié et actif";
-    } else if (paymentAccount.details_submitted) {
-      return "En cours de vérification";
-    } else {
-      return "Configuration incomplète";
-    }
+    return "Compte configuré";
   };
 
   const getStatusColor = () => {
     if (!paymentAccount) return "text-gray-600";
-    
-    if (paymentAccount.charges_enabled && paymentAccount.payouts_enabled) {
-      return "text-green-600";
-    } else if (paymentAccount.details_submitted) {
-      return "text-yellow-600";
-    } else {
-      return "text-red-600";
-    }
+    return "text-green-600";
   };
 
   if (isLoading) {
@@ -129,7 +110,7 @@ const CinetPayOnboarding = () => {
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           {getStatusIcon()}
-          <span>Configuration des paiements CinetPay</span>
+          <span>Configuration des paiements</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -144,14 +125,13 @@ const CinetPayOnboarding = () => {
           <div className="space-y-4">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="font-medium text-blue-900 mb-2">
-                Pourquoi configurer CinetPay ?
+                Pourquoi configurer les paiements ?
               </h4>
               <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Recevez automatiquement 95% du montant des réservations</li>
+                <li>• Recevez automatiquement vos revenus des réservations</li>
                 <li>• Paiements sécurisés en franc CFA (XOF)</li>
-                <li>• Support Mobile Money : Orange Money, MTN Money, Moov Money</li>
-                <li>• Virements directs sur votre compte bancaire</li>
-                <li>• Commission de la plateforme : 5%</li>
+                <li>• Support Mobile Money et cartes bancaires</li>
+                <li>• Gestion simplifiée des transactions</li>
               </ul>
             </div>
 
@@ -185,7 +165,7 @@ const CinetPayOnboarding = () => {
                 onClick={() => setShowForm(true)}
                 className="w-full bg-green-600 hover:bg-green-700"
               >
-                Configurer mon compte CinetPay
+                Configurer les paiements
               </Button>
             ) : (
               <form onSubmit={handleCreateMerchantAccount} className="space-y-4">
@@ -259,22 +239,11 @@ const CinetPayOnboarding = () => {
                     disabled={isCreatingAccount}
                     className="flex-1 bg-green-600 hover:bg-green-700"
                   >
-                    {isCreatingAccount ? "Création..." : "Créer le compte"}
+                    {isCreatingAccount ? "Configuration..." : "Configurer"}
                   </Button>
                 </div>
               </form>
             )}
-          </div>
-        ) : !paymentAccount.charges_enabled ? (
-          <div className="space-y-4">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <h4 className="font-medium text-yellow-900 mb-2">
-                Vérification en cours
-              </h4>
-              <p className="text-sm text-yellow-800">
-                Votre compte CinetPay est en cours de vérification. Vous pourrez recevoir des paiements une fois l'approbation terminée.
-              </p>
-            </div>
           </div>
         ) : (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -282,16 +251,15 @@ const CinetPayOnboarding = () => {
               Compte configuré avec succès !
             </h4>
             <p className="text-sm text-green-800">
-              Vous pouvez maintenant recevoir des paiements directement sur votre compte CinetPay.
-              Les fonds seront virés automatiquement après chaque réservation.
+              Votre compte de paiement est maintenant configuré. 
+              Vous pouvez recevoir des paiements directement.
             </p>
           </div>
         )}
 
         <div className="text-xs text-gray-500 space-y-1">
           <p>• Commission de la plateforme : 5%</p>
-          <p>• Frais CinetPay : ~2.5% + frais fixes</p>
-          <p>• Vous recevez : ~92.5% du montant total</p>
+          <p>• Vous recevez : 95% du montant total</p>
           <p>• Support Mobile Money et cartes bancaires</p>
         </div>
       </CardContent>
