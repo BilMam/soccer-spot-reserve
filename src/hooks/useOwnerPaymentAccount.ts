@@ -15,10 +15,9 @@ export const useOwnerPaymentAccount = () => {
         .from('payment_accounts')
         .select('*')
         .eq('owner_id', user.id)
-        .eq('payment_provider', 'cinetpay')
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         throw error;
       }
 
