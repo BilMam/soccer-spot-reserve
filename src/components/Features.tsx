@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Shield, Clock, CreditCard, Star, MapPin, Users } from 'lucide-react';
 const Features = () => {
@@ -19,8 +20,8 @@ const Features = () => {
     description: 'Tous nos terrains sont inspectés et notés par nos équipes.'
   }, {
     icon: <MapPin className="w-8 h-8" />,
-    title: 'Partout en France',
-    description: 'Plus de 500 villes couvertes dans toute la France.'
+    title: 'Partout en Côte d\'Ivoire',
+    description: 'Plus de 500 villes couvertes dans toute la Côte d\'Ivoire.'
   }, {
     icon: <Users className="w-8 h-8" />,
     title: 'Communauté active',
@@ -32,7 +33,7 @@ const Features = () => {
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
             Pourquoi choisir FieldBook ?
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">La première plateforme de réservation de terrains de football à Abidjan , conçue par des passionnés pour des passionnés.</p>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">La première plateforme de réservation de terrains de football à Abidjan, conçue par des passionnés pour des passionnés.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
