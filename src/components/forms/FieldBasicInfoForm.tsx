@@ -45,7 +45,7 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
             id="name"
             value={formData.name}
             onChange={(e) => onInputChange('name', e.target.value)}
-            placeholder="Ex: Terrain de football Central"
+            placeholder="Ex: Terrain de football Cocody"
             required
           />
         </div>
@@ -105,12 +105,12 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="location">Quartier/Zone *</Label>
+          <Label htmlFor="location">Quartier/Commune *</Label>
           <Input
             id="location"
             value={formData.location}
             onChange={(e) => onInputChange('location', e.target.value)}
-            placeholder="Ex: Centre-ville"
+            placeholder="Ex: Cocody, Plateau, Marcory"
             required
           />
         </div>
@@ -121,7 +121,7 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
             id="city"
             value={formData.city}
             onChange={(e) => onInputChange('city', e.target.value)}
-            placeholder="Ex: Paris"
+            placeholder="Ex: Abidjan"
             required
           />
         </div>
@@ -133,7 +133,7 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
           id="address"
           value={formData.address}
           onChange={(e) => onInputChange('address', e.target.value)}
-          placeholder="Ex: 123 Rue du Sport, 75001 Paris"
+          placeholder="Ex: Rue des Sports, Cocody, Abidjan"
           required
         />
       </div>

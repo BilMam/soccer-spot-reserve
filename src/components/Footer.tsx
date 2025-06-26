@@ -16,7 +16,7 @@ const Footer = () => {
               <span className="text-2xl font-bold">FieldBook</span>
             </div>
             <p className="text-gray-400 leading-relaxed">
-              La première plateforme de réservation de terrains de football en France. 
+              La première plateforme de réservation de terrains de football en Côte d'Ivoire. 
               Trouvez et réservez le terrain parfait près de chez vous.
             </p>
             <div className="flex space-x-4">
@@ -57,17 +57,17 @@ const Footer = () => {
             <div className="space-y-3">
               <div className="flex items-center space-x-3">
                 <Mail className="w-5 h-5 text-green-600" />
-                <span className="text-gray-400">support@fieldbook.fr</span>
+                <span className="text-gray-400">support@fieldbook.ci</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Phone className="w-5 h-5 text-green-600" />
-                <span className="text-gray-400">01 23 45 67 89</span>
+                <span className="text-gray-400">+225 07 07 07 07 07</span>
               </div>
               <div className="flex items-start space-x-3">
                 <MapPin className="w-5 h-5 text-green-600 mt-1" />
                 <span className="text-gray-400">
-                  123 Avenue des Champs-Élysées<br />
-                  75008 Paris, France
+                  Boulevard Lagunaire<br />
+                  Cocody, Abidjan, Côte d'Ivoire
                 </span>
               </div>
             </div>

@@ -68,7 +68,7 @@ const FeaturedFields = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Terrains populaires à Paris
+              Terrains populaires à Abidjan
             </h2>
             <p className="text-xl text-gray-600">
               Découvrez les terrains les mieux notés par notre communauté
@@ -97,7 +97,7 @@ const FeaturedFields = () => {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Terrains populaires à Paris
+            Terrains populaires à Abidjan
           </h2>
           <p className="text-xl text-gray-600">
             Découvrez les terrains les mieux notés par notre communauté
