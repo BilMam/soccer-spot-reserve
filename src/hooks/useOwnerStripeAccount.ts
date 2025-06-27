@@ -15,7 +15,6 @@ export const useOwnerStripeAccount = () => {
         .from('payment_accounts')
         .select('*')
         .eq('owner_id', user.id)
-        .eq('payment_provider', 'stripe')
         .maybeSingle();
 
       if (error) {
