@@ -16,9 +16,9 @@ export const useOwnerStripeAccount = () => {
         .select('*')
         .eq('owner_id', user.id)
         .eq('payment_provider', 'stripe')
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         throw error;
       }
 
