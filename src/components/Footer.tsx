@@ -13,7 +13,7 @@ const Footer = () => {
               <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
                 <MapPin className="w-5 h-5 text-white" />
               </div>
-              <span className="text-2xl font-bold">FieldBook</span>
+              <span className="text-2xl font-bold">MySport</span>
             </div>
             <p className="text-gray-400 leading-relaxed">
               La première plateforme de réservation de terrains de football en Côte d'Ivoire. 
@@ -57,7 +57,7 @@ const Footer = () => {
             <div className="space-y-3">
               <div className="flex items-center space-x-3">
                 <Mail className="w-5 h-5 text-green-600" />
-                <span className="text-gray-400">support@fieldbook.ci</span>
+                <span className="text-gray-400">support@mysport.ci</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Phone className="w-5 h-5 text-green-600" />
@@ -76,7 +76,7 @@ const Footer = () => {
 
         <div className="border-t border-gray-800 mt-12 pt-8 text-center">
           <p className="text-gray-400">
-            © 2024 FieldBook. Tous droits réservés. Fait avec ❤️ pour les passionnés de football.
+            © 2024 MySport. Tous droits réservés. Fait avec ❤️ pour les passionnés de football.
           </p>
         </div>
       </div>

@@ -52,7 +52,7 @@ const Auth = () => {
     } else {
       toast({
         title: "Connexion réussie",
-        description: "Bienvenue sur FieldBook !"
+        description: "Bienvenue sur MySport !"
       });
     }
     
@@ -99,7 +99,7 @@ const Auth = () => {
             <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
               <MapPin className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-gray-900">FieldBook</span>
+            <span className="text-2xl font-bold text-gray-900">MySport</span>
           </div>
           <p className="text-gray-600">Votre plateforme de réservation de terrains</p>
         </div>
@@ -174,7 +174,7 @@ const Auth = () => {
               <CardHeader className="text-center pb-4">
                 <CardTitle>Créer un compte</CardTitle>
                 <CardDescription>
-                  Rejoignez FieldBook et découvrez des terrains incroyables
+                  Rejoignez MySport et découvrez des terrains incroyables
                 </CardDescription>
               </CardHeader>
               <CardContent>

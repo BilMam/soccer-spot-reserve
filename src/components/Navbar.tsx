@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Search, User, Menu, MapPin, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,7 +53,7 @@ const Navbar = () => {
             <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
               <MapPin className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">FieldBook</span>
+            <span className="text-xl font-bold text-gray-900">MySport</span>
           </div>
 
           {/* Navigation Links - Hidden on mobile */}
