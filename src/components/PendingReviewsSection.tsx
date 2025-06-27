@@ -13,8 +13,10 @@ interface Booking {
   start_time: string;
   end_time: string;
   fields: {
+    id: string;
     name: string;
     location: string;
+    address: string;
   };
 }
 
