@@ -17,7 +17,7 @@ export const usePendingReviews = () => {
         .from('bookings')
         .select(`
           *,
-          fields (name, location),
+          fields (id, name, location, address),
           reviews (id)
         `)
         .eq('user_id', user.id)
