@@ -47,7 +47,10 @@ export const usePendingReviews = () => {
         .eq('user_id', user.id)
         .in('status', ['confirmed', 'owner_confirmed'])
         .or(`booking_date.lt.${currentDate},and(booking_date.eq.${currentDate},end_time.lt.${currentTime})`)
-        .select();
+        .select(`
+          *,
+          fields (id, name, location, address)
+        `);
 
       if (error) throw error;
 
@@ -61,7 +64,7 @@ export const usePendingReviews = () => {
 
         if (profile?.phone) {
           for (const booking of updatedBookings) {
-            const message = `Votre réservation chez ${booking.field_name || 'terrain'} est terminée ! Laissez un avis pour aider la communauté. 🌟`;
+            const message = `Votre réservation chez ${booking.fields?.name || 'terrain'} est terminée ! Laissez un avis pour aider la communauté. 🌟`;
             
             try {
               await sendSMSNotification.mutateAsync({
