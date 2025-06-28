@@ -482,6 +482,79 @@ export type Database = {
         }
         Relationships: []
       }
+      review_categories: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          rating: number
+          review_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          rating: number
+          review_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          rating?: number
+          review_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_categories_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_reminders: {
+        Row: {
+          booking_id: string
+          created_at: string
+          id: string
+          reminder_type: string
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          id?: string
+          reminder_type: string
+          scheduled_for: string
+          sent_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          id?: string
+          reminder_type?: string
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_reminders_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           booking_id: string
@@ -573,6 +646,89 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_notifications: {
+        Row: {
+          booking_id: string | null
+          content: string
+          created_at: string
+          delivered_at: string | null
+          error_message: string | null
+          id: string
+          message_type: string
+          phone_number: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          booking_id?: string | null
+          content: string
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_type: string
+          phone_number: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          booking_id?: string | null
+          content?: string
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_type?: string
+          phone_number?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_badges: {
+        Row: {
+          badge_name: string
+          badge_type: string
+          description: string | null
+          earned_at: string
+          id: string
+          is_visible: boolean | null
+          user_id: string
+        }
+        Insert: {
+          badge_name: string
+          badge_type: string
+          description?: string | null
+          earned_at?: string
+          id?: string
+          is_visible?: boolean | null
+          user_id: string
+        }
+        Update: {
+          badge_name?: string
+          badge_type?: string
+          description?: string | null
+          earned_at?: string
+          id?: string
+          is_visible?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_favorites: {
         Row: {
           created_at: string
@@ -601,6 +757,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_notification_preferences: {
+        Row: {
+          booking_confirmations: boolean | null
+          created_at: string
+          email_enabled: boolean | null
+          id: string
+          marketing_notifications: boolean | null
+          push_enabled: boolean | null
+          review_reminders: boolean | null
+          sms_enabled: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          booking_confirmations?: boolean | null
+          created_at?: string
+          email_enabled?: boolean | null
+          id?: string
+          marketing_notifications?: boolean | null
+          push_enabled?: boolean | null
+          review_reminders?: boolean | null
+          sms_enabled?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          booking_confirmations?: boolean | null
+          created_at?: string
+          email_enabled?: boolean | null
+          id?: string
+          marketing_notifications?: boolean | null
+          push_enabled?: boolean | null
+          review_reminders?: boolean | null
+          sms_enabled?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -652,6 +847,10 @@ export type Database = {
       }
       approve_owner_application: {
         Args: { application_id: string; notes?: string }
+        Returns: undefined
+      }
+      award_reviewer_badge: {
+        Args: { p_user_id: string }
         Returns: undefined
       }
       can_promote_user: {
@@ -792,6 +991,10 @@ export type Database = {
           role_to_revoke: Database["public"]["Enums"]["user_role_type"]
           reason?: string
         }
+        Returns: undefined
+      }
+      schedule_review_reminders: {
+        Args: { p_booking_id: string }
         Returns: undefined
       }
       set_slots_unavailable: {

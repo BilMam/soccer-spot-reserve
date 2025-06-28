@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, MapPin, Clock, Users, Star, X, Clock4, CheckCircle, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { usePendingReviews } from '@/hooks/usePendingReviews';
-import ReviewDialog from '@/components/ReviewDialog';
+import EnhancedReviewDialog from '@/components/EnhancedReviewDialog';
 import PendingReviewsSection from '@/components/PendingReviewsSection';
 import SmartConfirmationInfo from './SmartConfirmationInfo';
 
@@ -41,7 +41,7 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
   const queryClient = useQueryClient();
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const { pendingReviews, checkCompletedBookings } = usePendingReviews();
+  const { pendingReviews, checkCompletedBookings, sendReviewReminder } = usePendingReviews();
 
   // Vérifier automatiquement les réservations terminées au chargement
   useEffect(() => {
@@ -158,6 +158,14 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
     setReviewDialogOpen(false);
   };
 
+  const handleSendReminder = (bookingId: string, fieldName: string) => {
+    sendReviewReminder(bookingId, fieldName);
+    toast({
+      title: "Rappel envoyé",
+      description: "Un rappel SMS a été envoyé si vous avez activé les notifications SMS.",
+    });
+  };
+
   const getStatusMessage = (status: string, windowType?: string, autoAction?: string) => {
     switch (status) {
       case 'pending_approval':
@@ -207,6 +215,7 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
         <PendingReviewsSection 
           pendingReviews={pendingReviews}
           onReviewSubmitted={handleReviewSubmitted}
+          onSendReminder={handleSendReminder}
         />
 
         {/* Section Réservations principale */}
@@ -317,7 +326,7 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
         </Card>
       </div>
 
-      <ReviewDialog
+      <EnhancedReviewDialog
         open={reviewDialogOpen}
         onOpenChange={setReviewDialogOpen}
         booking={selectedBooking}

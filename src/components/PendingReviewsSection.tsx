@@ -2,10 +2,10 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Star, Calendar, Clock, MapPin, Sparkles } from 'lucide-react';
+import { Star, Calendar, Clock, MapPin, Sparkles, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import ReviewDialog from '@/components/ReviewDialog';
+import EnhancedReviewDialog from '@/components/EnhancedReviewDialog';
 
 interface Booking {
   id: string;
@@ -23,11 +23,13 @@ interface Booking {
 interface PendingReviewsSectionProps {
   pendingReviews: Booking[];
   onReviewSubmitted: () => void;
+  onSendReminder?: (bookingId: string, fieldName: string) => void;
 }
 
 const PendingReviewsSection: React.FC<PendingReviewsSectionProps> = ({ 
   pendingReviews, 
-  onReviewSubmitted 
+  onReviewSubmitted,
+  onSendReminder
 }) => {
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -40,6 +42,12 @@ const PendingReviewsSection: React.FC<PendingReviewsSectionProps> = ({
   const handleReviewSubmitted = () => {
     onReviewSubmitted();
     setReviewDialogOpen(false);
+  };
+
+  const handleSendReminder = (booking: Booking) => {
+    if (onSendReminder) {
+      onSendReminder(booking.id, booking.fields.name);
+    }
   };
 
   if (pendingReviews.length === 0) return null;
@@ -61,7 +69,7 @@ const PendingReviewsSection: React.FC<PendingReviewsSectionProps> = ({
             Avis en attente ({pendingReviews.length})
           </CardTitle>
           <p className="text-sm text-orange-700">
-            Partagez votre expérience et aidez la communauté !
+            Partagez votre expérience et gagnez des badges ! ⭐
           </p>
         </CardHeader>
         <CardContent>
@@ -79,14 +87,27 @@ const PendingReviewsSection: React.FC<PendingReviewsSectionProps> = ({
                       {booking.fields.location}
                     </div>
                   </div>
-                  <Button 
-                    onClick={() => handleReview(booking)}
-                    className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-                    size="sm"
-                  >
-                    <Star className="w-4 h-4 mr-2" />
-                    Laisser un avis
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button 
+                      onClick={() => handleReview(booking)}
+                      className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                      size="sm"
+                    >
+                      <Star className="w-4 h-4 mr-2" />
+                      Laisser un avis
+                    </Button>
+                    {onSendReminder && (
+                      <Button 
+                        onClick={() => handleSendReminder(booking)}
+                        variant="outline"
+                        size="sm"
+                        className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Rappel SMS
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="flex items-center space-x-4 text-sm text-gray-600">
@@ -105,7 +126,7 @@ const PendingReviewsSection: React.FC<PendingReviewsSectionProps> = ({
         </CardContent>
       </Card>
 
-      <ReviewDialog
+      <EnhancedReviewDialog
         open={reviewDialogOpen}
         onOpenChange={setReviewDialogOpen}
         booking={selectedBooking}
