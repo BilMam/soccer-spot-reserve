@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, User, Menu, MapPin, LogOut } from 'lucide-react';
+import { Search, User, MapPin, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -124,9 +124,6 @@ const Navbar = () => {
                 </Button>
               </>
             )}
-            <Button variant="ghost" size="sm" className="md:hidden">
-              <Menu className="w-5 h-5" />
-            </Button>
           </div>
         </div>
       </div>
