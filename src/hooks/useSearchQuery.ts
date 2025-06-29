@@ -97,12 +97,15 @@ export const useSearchQuery = ({ location, date, timeSlot, players, filters }: U
         const availableFields = [];
         
         for (const field of allFields || []) {
-          console.log(`🔍 Vérification terrain: ${field.name}`);
+          console.log(`\n🔍 === VÉRIFICATION TERRAIN: ${field.name} ===`);
           
           // Générer tous les créneaux de 30 min requis
           const requiredSlots = [];
           const startMinutes = timeToMinutes(parsedTimeSlot.startTime);
           const endMinutes = timeToMinutes(parsedTimeSlot.endTime);
+          
+          console.log(`🔍 Période demandée: ${parsedTimeSlot.startTime} à ${parsedTimeSlot.endTime}`);
+          console.log(`🔍 En minutes: ${startMinutes} à ${endMinutes}`);
           
           for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
             const slotStart = minutesToTime(minutes);
@@ -110,13 +113,14 @@ export const useSearchQuery = ({ location, date, timeSlot, players, filters }: U
             requiredSlots.push({ start: slotStart, end: slotEnd });
           }
           
-          console.log(`🔍 Créneaux requis pour ${field.name}:`, requiredSlots);
+          console.log(`🔍 Créneaux requis:`, requiredSlots);
 
           // Vérifier la disponibilité de chaque créneau requis - LOGIQUE STRICTE
           let isFieldAvailable = true;
+          let unavailableSlots = [];
           
           for (const slot of requiredSlots) {
-            console.log(`🔍 Vérification créneau ${slot.start}-${slot.end} pour ${field.name}`);
+            console.log(`\n🔍 → Vérification créneau ${slot.start}-${slot.end}`);
             
             // Récupérer le créneau spécifique
             const { data: availableSlot, error: slotError } = await supabase
@@ -129,30 +133,39 @@ export const useSearchQuery = ({ location, date, timeSlot, players, filters }: U
               .maybeSingle();
 
             if (slotError) {
-              console.log(`🔍 ❌ Erreur lors de la vérification du créneau ${slot.start}-${slot.end} pour ${field.name}:`, slotError);
+              console.log(`🔍 ❌ ERREUR lors de la vérification:`, slotError);
               isFieldAvailable = false;
-              break; // Sortir immédiatement si erreur
+              unavailableSlots.push(`${slot.start}-${slot.end} (erreur)`);
+              break;
             }
 
-            // LOGIQUE STRICTE: Le créneau DOIT exister ET être disponible
             if (!availableSlot) {
-              console.log(`🔍 ❌ Créneau ${slot.start}-${slot.end} INEXISTANT pour ${field.name}`);
+              console.log(`🔍 ❌ CRÉNEAU INEXISTANT: ${slot.start}-${slot.end}`);
               isFieldAvailable = false;
-              break; // Sortir immédiatement si créneau inexistant
+              unavailableSlots.push(`${slot.start}-${slot.end} (inexistant)`);
+              break;
             }
 
             if (!availableSlot.is_available) {
-              console.log(`🔍 ❌ Créneau ${slot.start}-${slot.end} INDISPONIBLE pour ${field.name} (is_available: false)`);
+              console.log(`🔍 ❌ CRÉNEAU INDISPONIBLE: ${slot.start}-${slot.end} (is_available: false)`);
               isFieldAvailable = false;
-              break; // Sortir immédiatement si créneau indisponible
+              unavailableSlots.push(`${slot.start}-${slot.end} (indisponible)`);
+              break;
             }
 
-            console.log(`🔍 ✅ Créneau ${slot.start}-${slot.end} disponible pour ${field.name}`);
+            console.log(`🔍 ✅ CRÉNEAU OK: ${slot.start}-${slot.end}`);
+          }
+
+          // Afficher le résultat de la vérification des créneaux
+          console.log(`\n🔍 RÉSULTAT CRÉNEAUX pour ${field.name}:`);
+          console.log(`🔍 - Statut: ${isFieldAvailable ? 'DISPONIBLE' : 'INDISPONIBLE'}`);
+          if (!isFieldAvailable) {
+            console.log(`🔍 - Créneaux problématiques:`, unavailableSlots);
           }
 
           // Vérifier les conflits de réservation SEULEMENT si tous les créneaux sont disponibles
           if (isFieldAvailable) {
-            console.log(`🔍 Vérification des conflits de réservation pour ${field.name}`);
+            console.log(`🔍 → Vérification des conflits de réservation...`);
             
             const { data: conflictingBookings } = await supabase
               .from('bookings')
@@ -165,23 +178,25 @@ export const useSearchQuery = ({ location, date, timeSlot, players, filters }: U
               );
 
             if (conflictingBookings && conflictingBookings.length > 0) {
-              console.log(`🔍 ❌ Conflit de réservation détecté pour ${field.name}:`, conflictingBookings);
+              console.log(`🔍 ❌ CONFLIT DE RÉSERVATION détecté:`, conflictingBookings);
               isFieldAvailable = false;
             } else {
-              console.log(`🔍 ✅ Aucun conflit de réservation pour ${field.name}`);
+              console.log(`🔍 ✅ Aucun conflit de réservation`);
             }
           }
 
           // Résultat final pour ce terrain
+          console.log(`\n🔍 === DÉCISION FINALE pour ${field.name}: ${isFieldAvailable ? 'INCLUS' : 'EXCLU'} ===`);
+          
           if (isFieldAvailable) {
-            console.log(`🔍 ✅ Terrain ${field.name} INCLUS dans les résultats`);
             availableFields.push(field);
-          } else {
-            console.log(`🔍 ❌ Terrain ${field.name} EXCLU des résultats`);
           }
         }
 
-        console.log('🔍 Terrains disponibles après filtrage:', availableFields.length);
+        console.log(`\n🔍 === RÉSULTAT FINAL ===`);
+        console.log(`🔍 Terrains disponibles: ${availableFields.length}`);
+        console.log(`🔍 Noms des terrains inclus:`, availableFields.map(f => f.name));
+        
         return availableFields as Field[];
       }
 
