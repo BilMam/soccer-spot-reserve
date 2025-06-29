@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { MapPin, Filter, Grid, List } from 'lucide-react';
 import { parseTimeSlot } from '@/utils/timeSlotParser';
+import { timeToMinutes, minutesToTime } from '@/utils/timeUtils';
 
 interface Field {
   id: string;
@@ -104,37 +105,70 @@ const Search = () => {
         const availableFields = [];
         
         for (const field of allFields || []) {
-          // Check if field has available slots for the requested time
-          const { data: availableSlots } = await supabase
-            .from('field_availability')
-            .select('*')
-            .eq('field_id', field.id)
-            .eq('date', date)
-            .eq('is_available', true)
-            .gte('start_time', parsedTimeSlot.startTime)
-            .lte('end_time', parsedTimeSlot.endTime);
+          console.log(`🔍 Vérification terrain: ${field.name}`);
+          
+          // Générer tous les créneaux de 30 min requis
+          const requiredSlots = [];
+          const startMinutes = timeToMinutes(parsedTimeSlot.startTime);
+          const endMinutes = timeToMinutes(parsedTimeSlot.endTime);
+          
+          for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
+            const slotStart = minutesToTime(minutes);
+            const slotEnd = minutesToTime(minutes + 30);
+            requiredSlots.push({ start: slotStart, end: slotEnd });
+          }
+          
+          console.log(`🔍 Créneaux requis pour ${field.name}:`, requiredSlots);
 
-          // Check for conflicting bookings
-          const { data: conflictingBookings } = await supabase
-            .from('bookings')
-            .select('start_time, end_time')
-            .eq('field_id', field.id)
-            .eq('booking_date', date)
-            .in('status', ['pending', 'confirmed', 'owner_confirmed'])
-            .or(
-              `and(start_time.lte.${parsedTimeSlot.startTime},end_time.gt.${parsedTimeSlot.startTime}),` +
-              `and(start_time.lt.${parsedTimeSlot.endTime},end_time.gte.${parsedTimeSlot.endTime}),` +
-              `and(start_time.gte.${parsedTimeSlot.startTime},end_time.lte.${parsedTimeSlot.endTime})`
-            );
+          // Vérifier la disponibilité de chaque créneau requis
+          let isFieldAvailable = true;
+          
+          for (const slot of requiredSlots) {
+            // Vérifier si ce créneau spécifique existe et est disponible
+            const { data: availableSlot } = await supabase
+              .from('field_availability')
+              .select('*')
+              .eq('field_id', field.id)
+              .eq('date', date)
+              .eq('start_time', slot.start)
+              .eq('end_time', slot.end)
+              .eq('is_available', true)
+              .single();
 
-          console.log(`🔍 Terrain ${field.name}:`, {
-            availableSlots: availableSlots?.length,
-            conflictingBookings: conflictingBookings?.length
-          });
+            if (!availableSlot) {
+              console.log(`🔍 ❌ Créneau ${slot.start}-${slot.end} NON disponible pour ${field.name}`);
+              isFieldAvailable = false;
+              break;
+            } else {
+              console.log(`🔍 ✅ Créneau ${slot.start}-${slot.end} disponible pour ${field.name}`);
+            }
+          }
 
-          // Include field if it has available slots and no conflicts
-          if (availableSlots && availableSlots.length > 0 && (!conflictingBookings || conflictingBookings.length === 0)) {
+          // Si tous les créneaux sont disponibles, vérifier les conflits de réservation
+          if (isFieldAvailable) {
+            const { data: conflictingBookings } = await supabase
+              .from('bookings')
+              .select('start_time, end_time')
+              .eq('field_id', field.id)
+              .eq('booking_date', date)
+              .in('status', ['pending', 'confirmed', 'owner_confirmed'])
+              .or(
+                `and(start_time.lt.${parsedTimeSlot.endTime},end_time.gt.${parsedTimeSlot.startTime})`
+              );
+
+            if (conflictingBookings && conflictingBookings.length > 0) {
+              console.log(`🔍 ❌ Conflit de réservation détecté pour ${field.name}:`, conflictingBookings);
+              isFieldAvailable = false;
+            } else {
+              console.log(`🔍 ✅ Aucun conflit de réservation pour ${field.name}`);
+            }
+          }
+
+          if (isFieldAvailable) {
+            console.log(`🔍 ✅ Terrain ${field.name} INCLUS dans les résultats`);
             availableFields.push(field);
+          } else {
+            console.log(`🔍 ❌ Terrain ${field.name} EXCLU des résultats`);
           }
         }
 
