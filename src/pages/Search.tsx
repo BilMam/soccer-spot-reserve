@@ -56,17 +56,18 @@ const Search = () => {
           <SearchBar />
         </div>
 
-        <div className="flex gap-8">
-          {/* Sidebar Filters */}
-          <div className="w-1/4">
+        {/* Mobile: Stack vertically, Desktop: Side by side */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Filters - Full width on mobile, sidebar on desktop */}
+          <div className="w-full lg:w-1/4">
             <SearchFilters 
               filters={filters}
               onFiltersChange={setFilters}
             />
           </div>
 
-          {/* Results */}
-          <div className="flex-1">
+          {/* Results - Full width on mobile, main content on desktop */}
+          <div className="w-full lg:flex-1">
             <SearchHeader
               resultsCount={transformedFields.length}
               location={location}
