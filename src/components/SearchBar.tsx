@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
-import { Search, MapPin, Calendar, Users, Filter, Clock } from 'lucide-react';
+import { Search, MapPin, Calendar, Users, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
+import TimeSlotSelector from './TimeSlotSelector';
 
 const SearchBar = () => {
   const [location, setLocation] = useState('');
@@ -55,15 +56,13 @@ const SearchBar = () => {
 
         {/* Time Slot */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700 flex items-center">
-            <Clock className="w-4 h-4 mr-2" />
+          <label className="text-sm font-medium text-gray-700">
             Horaire
           </label>
-          <Input
-            placeholder="ex: 14h-16h"
+          <TimeSlotSelector
             value={timeSlot}
-            onChange={(e) => setTimeSlot(e.target.value)}
-            className="border-gray-200 focus:border-green-500"
+            onChange={setTimeSlot}
+            placeholder="Choisir un horaire"
           />
         </div>
 

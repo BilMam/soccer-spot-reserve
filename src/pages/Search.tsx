@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -11,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { MapPin, Filter, Grid, List } from 'lucide-react';
+import { parseTimeSlot } from '@/utils/timeSlotParser';
 
 interface Field {
   id: string;
@@ -46,15 +46,23 @@ const Search = () => {
   const { data: fields, isLoading } = useQuery({
     queryKey: ['fields', location, date, timeSlot, filters],
     queryFn: async () => {
+      console.log('🔍 Recherche avec paramètres:', { location, date, timeSlot });
+      
+      // Parse time slot if provided
+      const parsedTimeSlot = timeSlot ? parseTimeSlot(timeSlot) : null;
+      console.log('🔍 Créneau parsé:', parsedTimeSlot);
+
       let query = supabase
         .from('fields')
         .select('*')
         .eq('is_active', true);
 
+      // Location filter
       if (location) {
         query = query.or(`city.ilike.%${location}%,location.ilike.%${location}%,address.ilike.%${location}%`);
       }
 
+      // Price filters
       if (filters.priceMin) {
         query = query.gte('price_per_hour', parseFloat(filters.priceMin));
       }
@@ -63,10 +71,12 @@ const Search = () => {
         query = query.lte('price_per_hour', parseFloat(filters.priceMax));
       }
 
+      // Field type filter
       if (filters.fieldType && filters.fieldType !== 'all') {
         query = query.eq('field_type', filters.fieldType);
       }
 
+      // Capacity filters
       if (filters.capacity) {
         query = query.gte('capacity', parseInt(filters.capacity));
       }
@@ -75,6 +85,7 @@ const Search = () => {
         query = query.gte('capacity', parseInt(players));
       }
 
+      // Sorting
       if (filters.sortBy === 'price_asc') {
         query = query.order('price_per_hour', { ascending: true });
       } else if (filters.sortBy === 'price_desc') {
@@ -83,9 +94,55 @@ const Search = () => {
         query = query.order('rating', { ascending: false });
       }
 
-      const { data, error } = await query;
+      const { data: allFields, error } = await query;
       if (error) throw error;
-      return data as Field[];
+
+      console.log('🔍 Terrains trouvés avant filtrage horaire:', allFields?.length);
+
+      // If date and time slot are provided, filter by availability
+      if (date && parsedTimeSlot && parsedTimeSlot.isValid) {
+        const availableFields = [];
+        
+        for (const field of allFields || []) {
+          // Check if field has available slots for the requested time
+          const { data: availableSlots } = await supabase
+            .from('field_availability')
+            .select('*')
+            .eq('field_id', field.id)
+            .eq('date', date)
+            .eq('is_available', true)
+            .gte('start_time', parsedTimeSlot.startTime)
+            .lte('end_time', parsedTimeSlot.endTime);
+
+          // Check for conflicting bookings
+          const { data: conflictingBookings } = await supabase
+            .from('bookings')
+            .select('start_time, end_time')
+            .eq('field_id', field.id)
+            .eq('booking_date', date)
+            .in('status', ['pending', 'confirmed', 'owner_confirmed'])
+            .or(
+              `and(start_time.lte.${parsedTimeSlot.startTime},end_time.gt.${parsedTimeSlot.startTime}),` +
+              `and(start_time.lt.${parsedTimeSlot.endTime},end_time.gte.${parsedTimeSlot.endTime}),` +
+              `and(start_time.gte.${parsedTimeSlot.startTime},end_time.lte.${parsedTimeSlot.endTime})`
+            );
+
+          console.log(`🔍 Terrain ${field.name}:`, {
+            availableSlots: availableSlots?.length,
+            conflictingBookings: conflictingBookings?.length
+          });
+
+          // Include field if it has available slots and no conflicts
+          if (availableSlots && availableSlots.length > 0 && (!conflictingBookings || conflictingBookings.length === 0)) {
+            availableFields.push(field);
+          }
+        }
+
+        console.log('🔍 Terrains disponibles après filtrage:', availableFields.length);
+        return availableFields as Field[];
+      }
+
+      return allFields as Field[];
     }
   });
 
