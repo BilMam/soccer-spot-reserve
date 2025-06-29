@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -124,19 +125,30 @@ const Search = () => {
           let isFieldAvailable = true;
           
           for (const slot of requiredSlots) {
-            // Vérifier si ce créneau spécifique existe et est disponible
-            const { data: availableSlot } = await supabase
+            console.log(`🔍 Vérification créneau ${slot.start}-${slot.end} pour ${field.name}`);
+            
+            // CORRECTION: Ajouter les secondes au format de temps et utiliser .maybeSingle()
+            const { data: availableSlot, error: slotError } = await supabase
               .from('field_availability')
               .select('*')
               .eq('field_id', field.id)
               .eq('date', date)
-              .eq('start_time', slot.start)
-              .eq('end_time', slot.end)
-              .eq('is_available', true)
-              .single();
+              .eq('start_time', slot.start + ':00')  // Ajouter les secondes
+              .eq('end_time', slot.end + ':00')      // Ajouter les secondes
+              .maybeSingle();  // Utiliser maybeSingle() au lieu de single()
 
-            if (!availableSlot) {
-              console.log(`🔍 ❌ Créneau ${slot.start}-${slot.end} NON disponible pour ${field.name}`);
+            if (slotError) {
+              console.log(`🔍 ❌ Erreur lors de la vérification du créneau ${slot.start}-${slot.end} pour ${field.name}:`, slotError);
+              isFieldAvailable = false;
+              break;
+            }
+
+            // Vérifier explicitement que le créneau existe ET qu'il est disponible
+            if (!availableSlot || !availableSlot.is_available) {
+              console.log(`🔍 ❌ Créneau ${slot.start}-${slot.end} NON disponible pour ${field.name}`, {
+                exists: !!availableSlot,
+                isAvailable: availableSlot?.is_available
+              });
               isFieldAvailable = false;
               break;
             } else {
