@@ -4,7 +4,6 @@ import { Search, MapPin, Calendar, Users, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
 import TimeSlotSelector from './TimeSlotSelector';
 
 const SearchBar = () => {
@@ -13,7 +12,6 @@ const SearchBar = () => {
   const [timeSlot, setTimeSlot] = useState('');
   const [players, setPlayers] = useState('');
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   // Set today's date as default on component mount
   useEffect(() => {
@@ -22,16 +20,6 @@ const SearchBar = () => {
   }, []);
 
   const handleSearch = () => {
-    // Validation: ensure date is selected
-    if (!date) {
-      toast({
-        title: "Date requise",
-        description: "Veuillez sélectionner une date pour votre recherche.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     const params = new URLSearchParams();
     if (location) params.append('location', location);
     if (date) params.append('date', date);
@@ -62,14 +50,13 @@ const SearchBar = () => {
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700 flex items-center">
             <Calendar className="w-4 h-4 mr-2" />
-            Date <span className="text-red-500 ml-1">*</span>
+            Date
           </label>
           <Input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="border-gray-200 focus:border-green-500"
-            required
           />
         </div>
 
