@@ -1,22 +1,22 @@
 
 import React, { useState } from 'react';
-import { Search, MapPin, Calendar, Users, Filter } from 'lucide-react';
+import { Search, MapPin, Calendar, Users, Filter, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
 
 const SearchBar = () => {
   const [location, setLocation] = useState('');
-  const [dateStart, setDateStart] = useState('');
-  const [dateEnd, setDateEnd] = useState('');
+  const [date, setDate] = useState('');
+  const [timeSlot, setTimeSlot] = useState('');
   const [players, setPlayers] = useState('');
   const navigate = useNavigate();
 
   const handleSearch = () => {
     const params = new URLSearchParams();
     if (location) params.append('location', location);
-    if (dateStart) params.append('dateStart', dateStart);
-    if (dateEnd) params.append('dateEnd', dateEnd);
+    if (date) params.append('date', date);
+    if (timeSlot) params.append('timeSlot', timeSlot);
     if (players) params.append('players', players);
     
     navigate(`/search?${params.toString()}`);
@@ -39,30 +39,30 @@ const SearchBar = () => {
           />
         </div>
 
-        {/* Date Start */}
+        {/* Date */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700 flex items-center">
             <Calendar className="w-4 h-4 mr-2" />
-            Début
+            Date
           </label>
           <Input
             type="date"
-            value={dateStart}
-            onChange={(e) => setDateStart(e.target.value)}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
             className="border-gray-200 focus:border-green-500"
           />
         </div>
 
-        {/* Date End */}
+        {/* Time Slot */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700 flex items-center">
-            <Calendar className="w-4 h-4 mr-2" />
-            Fin
+            <Clock className="w-4 h-4 mr-2" />
+            Horaire
           </label>
           <Input
-            type="date"
-            value={dateEnd}
-            onChange={(e) => setDateEnd(e.target.value)}
+            placeholder="ex: 14h-16h"
+            value={timeSlot}
+            onChange={(e) => setTimeSlot(e.target.value)}
             className="border-gray-200 focus:border-green-500"
           />
         </div>

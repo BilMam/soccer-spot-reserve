@@ -39,12 +39,12 @@ const Search = () => {
   });
 
   const location = searchParams.get('location') || '';
-  const dateStart = searchParams.get('dateStart') || '';
-  const dateEnd = searchParams.get('dateEnd') || '';
+  const date = searchParams.get('date') || '';
+  const timeSlot = searchParams.get('timeSlot') || '';
   const players = searchParams.get('players') || '';
 
   const { data: fields, isLoading } = useQuery({
-    queryKey: ['fields', location, filters],
+    queryKey: ['fields', location, date, timeSlot, filters],
     queryFn: async () => {
       let query = supabase
         .from('fields')
@@ -69,6 +69,10 @@ const Search = () => {
 
       if (filters.capacity) {
         query = query.gte('capacity', parseInt(filters.capacity));
+      }
+
+      if (players) {
+        query = query.gte('capacity', parseInt(players));
       }
 
       if (filters.sortBy === 'price_asc') {
@@ -99,6 +103,16 @@ const Search = () => {
           field.field_type === 'synthetic' ? 'Synthétique' :
           field.field_type === 'indoor' ? 'Indoor' : 'Bitume'
   })) || [];
+
+  const getSearchSummary = () => {
+    let summary = `${transformedFields.length} terrain${transformedFields.length > 1 ? 's' : ''} trouvé${transformedFields.length > 1 ? 's' : ''}`;
+    
+    if (location) summary += ` près de ${location}`;
+    if (date) summary += ` pour le ${new Date(date).toLocaleDateString('fr-FR')}`;
+    if (timeSlot) summary += ` à ${timeSlot}`;
+    
+    return summary;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -207,8 +221,7 @@ const Search = () => {
               <div className="flex items-center space-x-2">
                 <MapPin className="w-5 h-5 text-gray-500" />
                 <span className="text-gray-600">
-                  {transformedFields.length} terrain{transformedFields.length > 1 ? 's' : ''} trouvé{transformedFields.length > 1 ? 's' : ''}
-                  {location && ` près de ${location}`}
+                  {getSearchSummary()}
                 </span>
               </div>
               
