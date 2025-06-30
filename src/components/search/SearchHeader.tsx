@@ -39,7 +39,7 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
         </span>
       </div>
       
-      <div className="flex items-center space-x-2">
+      <div className="hidden md:flex items-center space-x-2">
         <Button
           variant={viewMode === 'grid' ? 'default' : 'outline'}
           size="sm"
