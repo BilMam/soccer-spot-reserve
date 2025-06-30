@@ -10,8 +10,7 @@ export const useSearchQuery = ({ location, date, timeSlot, players, filters }: U
     queryFn: async () => {
       console.log('🔍 Recherche avec paramètres:', { location, date, timeSlot });
       
-      const query = buildSearchQuery(location, players, filters);
-      const { data: allFields, error } = await query;
+      const { data: allFields, error } = await buildSearchQuery(location, players, filters);
       
       if (error) throw error;
 

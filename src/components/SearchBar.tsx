@@ -39,11 +39,14 @@ const SearchBar = () => {
             Où ?
           </label>
           <Input
-            placeholder="Ville, quartier..."
+            placeholder="Deux Plateaux, Cocody, etc..."
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             className="border-gray-200 focus:border-green-500"
           />
+          <p className="text-xs text-gray-500">
+            ✨ Recherche intelligente : pas besoin de l'adresse exacte !
+          </p>
         </div>
 
         {/* Date */}

@@ -267,7 +267,9 @@ export type Database = {
           id: string
           images: string[] | null
           is_active: boolean | null
+          latitude: number | null
           location: string
+          longitude: number | null
           name: string
           owner_id: string
           price_per_hour: number
@@ -289,7 +291,9 @@ export type Database = {
           id?: string
           images?: string[] | null
           is_active?: boolean | null
+          latitude?: number | null
           location: string
+          longitude?: number | null
           name: string
           owner_id: string
           price_per_hour: number
@@ -311,7 +315,9 @@ export type Database = {
           id?: string
           images?: string[] | null
           is_active?: boolean | null
+          latitude?: number | null
           location?: string
+          longitude?: number | null
           name?: string
           owner_id?: string
           price_per_hour?: number
@@ -853,6 +859,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: undefined
       }
+      calculate_search_similarity: {
+        Args: { search_term: string; field_text: string }
+        Returns: number
+      }
       can_promote_user: {
         Args: {
           promoter_id: string
@@ -974,12 +984,50 @@ export type Database = {
         }
         Returns: undefined
       }
+      gtrgm_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_decompress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_options: {
+        Args: { "": unknown }
+        Returns: undefined
+      }
+      gtrgm_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
       has_role: {
         Args: {
           user_uuid: string
           role_name: Database["public"]["Enums"]["user_role_type"]
         }
         Returns: boolean
+      }
+      intelligent_field_search: {
+        Args: { search_query: string; similarity_threshold?: number }
+        Returns: {
+          id: string
+          name: string
+          location: string
+          address: string
+          city: string
+          price_per_hour: number
+          rating: number
+          total_reviews: number
+          images: string[]
+          amenities: string[]
+          capacity: number
+          field_type: string
+          relevance_score: number
+        }[]
       }
       reject_owner_application: {
         Args: { application_id: string; notes: string }
@@ -997,6 +1045,10 @@ export type Database = {
         Args: { p_booking_id: string }
         Returns: undefined
       }
+      set_limit: {
+        Args: { "": number }
+        Returns: number
+      }
       set_slots_unavailable: {
         Args: {
           p_field_id: string
@@ -1007,6 +1059,14 @@ export type Database = {
           p_notes?: string
         }
         Returns: number
+      }
+      show_limit: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      show_trgm: {
+        Args: { "": string }
+        Returns: string[]
       }
       update_owner_stats_for_field: {
         Args: { field_uuid: string }
