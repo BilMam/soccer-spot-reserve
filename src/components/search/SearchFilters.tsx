@@ -38,43 +38,46 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({ filters, onFiltersChange 
   return (
     <Card className="lg:sticky lg:top-8">
       <CardContent className="p-4 lg:p-6">
-        {/* Mobile: Collapsible header, Desktop: Always visible */}
-        <Collapsible open={isOpen} onOpenChange={setIsOpen} className="lg:hidden">
-          <CollapsibleTrigger asChild>
-            <Button variant="outline" className="w-full flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <Filter className="w-5 h-5" />
-                <span className="text-lg font-semibold">Filtres</span>
-              </div>
-              {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </Button>
-          </CollapsibleTrigger>
-          
-          <CollapsibleContent className="space-y-6">
-            <FilterContent filters={filters} handleFilterChange={handleFilterChange} resetFilters={resetFilters} />
-          </CollapsibleContent>
-        </Collapsible>
+        {/* Mobile: Collapsible version */}
+        <div className="lg:hidden">
+          <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" className="w-full flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  <Filter className="w-5 h-5" />
+                  <span className="text-lg font-semibold">Filtres</span>
+                </div>
+                {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </Button>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent className="space-y-6">
+              <FilterContent filters={filters} handleFilterChange={handleFilterChange} resetFilters={resetFilters} isMobile={true} />
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
 
-        {/* Desktop: Always visible header and content */}
+        {/* Desktop: Always visible sidebar */}
         <div className="hidden lg:block">
           <div className="flex items-center space-x-2 mb-6">
             <Filter className="w-5 h-5" />
             <h3 className="text-lg font-semibold">Filtres</h3>
           </div>
-          <FilterContent filters={filters} handleFilterChange={handleFilterChange} resetFilters={resetFilters} />
+          <FilterContent filters={filters} handleFilterChange={handleFilterChange} resetFilters={resetFilters} isMobile={false} />
         </div>
       </CardContent>
     </Card>
   );
 };
 
-// Separate component for the filter content to avoid duplication
+// Separate component for the filter content
 const FilterContent: React.FC<{
   filters: any;
   handleFilterChange: (key: string, value: string) => void;
   resetFilters: () => void;
-}> = ({ filters, handleFilterChange, resetFilters }) => (
-  <div className="space-y-4 lg:space-y-6">
+  isMobile: boolean;
+}> = ({ filters, handleFilterChange, resetFilters, isMobile }) => (
+  <div className={isMobile ? "space-y-4" : "space-y-6"}>
     <div>
       <label className="text-sm font-medium text-gray-700 mb-3 block">
         Prix par heure
@@ -84,13 +87,13 @@ const FilterContent: React.FC<{
           placeholder="Min"
           value={filters.priceMin}
           onChange={(e) => handleFilterChange('priceMin', e.target.value)}
-          className="h-12 lg:h-10 text-base lg:text-sm"
+          className={isMobile ? "h-12 text-base" : "h-10 text-sm"}
         />
         <Input
           placeholder="Max"
           value={filters.priceMax}
           onChange={(e) => handleFilterChange('priceMax', e.target.value)}
-          className="h-12 lg:h-10 text-base lg:text-sm"
+          className={isMobile ? "h-12 text-base" : "h-10 text-sm"}
         />
       </div>
     </div>
@@ -100,7 +103,7 @@ const FilterContent: React.FC<{
         Type de terrain
       </label>
       <Select value={filters.fieldType} onValueChange={(value) => handleFilterChange('fieldType', value)}>
-        <SelectTrigger className="h-12 lg:h-10 text-base lg:text-sm">
+        <SelectTrigger className={isMobile ? "h-12 text-base" : "h-10 text-sm"}>
           <SelectValue placeholder="Tous les types" />
         </SelectTrigger>
         <SelectContent>
@@ -121,7 +124,7 @@ const FilterContent: React.FC<{
         placeholder="Nombre de joueurs"
         value={filters.capacity}
         onChange={(e) => handleFilterChange('capacity', e.target.value)}
-        className="h-12 lg:h-10 text-base lg:text-sm"
+        className={isMobile ? "h-12 text-base" : "h-10 text-sm"}
       />
     </div>
 
@@ -130,7 +133,7 @@ const FilterContent: React.FC<{
         Trier par
       </label>
       <Select value={filters.sortBy} onValueChange={(value) => handleFilterChange('sortBy', value)}>
-        <SelectTrigger className="h-12 lg:h-10 text-base lg:text-sm">
+        <SelectTrigger className={isMobile ? "h-12 text-base" : "h-10 text-sm"}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -144,7 +147,7 @@ const FilterContent: React.FC<{
     <Button 
       onClick={resetFilters}
       variant="outline"
-      className="w-full h-12 lg:h-10 text-base lg:text-sm"
+      className={isMobile ? "w-full h-12 text-base" : "w-full h-10 text-sm"}
     >
       Réinitialiser
     </Button>
