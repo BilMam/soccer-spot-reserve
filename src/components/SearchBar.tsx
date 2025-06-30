@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Calendar, Users, Filter } from 'lucide-react';
+import { Search, MapPin, Calendar, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
@@ -87,12 +87,7 @@ const SearchBar = () => {
         </div>
       </div>
 
-      <div className="flex justify-between items-center mt-6">
-        <Button variant="outline" className="flex items-center space-x-2">
-          <Filter className="w-4 h-4" />
-          <span>Filtres</span>
-        </Button>
-        
+      <div className="flex justify-end items-center mt-6">
         <Button 
           className="bg-green-600 hover:bg-green-700 px-8 flex items-center space-x-2"
           onClick={handleSearch}
