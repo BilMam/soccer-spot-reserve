@@ -72,11 +72,12 @@ const SearchResults: React.FC<SearchResultsProps> = ({ fields, isLoading, viewMo
   return (
     <div className={gridClass}>
       {fields.map((field) => (
-        <FieldCard 
-          key={field.id} 
-          field={field}
-          className={viewMode === 'list' ? 'flex-row' : ''}
-        />
+        <div 
+          key={field.id}
+          className={viewMode === 'list' ? 'w-full' : ''}
+        >
+          <FieldCard field={field} />
+        </div>
       ))}
     </div>
   );

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { Field, SearchFilters } from '@/types/search';
 import { geocodeLocationQuery, filterFieldsByDistance } from './geocodingUtils';
@@ -6,6 +5,8 @@ import { geocodeLocationQuery, filterFieldsByDistance } from './geocodingUtils';
 interface IntelligentSearchResult extends Field {
   relevance_score: number;
   distance?: number;
+  latitude?: number;
+  longitude?: number;
 }
 
 export const performIntelligentSearch = async (
@@ -21,7 +22,7 @@ export const performIntelligentSearch = async (
     searchCoordinates = await geocodeLocationQuery(location.trim());
   }
 
-  // Étape 2: Recherche textuelle intelligente
+  // Étape 2: Recherche textuelle intelligente avec coordonnées GPS
   let query = supabase.rpc('intelligent_field_search', {
     search_query: location || '',
     similarity_threshold: 0.2
@@ -40,12 +41,29 @@ export const performIntelligentSearch = async (
     return [];
   }
 
-  // Étape 3: Filtrer par distance géographique si on a des coordonnées (optionnel)
-  let geographicallyFilteredResults = intelligentResults;
+  // Étape 3: Ajouter les coordonnées GPS des terrains depuis la base
+  const resultsWithCoordinates = await Promise.all(
+    intelligentResults.map(async (field: any) => {
+      const { data: fieldData } = await supabase
+        .from('fields')
+        .select('latitude, longitude')
+        .eq('id', field.id)
+        .single();
+      
+      return {
+        ...field,
+        latitude: fieldData?.latitude || null,
+        longitude: fieldData?.longitude || null
+      };
+    })
+  );
+
+  // Étape 4: Filtrer par distance géographique si on a des coordonnées (optionnel)
+  let geographicallyFilteredResults = resultsWithCoordinates;
   if (searchCoordinates) {
     console.log('📍 Filtrage géographique autour de:', searchCoordinates);
-    const fieldsWithCoordinates = intelligentResults.filter(f => f.latitude && f.longitude);
-    const fieldsWithoutCoordinates = intelligentResults.filter(f => !f.latitude || !f.longitude);
+    const fieldsWithCoordinates = resultsWithCoordinates.filter(f => f.latitude && f.longitude);
+    const fieldsWithoutCoordinates = resultsWithCoordinates.filter(f => !f.latitude || !f.longitude);
     
     // Filtrer par distance seulement ceux qui ont des coordonnées
     const geographicallyFiltered = filterFieldsByDistance(
@@ -61,7 +79,7 @@ export const performIntelligentSearch = async (
     console.log('📍 Terrains sans coordonnées inclus:', fieldsWithoutCoordinates.length);
   }
 
-  // Étape 4: Appliquer les filtres supplémentaires côté client
+  // Étape 5: Appliquer les filtres supplémentaires côté client
   let filteredResults: IntelligentSearchResult[] = geographicallyFilteredResults.filter((field: IntelligentSearchResult) => {
     // Filtre par prix minimum
     if (filters.priceMin && field.price_per_hour < parseFloat(filters.priceMin)) {
@@ -91,7 +109,7 @@ export const performIntelligentSearch = async (
     return true;
   });
 
-  // Étape 5: Calculer la distance pour chaque terrain si on a des coordonnées de recherche
+  // Étape 6: Calculer la distance pour chaque terrain si on a des coordonnées de recherche
   if (searchCoordinates) {
     filteredResults = filteredResults.map((field: IntelligentSearchResult): IntelligentSearchResult => {
       if (field.latitude && field.longitude) {
@@ -106,7 +124,7 @@ export const performIntelligentSearch = async (
     });
   }
 
-  // Étape 6: Appliquer le tri
+  // Étape 7: Appliquer le tri
   if (filters.sortBy === 'price_asc') {
     filteredResults.sort((a, b) => a.price_per_hour - b.price_per_hour);
   } else if (filters.sortBy === 'price_desc') {
@@ -141,7 +159,7 @@ export const buildFallbackQuery = (
   location: string,
   players: string,
   filters: SearchFilters,
-  requireGPS: boolean = true // Nouveau paramètre pour contrôler le filtrage GPS
+  requireGPS: boolean = false // Ne plus exiger GPS par défaut
 ) => {
   // Fallback vers l'ancienne méthode
   let query = supabase
