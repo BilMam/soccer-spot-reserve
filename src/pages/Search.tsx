@@ -10,15 +10,10 @@ import GoogleMap from '@/components/search/GoogleMap';
 import ViewToggle from '@/components/search/ViewToggle';
 import FieldCard from '@/components/FieldCard';
 import { useSearchQuery } from '@/hooks/useSearchQuery';
-import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
-import { geocodeExistingFields } from '@/utils/geocodingUtils';
-import { toast } from 'sonner';
 
 const Search = () => {
   const [searchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
-  const [isGeocodingExisting, setIsGeocodingExisting] = useState(false);
   const [filters, setFilters] = useState({
     priceMin: '',
     priceMax: '',
@@ -32,7 +27,7 @@ const Search = () => {
   const timeSlot = searchParams.get('timeSlot') || '';
   const players = searchParams.get('players') || '';
 
-  const { data: fields, isLoading, refetch } = useSearchQuery({
+  const { data: fields, isLoading } = useSearchQuery({
     location,
     date,
     timeSlot,
@@ -65,35 +60,6 @@ const Search = () => {
     }
   };
 
-  const handleGeocodeExistingFields = async () => {
-    setIsGeocodingExisting(true);
-    try {
-      const result = await geocodeExistingFields();
-      
-      if (result.success > 0) {
-        toast.success(`✅ ${result.success} terrain(s) géocodé(s) avec succès !`);
-        // Rafraîchir les résultats
-        refetch();
-      }
-      
-      if (result.failed > 0) {
-        toast.warning(`⚠️ ${result.failed} terrain(s) n'ont pas pu être géocodés`);
-      }
-      
-      if (result.total === 0) {
-        toast.info('ℹ️ Tous les terrains ont déjà des coordonnées GPS');
-      }
-      
-    } catch (error) {
-      console.error('Erreur géocodage:', error);
-      toast.error('❌ Erreur lors du géocodage des terrains');
-    } finally {
-      setIsGeocodingExisting(false);
-    }
-  };
-
-  const fieldsWithoutCoordinates = transformedFields.filter(field => !field.latitude || !field.longitude);
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -102,35 +68,6 @@ const Search = () => {
         <div className="mb-8">
           <SearchBar />
         </div>
-
-        {/* Bouton de géocodage des terrains existants (uniquement en mode développement) */}
-        {fieldsWithoutCoordinates.length > 0 && (
-          <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-medium text-amber-800">
-                  {fieldsWithoutCoordinates.length} terrain(s) sans coordonnées GPS
-                </h3>
-                <p className="text-xs text-amber-600">
-                  Ces terrains n'apparaîtront pas sur la carte
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                onClick={handleGeocodeExistingFields}
-                disabled={isGeocodingExisting}
-                className="text-amber-700 border-amber-300 hover:bg-amber-100"
-              >
-                {isGeocodingExisting ? (
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                )}
-                Géocoder les terrains
-              </Button>
-            </div>
-          </div>
-        )}
 
         {/* Mobile View Toggle */}
         <div className="md:hidden mb-4">
