@@ -14,6 +14,7 @@ import BecomeOwner from '@/pages/BecomeOwner';
 import OwnerDashboard from '@/pages/OwnerDashboard';
 import AdminDashboard from '@/pages/AdminDashboard';
 import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
+import GeocodingAdmin from '@/pages/GeocodingAdmin';
 import BookingSuccess from '@/pages/BookingSuccess';
 import PaymentPage from '@/pages/PaymentPage';
 import NotFound from '@/pages/NotFound';
@@ -41,6 +42,7 @@ function App() {
               <Route path="/owner/dashboard" element={<OwnerDashboard />} />
               <Route path="/admin-dashboard" element={<AdminDashboard />} />
               <Route path="/super-admin-dashboard" element={<SuperAdminDashboard />} />
+              <Route path="/geocoding-admin" element={<GeocodingAdmin />} />
               <Route path="/booking-success" element={<BookingSuccess />} />
               <Route path="/payment/:token" element={<PaymentPage />} />
               <Route path="*" element={<NotFound />} />

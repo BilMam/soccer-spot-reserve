@@ -2,11 +2,13 @@
 import React from 'react';
 import Navbar from '@/components/Navbar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, MapPin, BarChart3 } from 'lucide-react';
+import { Users, MapPin, BarChart3, Map } from 'lucide-react';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { OwnerApplicationsTab } from '@/components/admin/OwnerApplicationsTab';
 import { FieldsManagementTab } from '@/components/admin/FieldsManagementTab';
 import { AdminStats } from '@/components/admin/AdminStats';
+import GeocodingDashboard from '@/components/admin/GeocodingDashboard';
+import FieldAddressCorrection from '@/components/admin/FieldAddressCorrection';
 
 const AdminDashboard = () => {
   const { user, hasAdminPermissions } = useAdminPermissions();
@@ -57,6 +59,10 @@ const AdminDashboard = () => {
               <MapPin className="w-4 h-4" />
               <span>Terrains</span>
             </TabsTrigger>
+            <TabsTrigger value="geocoding" className="flex items-center space-x-2">
+              <Map className="w-4 h-4" />
+              <span>Géocodage</span>
+            </TabsTrigger>
             <TabsTrigger value="stats" className="flex items-center space-x-2">
               <BarChart3 className="w-4 h-4" />
               <span>Statistiques</span>
@@ -69,6 +75,38 @@ const AdminDashboard = () => {
 
           <TabsContent value="fields">
             <FieldsManagementTab hasAdminPermissions={hasAdminPermissions} />
+          </TabsContent>
+
+          <TabsContent value="geocoding">
+            <div className="space-y-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold mb-2">Administration du géocodage</h2>
+                <p className="text-gray-600">
+                  Gérez les coordonnées GPS des terrains et corrigez les adresses
+                </p>
+              </div>
+
+              <Tabs defaultValue="dashboard" className="space-y-4">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="dashboard" className="flex items-center space-x-2">
+                    <MapPin className="w-4 h-4" />
+                    <span>Dashboard</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="correction" className="flex items-center space-x-2">
+                    <Map className="w-4 h-4" />
+                    <span>Correction d'adresses</span>
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="dashboard">
+                  <GeocodingDashboard />
+                </TabsContent>
+
+                <TabsContent value="correction">
+                  <FieldAddressCorrection />
+                </TabsContent>
+              </Tabs>
+            </div>
           </TabsContent>
 
           <TabsContent value="stats">
