@@ -13,7 +13,7 @@ import { useSearchQuery } from '@/hooks/useSearchQuery';
 
 const Search = () => {
   const [searchParams] = useSearchParams();
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('map'); // Par défaut sur map
   const [filters, setFilters] = useState({
     priceMin: '',
     priceMax: '',
@@ -37,22 +37,15 @@ const Search = () => {
     filters
   });
 
-  console.log('📊 Search Page - Données reçues:', {
+  console.log('📊 Search Page - Données reçues du hook:', {
     fieldsCount: fields?.length,
     isLoading,
-    fields: fields?.map(f => ({ name: f.name, hasGPS: !!(f.latitude && f.longitude) }))
+    fieldsWithGPS: fields?.filter(f => f.latitude && f.longitude).length,
+    fieldsWithoutGPS: fields?.filter(f => !f.latitude || !f.longitude).length
   });
 
   const transformedFields = fields?.map(field => {
-    console.log(`🔄 Transformation terrain "${field.name}":`, {
-      id: field.id,
-      latitude: field.latitude,
-      longitude: field.longitude,
-      hasCoords: !!(field.latitude && field.longitude),
-      originalData: { lat: field.latitude, lng: field.longitude }
-    });
-    
-    return {
+    const transformedField = {
       id: field.id,
       name: field.name,
       location: `${field.city}`,
@@ -65,26 +58,33 @@ const Search = () => {
       type: field.field_type === 'natural_grass' ? 'Gazon naturel' :
             field.field_type === 'synthetic' ? 'Synthétique' :
             field.field_type === 'indoor' ? 'Indoor' : 'Bitume',
-      // ✅ CORRECTION CRITIQUE : S'assurer que les coordonnées GPS sont bien transmises
+      // IMPORTANT: Coordonnées GPS pour la carte
       latitude: field.latitude,
       longitude: field.longitude
     };
+    
+    console.log(`🔄 Terrain transformé "${field.name}":`, {
+      originalLat: field.latitude,
+      originalLng: field.longitude,
+      transformedLat: transformedField.latitude,
+      transformedLng: transformedField.longitude,
+      hasGPS: !!(transformedField.latitude && transformedField.longitude)
+    });
+    
+    return transformedField;
   }) || [];
 
-  console.log('🎯 Search Page - Terrains transformés FINAUX pour GoogleMap:', {
+  console.log('🎯 Search Page - Terrains transformés pour GoogleMap:', {
     total: transformedFields.length,
-    withCoords: transformedFields.filter(f => f.latitude && f.longitude).length,
-    withoutCoords: transformedFields.filter(f => !f.latitude || !f.longitude).length,
-    detailsForMap: transformedFields.map(f => ({
-      name: f.name,
-      hasCoords: !!(f.latitude && f.longitude),
-      lat: f.latitude,
-      lng: f.longitude
-    }))
+    withGPS: transformedFields.filter(f => f.latitude && f.longitude).length,
+    firstFieldGPS: transformedFields[0] ? {
+      name: transformedFields[0].name,
+      lat: transformedFields[0].latitude,
+      lng: transformedFields[0].longitude
+    } : null
   });
 
   const handleFieldSelect = (fieldId: string) => {
-    // Scroll to the field card or navigate to field detail
     const fieldElement = document.getElementById(`field-${fieldId}`);
     if (fieldElement) {
       fieldElement.scrollIntoView({ behavior: 'smooth' });
@@ -119,7 +119,6 @@ const Search = () => {
         {/* List/Grid Views */}
         {viewMode !== 'map' && (
           <div className="flex flex-col lg:flex-row gap-6">
-            {/* Filters - Full width on mobile, sidebar on desktop */}
             <div className="w-full lg:w-1/4">
               <SearchFilters 
                 filters={filters}
@@ -127,7 +126,6 @@ const Search = () => {
               />
             </div>
 
-            {/* Results - Full width on mobile, main content on desktop */}
             <div className="w-full lg:flex-1">
               <SearchHeader
                 resultsCount={transformedFields.length}
@@ -150,7 +148,10 @@ const Search = () => {
         {/* Results below map in map view */}
         {viewMode === 'map' && (
           <div className="mt-8">
-            <h3 className="text-lg font-semibold mb-4">Tous les terrains</h3>
+            <h3 className="text-lg font-semibold mb-4">
+              {transformedFields.length} terrain(s) trouvé(s)
+              {location && ` pour "${location}"`}
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {transformedFields.map((field) => (
                 <FieldCard key={field.id} field={field} />
