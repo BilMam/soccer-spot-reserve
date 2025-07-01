@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import SearchBar from '@/components/SearchBar';
@@ -9,9 +9,11 @@ import GoogleMap from '@/components/search/GoogleMap';
 import ViewToggle from '@/components/search/ViewToggle';
 import FieldCard from '@/components/FieldCard';
 import { useSearchQuery } from '@/hooks/useSearchQuery';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Search = () => {
   const [searchParams] = useSearchParams();
+  const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
   const [filters, setFilters] = useState({
     priceMin: '',
@@ -20,6 +22,13 @@ const Search = () => {
     capacity: '',
     sortBy: 'rating'
   });
+
+  // Handle mobile view mode - if on mobile and grid is selected, switch to list
+  useEffect(() => {
+    if (isMobile && viewMode === 'grid') {
+      setViewMode('list');
+    }
+  }, [isMobile, viewMode]);
 
   const location = searchParams.get('location') || '';
   const date = searchParams.get('date') || '';
