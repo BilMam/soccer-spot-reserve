@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -12,7 +13,7 @@ import { useSearchQuery } from '@/hooks/useSearchQuery';
 
 const Search = () => {
   const [searchParams] = useSearchParams();
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid'); // Changer défaut en grid pour voir les résultats
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
   const [filters, setFilters] = useState({
     priceMin: '',
     priceMax: '',
@@ -99,12 +100,12 @@ const Search = () => {
           <SearchBar />
         </div>
 
-        {/* Mobile View Toggle - Always visible */}
-        <div className="md:hidden mb-6 flex justify-center">
+        {/* View Toggle - Always visible */}
+        <div className="mb-6 flex justify-center">
           <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
         </div>
 
-        {/* Map View Only */}
+        {/* Map View */}
         {viewMode === 'map' && (
           <div className="space-y-8">
             <GoogleMap 
