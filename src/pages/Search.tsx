@@ -35,22 +35,44 @@ const Search = () => {
     filters
   });
 
-  const transformedFields = fields?.map(field => ({
-    id: field.id,
-    name: field.name,
-    location: `${field.city}`,
-    price: field.price_per_hour,
-    rating: field.rating || 0,
-    reviews: field.total_reviews || 0,
-    image: field.images?.[0] || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    features: field.amenities || [],
-    capacity: field.capacity,
-    type: field.field_type === 'natural_grass' ? 'Gazon naturel' :
-          field.field_type === 'synthetic' ? 'Synthétique' :
-          field.field_type === 'indoor' ? 'Indoor' : 'Bitume',
-    latitude: field.latitude,
-    longitude: field.longitude
-  })) || [];
+  const transformedFields = fields?.map(field => {
+    console.log(`🔍 Transformation terrain "${field.name}":`, {
+      id: field.id,
+      latitude: field.latitude,
+      longitude: field.longitude,
+      hasCoords: !!(field.latitude && field.longitude)
+    });
+    
+    return {
+      id: field.id,
+      name: field.name,
+      location: `${field.city}`,
+      price: field.price_per_hour,
+      rating: field.rating || 0,
+      reviews: field.total_reviews || 0,
+      image: field.images?.[0] || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+      features: field.amenities || [],
+      capacity: field.capacity,
+      type: field.field_type === 'natural_grass' ? 'Gazon naturel' :
+            field.field_type === 'synthetic' ? 'Synthétique' :
+            field.field_type === 'indoor' ? 'Indoor' : 'Bitume',
+      // ✅ CORRECTION : Ajouter les coordonnées GPS
+      latitude: field.latitude,
+      longitude: field.longitude
+    };
+  }) || [];
+
+  console.log('📊 Terrains transformés avec coordonnées:', {
+    total: transformedFields.length,
+    withCoords: transformedFields.filter(f => f.latitude && f.longitude).length,
+    withoutCoords: transformedFields.filter(f => !f.latitude || !f.longitude).length,
+    details: transformedFields.map(f => ({
+      name: f.name,
+      hasCoords: !!(f.latitude && f.longitude),
+      lat: f.latitude,
+      lng: f.longitude
+    }))
+  });
 
   const handleFieldSelect = (fieldId: string) => {
     // Scroll to the field card or navigate to field detail

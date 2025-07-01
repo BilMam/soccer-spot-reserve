@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { geocodeAddress } from './googleMapsUtils';
 
@@ -8,6 +7,20 @@ export interface GeocodeExistingFieldsResult {
   total: number;
   errors: string[];
 }
+
+// Mapping des quartiers d'Abidjan pour améliorer la recherche
+const ABIDJAN_DISTRICTS = {
+  'cocody': 'Cocody, Abidjan, Côte d\'Ivoire',
+  'yopougon': 'Yopougon, Abidjan, Côte d\'Ivoire',
+  'plateau': 'Plateau, Abidjan, Côte d\'Ivoire',
+  'marcory': 'Marcory, Abidjan, Côte d\'Ivoire',
+  'treichville': 'Treichville, Abidjan, Côte d\'Ivoire',
+  'adjame': 'Adjamé, Abidjan, Côte d\'Ivoire',
+  'abobo': 'Abobo, Abidjan, Côte d\'Ivoire',
+  'koumassi': 'Koumassi, Abidjan, Côte d\'Ivoire',
+  'port-bouet': 'Port-Bouët, Abidjan, Côte d\'Ivoire',
+  'attécoubé': 'Attécoubé, Abidjan, Côte d\'Ivoire'
+};
 
 export const geocodeExistingFields = async (): Promise<GeocodeExistingFieldsResult> => {
   console.log('🔍 Démarrage du géocodage des terrains existants...');
@@ -86,12 +99,21 @@ export const geocodeExistingFields = async (): Promise<GeocodeExistingFieldsResu
 export const geocodeLocationQuery = async (location: string): Promise<{lat: number, lng: number} | null> => {
   console.log('🔍 Géocodage de la zone de recherche:', location);
   
-  // Construire l'adresse complète pour la recherche
-  const searchAddress = location.includes('Côte d\'Ivoire') 
-    ? location 
-    : `${location}, Abidjan, Côte d'Ivoire`;
+  // Normaliser la recherche pour les quartiers d'Abidjan
+  const normalizedLocation = location.toLowerCase().trim();
+  
+  // ✅ CORRECTION : Améliorer la recherche des quartiers d'Abidjan
+  let searchAddress = location;
+  if (ABIDJAN_DISTRICTS[normalizedLocation as keyof typeof ABIDJAN_DISTRICTS]) {
+    searchAddress = ABIDJAN_DISTRICTS[normalizedLocation as keyof typeof ABIDJAN_DISTRICTS];
+    console.log(`🏘️ Quartier d'Abidjan détecté: ${location} -> ${searchAddress}`);
+  } else if (!location.includes('Côte d\'Ivoire') && !location.includes('Abidjan')) {
+    // Si ce n'est pas un quartier connu, essayer avec Abidjan
+    searchAddress = `${location}, Abidjan, Côte d'Ivoire`;
+  }
   
   try {
+    console.log(`🔍 Recherche géographique pour: "${searchAddress}"`);
     const coordinates = await geocodeAddress(searchAddress);
     
     if (coordinates) {

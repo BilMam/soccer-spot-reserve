@@ -19,7 +19,13 @@ export const performIntelligentSearch = async (
   // Étape 1: Géocoder la localisation de recherche pour obtenir les coordonnées
   let searchCoordinates: {lat: number, lng: number} | null = null;
   if (location && location.trim().length > 0) {
+    console.log('🔍 Tentative de géocodage pour:', location);
     searchCoordinates = await geocodeLocationQuery(location.trim());
+    if (searchCoordinates) {
+      console.log('✅ Coordonnées trouvées pour la recherche:', searchCoordinates);
+    } else {
+      console.log('⚠️ Pas de coordonnées trouvées, recherche textuelle uniquement');
+    }
   }
 
   // Étape 2: Recherche textuelle intelligente avec coordonnées GPS
@@ -65,17 +71,17 @@ export const performIntelligentSearch = async (
     const fieldsWithCoordinates = resultsWithCoordinates.filter(f => f.latitude && f.longitude);
     const fieldsWithoutCoordinates = resultsWithCoordinates.filter(f => !f.latitude || !f.longitude);
     
-    // Filtrer par distance seulement ceux qui ont des coordonnées
+    // ✅ CORRECTION : Augmenter le rayon de recherche pour Abidjan
     const geographicallyFiltered = filterFieldsByDistance(
       fieldsWithCoordinates, 
       searchCoordinates.lat, 
       searchCoordinates.lng, 
-      15 // Rayon de 15km pour la recherche urbaine
+      25 // Augmenté à 25km pour couvrir tout Abidjan
     );
     
     // Combiner les résultats : terrains dans la zone + terrains sans coordonnées
     geographicallyFilteredResults = [...geographicallyFiltered, ...fieldsWithoutCoordinates];
-    console.log('📍 Terrains dans la zone géographique:', geographicallyFiltered.length);
+    console.log('📍 Terrains dans la zone géographique (25km):', geographicallyFiltered.length);
     console.log('📍 Terrains sans coordonnées inclus:', fieldsWithoutCoordinates.length);
   }
 
@@ -174,9 +180,23 @@ export const buildFallbackQuery = (
       .not('longitude', 'is', null);
   }
 
-  // Location filter (méthode classique)
+  // ✅ CORRECTION : Améliorer la recherche textuelle pour les quartiers
   if (location) {
-    query = query.or(`city.ilike.%${location}%,location.ilike.%${location}%,address.ilike.%${location}%`);
+    // Recherche élargie pour inclure les quartiers d'Abidjan
+    const searchTerms = [
+      `city.ilike.%${location}%`,
+      `location.ilike.%${location}%`,
+      `address.ilike.%${location}%`,
+      `name.ilike.%${location}%`
+    ];
+    
+    // Si c'est "Cocody", chercher aussi dans "Abidjan"
+    if (location.toLowerCase().includes('cocody')) {
+      searchTerms.push(`city.ilike.%Abidjan%`);
+      searchTerms.push(`address.ilike.%Cocody%`);
+    }
+    
+    query = query.or(searchTerms.join(','));
   }
 
   // Price filters

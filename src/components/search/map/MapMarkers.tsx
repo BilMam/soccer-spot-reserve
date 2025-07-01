@@ -35,8 +35,8 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
     }
 
     console.log('📍 Début mise à jour des marqueurs');
-    console.log('📊 Nombre total de terrains:', fields.length);
-    console.log('📋 Détails des terrains:', fields.map(f => ({
+    console.log('📊 Nombre total de terrains reçus:', fields.length);
+    console.log('📋 Détails des terrains reçus:', fields.map(f => ({
       id: f.id,
       name: f.name,
       lat: f.latitude,
@@ -87,23 +87,24 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
         const position = { lat: field.latitude!, lng: field.longitude! };
         console.log(`📍 Création marqueur ${index + 1}/${fieldsWithCoordinates.length} pour "${field.name}":`, position);
         
-        // Créer un marqueur avec une icône plus visible
+        // ✅ CORRECTION : Créer un marqueur rouge plus visible
         const marker = new window.google.maps.Marker({
           position,
           map: map,
           title: field.name,
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 15, // Augmenté pour plus de visibilité
-            fillColor: '#16a34a',
+            scale: 18, // Taille plus importante
+            fillColor: '#dc2626', // Rouge vif
             fillOpacity: 1,
             strokeColor: '#ffffff',
-            strokeWeight: 3, // Augmenté pour plus de visibilité
+            strokeWeight: 4, // Contour plus épais
           },
-          animation: window.google.maps.Animation.DROP, // Animation pour voir si le marqueur apparaît
+          animation: window.google.maps.Animation.DROP,
+          zIndex: 1000, // S'assurer que les marqueurs sont au-dessus
         });
 
-        console.log('✅ Marqueur créé pour:', field.name);
+        console.log('✅ Marqueur rouge créé pour:', field.name);
 
         // Créer une InfoWindow
         const infoWindow = new window.google.maps.InfoWindow({
@@ -119,6 +120,29 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
           onFieldSelect?.(field.id);
         });
 
+        // Effet de survol pour améliorer l'interactivité
+        marker.addListener('mouseover', () => {
+          marker.setIcon({
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 22, // Plus grand au survol
+            fillColor: '#b91c1c', // Rouge plus foncé
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 4,
+          });
+        });
+
+        marker.addListener('mouseout', () => {
+          marker.setIcon({
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 18,
+            fillColor: '#dc2626',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 4,
+          });
+        });
+
         markersRef.current.push({ marker, infoWindow });
         bounds.extend(position);
         markersCreated++;
@@ -128,14 +152,29 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
       }
     });
 
-    console.log(`✅ ${markersCreated} marqueur(s) créé(s) avec succès`);
+    console.log(`✅ ${markersCreated} marqueur(s) rouge(s) créé(s) avec succès`);
 
     // Ajuster la vue pour montrer tous les marqueurs
     if (markersCreated > 0) {
       console.log('🎯 Ajustement de la vue de la carte...');
       
       if (searchLocation) {
-        console.log('🔍 Recherche spécifique, pas d\'ajustement automatique');
+        console.log('🔍 Recherche spécifique, centrage avec zoom adapté');
+        // Centrer sur la zone de recherche mais montrer les marqueurs
+        if (markersCreated === 1) {
+          const center = bounds.getCenter();
+          map.setCenter(center);
+          map.setZoom(15);
+        } else {
+          map.fitBounds(bounds);
+          // Zoom adapté pour voir tous les marqueurs
+          const listener = window.google.maps.event.addListenerOnce(map, 'bounds_changed', () => {
+            const currentZoom = map.getZoom();
+            if (currentZoom > 14) {
+              map.setZoom(14); // Zoom optimal pour voir les marqueurs
+            }
+          });
+        }
       } else if (markersCreated === 1) {
         const center = bounds.getCenter();
         console.log('📍 Un seul marqueur, centrage sur:', center.toJSON());
@@ -149,9 +188,9 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
         const listener = window.google.maps.event.addListenerOnce(map, 'bounds_changed', () => {
           const currentZoom = map.getZoom();
           console.log('🔍 Zoom après fitBounds:', currentZoom);
-          if (currentZoom > 15) {
-            console.log('📏 Limitation du zoom à 15');
-            map.setZoom(15);
+          if (currentZoom > 14) {
+            console.log('📏 Limitation du zoom à 14 pour une meilleure visibilité');
+            map.setZoom(14);
           }
         });
       }
