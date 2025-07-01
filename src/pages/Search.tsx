@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -13,7 +12,7 @@ import { useSearchQuery } from '@/hooks/useSearchQuery';
 
 const Search = () => {
   const [searchParams] = useSearchParams();
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('map'); // Par défaut sur map
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid'); // Changer défaut en grid pour voir les résultats
   const [filters, setFilters] = useState({
     priceMin: '',
     priceMax: '',
@@ -100,19 +99,32 @@ const Search = () => {
           <SearchBar />
         </div>
 
-        {/* Mobile View Toggle */}
-        <div className="md:hidden mb-4">
+        {/* Mobile View Toggle - Always visible */}
+        <div className="md:hidden mb-6 flex justify-center">
           <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
         </div>
 
-        {/* Map View */}
+        {/* Map View Only */}
         {viewMode === 'map' && (
-          <div className="mb-8">
+          <div className="space-y-8">
             <GoogleMap 
               fields={transformedFields}
               onFieldSelect={handleFieldSelect}
               searchLocation={location}
             />
+            
+            {/* Results below map */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">
+                {transformedFields.length} terrain(s) trouvé(s)
+                {location && ` pour "${location}"`}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {transformedFields.map((field) => (
+                  <FieldCard key={field.id} field={field} />
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -141,21 +153,6 @@ const Search = () => {
                 isLoading={isLoading}
                 viewMode={viewMode}
               />
-            </div>
-          </div>
-        )}
-
-        {/* Results below map in map view */}
-        {viewMode === 'map' && (
-          <div className="mt-8">
-            <h3 className="text-lg font-semibold mb-4">
-              {transformedFields.length} terrain(s) trouvé(s)
-              {location && ` pour "${location}"`}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {transformedFields.map((field) => (
-                <FieldCard key={field.id} field={field} />
-              ))}
             </div>
           </div>
         )}

@@ -31,15 +31,15 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
   };
 
   return (
-    <div className="flex justify-between items-center mb-6">
+    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
       <div className="flex items-center space-x-2">
         <MapPin className="w-5 h-5 text-gray-500" />
-        <span className="text-gray-600">
+        <span className="text-gray-600 text-sm sm:text-base">
           {getSearchSummary()}
         </span>
       </div>
       
-      <div className="hidden md:flex">
+      <div className="flex justify-center sm:justify-end">
         <ViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
       </div>
     </div>
