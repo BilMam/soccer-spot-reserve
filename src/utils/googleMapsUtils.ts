@@ -142,33 +142,61 @@ export const loadGoogleMaps = (apiKey: string = GOOGLE_MAPS_API_KEY): Promise<an
   });
 };
 
-// Fonction de géocodage pour convertir une adresse en coordonnées
+// Fonction de géocodage améliorée pour convertir une adresse en coordonnées
 export const geocodeAddress = async (address: string): Promise<{lat: number, lng: number} | null> => {
-  if (!window.google || !window.google.maps) {
-    console.warn('Google Maps API not loaded yet');
+  // Vérification que Google Maps est disponible
+  if (!window.google || !window.google.maps || !window.google.maps.Geocoder) {
+    console.warn('⚠️ Google Maps API ou Geocoder non disponible');
     return null;
   }
 
   const geocoder = new window.google.maps.Geocoder();
   
   try {
+    console.log('🔍 Géocodage de:', address);
+    
     const results = await new Promise((resolve, reject) => {
-      geocoder.geocode({ address }, (results: any, status: any) => {
+      geocoder.geocode({ 
+        address,
+        region: 'CI', // Priorité à la Côte d'Ivoire
+        language: 'fr' // Réponses en français
+      }, (results: any, status: any) => {
+        console.log('📍 Statut géocodage:', status);
+        
         if (status === 'OK' && results && results.length > 0) {
+          console.log('✅ Résultats géocodage:', results);
           resolve(results);
         } else {
-          reject(new Error(`Geocoding failed: ${status}`));
+          const errorMsg = status === 'ZERO_RESULTS' 
+            ? 'Aucun résultat trouvé pour cette adresse'
+            : status === 'OVER_QUERY_LIMIT'
+            ? 'Limite de requêtes atteinte, réessayez plus tard'
+            : status === 'REQUEST_DENIED'
+            ? 'Requête refusée par Google Maps'
+            : status === 'INVALID_REQUEST'
+            ? 'Requête invalide'
+            : `Échec du géocodage: ${status}`;
+          
+          console.warn('⚠️', errorMsg);
+          reject(new Error(errorMsg));
         }
       });
     });
 
-    const location = (results as any)[0].geometry.location;
-    return {
+    const result = (results as any)[0];
+    const location = result.geometry.location;
+    const coordinates = {
       lat: location.lat(),
       lng: location.lng()
     };
+    
+    console.log('✅ Coordonnées extraites:', coordinates);
+    console.log('📍 Adresse formatée:', result.formatted_address);
+    
+    return coordinates;
+    
   } catch (error) {
-    console.error('Erreur de géocodage:', error);
+    console.error('❌ Erreur de géocodage:', error);
     return null;
   }
 };

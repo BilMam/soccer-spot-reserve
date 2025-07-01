@@ -1,6 +1,6 @@
 
-import { useState, useCallback } from 'react';
-import { geocodeAddress } from '@/utils/googleMapsUtils';
+import { useState, useCallback, useRef } from 'react';
+import { geocodeAddress, loadGoogleMaps } from '@/utils/googleMapsUtils';
 
 interface GeocodingResult {
   latitude: number;
@@ -11,12 +11,43 @@ interface GeocodingResult {
 export const useGeocodingService = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isApiReady, setIsApiReady] = useState(false);
+  const retryCount = useRef(0);
+  const maxRetries = 3;
+
+  // Initialiser Google Maps API
+  const initializeGoogleMaps = useCallback(async () => {
+    if (window.google && window.google.maps) {
+      setIsApiReady(true);
+      return true;
+    }
+
+    try {
+      console.log('🔄 Chargement de Google Maps API...');
+      await loadGoogleMaps();
+      setIsApiReady(true);
+      console.log('✅ Google Maps API chargée avec succès');
+      return true;
+    } catch (err) {
+      console.error('❌ Erreur chargement Google Maps API:', err);
+      setError('Impossible de charger Google Maps. Vérifiez votre connexion internet.');
+      return false;
+    }
+  }, []);
 
   const geocodeFieldAddress = useCallback(async (address: string, city: string): Promise<GeocodingResult | null> => {
     setIsLoading(true);
     setError(null);
 
     try {
+      // Vérifier si l'API est prête, sinon la charger
+      if (!isApiReady) {
+        const loaded = await initializeGoogleMaps();
+        if (!loaded) {
+          return null;
+        }
+      }
+
       const fullAddress = `${address}, ${city}, Côte d'Ivoire`;
       console.log('🔍 Géocodage de l\'adresse:', fullAddress);
       
@@ -24,28 +55,56 @@ export const useGeocodingService = () => {
       
       if (coordinates) {
         console.log('✅ Coordonnées trouvées:', coordinates);
+        retryCount.current = 0; // Reset retry count on success
         return {
           latitude: coordinates.lat,
           longitude: coordinates.lng,
           address: fullAddress
         };
       } else {
-        setError('Impossible de localiser cette adresse');
+        // Retry logic pour les échecs temporaires
+        if (retryCount.current < maxRetries) {
+          retryCount.current++;
+          console.log(`🔄 Tentative ${retryCount.current}/${maxRetries} de géocodage...`);
+          
+          // Attendre un peu avant de réessayer
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount.current));
+          return await geocodeFieldAddress(address, city);
+        }
+        
+        setError('Impossible de localiser cette adresse. Vérifiez qu\'elle est correcte.');
         return null;
       }
     } catch (err) {
       console.error('❌ Erreur de géocodage:', err);
-      setError('Erreur lors de la localisation de l\'adresse');
+      
+      // Retry logic pour les erreurs
+      if (retryCount.current < maxRetries) {
+        retryCount.current++;
+        console.log(`🔄 Nouvelle tentative ${retryCount.current}/${maxRetries}...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount.current));
+        return await geocodeFieldAddress(address, city);
+      }
+      
+      setError('Erreur lors de la localisation de l\'adresse. Réessayez plus tard.');
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isApiReady, initializeGoogleMaps]);
+
+  const manualGeocode = useCallback(async (address: string, city: string) => {
+    retryCount.current = 0; // Reset retry count for manual attempts
+    return await geocodeFieldAddress(address, city);
+  }, [geocodeFieldAddress]);
 
   return {
     geocodeFieldAddress,
+    manualGeocode,
     isLoading,
     error,
+    isApiReady,
+    initializeGoogleMaps,
     clearError: () => setError(null)
   };
 };

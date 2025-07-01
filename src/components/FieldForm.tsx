@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { MapPin, RefreshCw } from 'lucide-react';
 import FieldBasicInfoForm from '@/components/forms/FieldBasicInfoForm';
 import FieldScheduleForm from '@/components/forms/FieldScheduleForm';
 import FieldAmenitiesForm from '@/components/forms/FieldAmenitiesForm';
@@ -48,36 +51,80 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     longitude: null as number | null
   });
 
-  const { geocodeFieldAddress, isLoading: isGeocoding, error: geocodingError } = useGeocodingService();
+  const { 
+    geocodeFieldAddress, 
+    manualGeocode,
+    isLoading: isGeocoding, 
+    error: geocodingError,
+    isApiReady,
+    initializeGoogleMaps,
+    clearError
+  } = useGeocodingService();
+
+  // Charger Google Maps API au montage du composant
+  useEffect(() => {
+    initializeGoogleMaps();
+  }, [initializeGoogleMaps]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Effacer les erreurs de géocodage quand l'utilisateur modifie l'adresse
+    if ((field === 'address' || field === 'city') && geocodingError) {
+      clearError();
+    }
   };
 
-  // Géocodage automatique quand l'adresse ou la ville change
-  useEffect(() => {
-    const geocodeAddress = async () => {
-      if (formData.address && formData.city) {
-        console.log('🔍 Géocodage automatique de l\'adresse...');
-        const result = await geocodeFieldAddress(formData.address, formData.city);
-        
-        if (result) {
-          setFormData(prev => ({
-            ...prev,
-            latitude: result.latitude,
-            longitude: result.longitude
-          }));
-          toast.success('📍 Adresse localisée avec succès !');
-        } else if (geocodingError) {
-          toast.error(`❌ ${geocodingError}`);
-        }
-      }
-    };
+  // Fonction de géocodage avec debounce
+  const performGeocode = useCallback(async (address: string, city: string) => {
+    if (!address.trim() || !city.trim()) return;
+    
+    console.log('🔍 Début du géocodage automatique...');
+    const result = await geocodeFieldAddress(address.trim(), city.trim());
+    
+    if (result) {
+      setFormData(prev => ({
+        ...prev,
+        latitude: result.latitude,
+        longitude: result.longitude
+      }));
+      toast.success('📍 Adresse localisée avec succès !');
+    } else if (geocodingError) {
+      toast.error(`❌ ${geocodingError}`);
+    }
+  }, [geocodeFieldAddress, geocodingError]);
 
-    // Debounce pour éviter trop d'appels
-    const timer = setTimeout(geocodeAddress, 1000);
+  // Géocodage automatique avec debounce amélioré
+  useEffect(() => {
+    if (!isApiReady) return;
+
+    const timer = setTimeout(() => {
+      if (formData.address && formData.city) {
+        performGeocode(formData.address, formData.city);
+      }
+    }, 2000); // Attendre 2 secondes après la dernière modification
+
     return () => clearTimeout(timer);
-  }, [formData.address, formData.city, geocodeFieldAddress, geocodingError]);
+  }, [formData.address, formData.city, isApiReady, performGeocode]);
+
+  // Géocodage manuel
+  const handleManualGeocode = async () => {
+    if (!formData.address.trim() || !formData.city.trim()) {
+      toast.error('Veuillez saisir une adresse et une ville');
+      return;
+    }
+
+    const result = await manualGeocode(formData.address.trim(), formData.city.trim());
+    
+    if (result) {
+      setFormData(prev => ({
+        ...prev,
+        latitude: result.latitude,
+        longitude: result.longitude
+      }));
+      toast.success('📍 Adresse localisée avec succès !');
+    }
+  };
 
   const handleAmenityChange = (amenity: string, checked: boolean) => {
     setFormData(prev => ({
@@ -96,7 +143,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     e.preventDefault();
     
     if (!formData.latitude || !formData.longitude) {
-      toast.error('📍 Veuillez saisir une adresse valide pour localiser le terrain');
+      toast.error('📍 Veuillez localiser le terrain en saisissant une adresse valide');
       return;
     }
     
@@ -124,18 +171,65 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     <Card className="max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle>Informations du terrain</CardTitle>
+        
+        {/* État de l'API Google Maps */}
+        {!isApiReady && (
+          <div className="text-sm text-amber-600 flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600"></div>
+            <span>Chargement de Google Maps...</span>
+          </div>
+        )}
+
+        {/* État du géocodage */}
         {isGeocoding && (
-          <div className="text-sm text-gray-600 flex items-center space-x-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+          <div className="text-sm text-blue-600 flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
             <span>Localisation de l'adresse en cours...</span>
           </div>
         )}
+
+        {/* État de localisation réussie */}
         {formData.latitude && formData.longitude && (
-          <div className="text-sm text-green-600">
-            ✅ Terrain localisé : {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+          <div className="text-sm text-green-600 flex items-center space-x-2">
+            <MapPin className="w-4 h-4" />
+            <span>
+              ✅ Terrain localisé : {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+            </span>
           </div>
         )}
+
+        {/* Erreurs de géocodage */}
+        {geocodingError && (
+          <div className="text-sm text-red-600 flex items-center justify-between p-3 bg-red-50 rounded-md">
+            <span>❌ {geocodingError}</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleManualGeocode}
+              disabled={isGeocoding || !isApiReady}
+              className="ml-2"
+            >
+              <RefreshCw className="w-3 h-3 mr-1" />
+              Réessayer
+            </Button>
+          </div>
+        )}
+
+        {/* Bouton de géocodage manuel */}
+        {isApiReady && formData.address && formData.city && !formData.latitude && !isGeocoding && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleManualGeocode}
+            className="w-fit"
+          >
+            <MapPin className="w-4 h-4 mr-2" />
+            Localiser l'adresse
+          </Button>
+        )}
       </CardHeader>
+      
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <FieldBasicInfoForm
