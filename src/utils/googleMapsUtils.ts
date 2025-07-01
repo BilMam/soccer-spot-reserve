@@ -1,4 +1,3 @@
-
 // Déclaration globale pour Google Maps
 declare global {
   interface Window {
@@ -113,7 +112,7 @@ export const MYSPORT_MAP_STYLES = [
 // Clé API Google Maps
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyCNNLn7HVkUSRlrWn2Qsz_0aEQP99j7LLs';
 
-// Fonction pour charger Google Maps de manière asynchrone
+// Fonction pour charger Google Maps de manière asynchrone avec clustering
 export const loadGoogleMaps = (apiKey: string = GOOGLE_MAPS_API_KEY): Promise<any> => {
   return new Promise((resolve, reject) => {
     if (window.google && window.google.maps) {
@@ -122,11 +121,12 @@ export const loadGoogleMaps = (apiKey: string = GOOGLE_MAPS_API_KEY): Promise<an
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,places&callback=initMap`;
     script.async = true;
     script.defer = true;
     
-    script.onload = () => {
+    // Créer une fonction callback globale
+    (window as any).initMap = () => {
       if (window.google && window.google.maps) {
         resolve(window.google);
       } else {
@@ -140,6 +140,37 @@ export const loadGoogleMaps = (apiKey: string = GOOGLE_MAPS_API_KEY): Promise<an
     
     document.head.appendChild(script);
   });
+};
+
+// Fonction de géocodage pour convertir une adresse en coordonnées
+export const geocodeAddress = async (address: string): Promise<{lat: number, lng: number} | null> => {
+  if (!window.google || !window.google.maps) {
+    console.warn('Google Maps API not loaded yet');
+    return null;
+  }
+
+  const geocoder = new window.google.maps.Geocoder();
+  
+  try {
+    const results = await new Promise((resolve, reject) => {
+      geocoder.geocode({ address }, (results: any, status: any) => {
+        if (status === 'OK' && results && results.length > 0) {
+          resolve(results);
+        } else {
+          reject(new Error(`Geocoding failed: ${status}`));
+        }
+      });
+    });
+
+    const location = (results as any)[0].geometry.location;
+    return {
+      lat: location.lat(),
+      lng: location.lng()
+    };
+  } catch (error) {
+    console.error('Erreur de géocodage:', error);
+    return null;
+  }
 };
 
 // Fonction pour créer un marqueur personnalisé
@@ -186,4 +217,95 @@ export const createInfoWindowContent = (field: any): string => {
       </div>
     </div>
   `;
+};
+
+// Fonction pour créer des clusters de marqueurs
+export const createMarkerCluster = (map: any, markers: any[]) => {
+  if (!window.google || !window.google.maps) {
+    console.warn('Google Maps API not loaded yet');
+    return null;
+  }
+
+  // Configuration du clusterer simple
+  const clusters: any[] = [];
+  const clusterDistance = 50; // Distance en pixels pour regrouper les marqueurs
+
+  // Fonction pour calculer la distance entre deux points sur la carte
+  const getPixelDistance = (marker1: any, marker2: any) => {
+    const projection = map.getProjection();
+    if (!projection) return Infinity;
+
+    const point1 = projection.fromLatLngToPoint(marker1.getPosition());
+    const point2 = projection.fromLatLngToPoint(marker2.getPosition());
+    
+    const dx = (point1.x - point2.x) * Math.pow(2, map.getZoom());
+    const dy = (point1.y - point2.y) * Math.pow(2, map.getZoom());
+    
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // Regrouper les marqueurs proches
+  markers.forEach(marker => {
+    let addedToCluster = false;
+    
+    for (let cluster of clusters) {
+      if (getPixelDistance(marker, cluster.markers[0]) < clusterDistance) {
+        cluster.markers.push(marker);
+        addedToCluster = true;
+        break;
+      }
+    }
+    
+    if (!addedToCluster) {
+      clusters.push({
+        markers: [marker],
+        center: marker.getPosition()
+      });
+    }
+  });
+
+  // Créer les clusters visuels
+  clusters.forEach(cluster => {
+    if (cluster.markers.length > 1) {
+      // Masquer les marqueurs individuels
+      cluster.markers.forEach((marker: any) => marker.setVisible(false));
+      
+      // Créer un marqueur cluster
+      const clusterMarker = new window.google.maps.Marker({
+        position: cluster.center,
+        map: map,
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 20,
+          fillColor: '#16a34a',
+          fillOpacity: 0.8,
+          strokeColor: '#ffffff',
+          strokeWeight: 3,
+        },
+        label: {
+          text: cluster.markers.length.toString(),
+          color: 'white',
+          fontWeight: 'bold',
+          fontSize: '12px'
+        }
+      });
+
+      // Ajouter un événement de clic pour zoomer sur le cluster
+      clusterMarker.addListener('click', () => {
+        const bounds = new window.google.maps.LatLngBounds();
+        cluster.markers.forEach((marker: any) => {
+          bounds.extend(marker.getPosition());
+        });
+        map.fitBounds(bounds);
+        
+        // Après le zoom, afficher les marqueurs individuels
+        setTimeout(() => {
+          cluster.markers.forEach((marker: any) => marker.setVisible(true));
+          clusterMarker.setVisible(false);
+        }, 500);
+      });
+    }
+  });
+
+  return clusters;
 };

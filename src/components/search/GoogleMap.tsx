@@ -1,8 +1,7 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { MapPin } from 'lucide-react';
-import { loadGoogleMaps, ABIDJAN_CONFIG, MYSPORT_MAP_STYLES, createCustomMarker, createInfoWindowContent } from '@/utils/googleMapsUtils';
+import { loadGoogleMaps, ABIDJAN_CONFIG, MYSPORT_MAP_STYLES, createInfoWindowContent, createMarkerCluster } from '@/utils/googleMapsUtils';
 
 interface Field {
   id: string;
@@ -24,6 +23,7 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const clustersRef = useRef<any[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState('');
 
@@ -44,8 +44,35 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
     };
 
     map.current = new window.google.maps.Map(mapContainer.current, mapOptions);
+    
+    // Écouter les changements de zoom pour recalculer les clusters
+    map.current.addListener('zoom_changed', () => {
+      if (markersRef.current.length > 0) {
+        updateMarkerClusters();
+      }
+    });
+    
     setIsLoaded(true);
     console.log('🗺️ Carte Google Maps initialisée avec succès');
+  };
+
+  // Fonction pour mettre à jour les clusters
+  const updateMarkerClusters = () => {
+    if (!map.current || markersRef.current.length === 0) return;
+
+    // Nettoyer les anciens clusters
+    clustersRef.current.forEach(cluster => {
+      if (cluster.setMap) cluster.setMap(null);
+    });
+    clustersRef.current = [];
+
+    // Créer de nouveaux clusters
+    const markers = markersRef.current.map(item => item.marker);
+    const clusters = createMarkerCluster(map.current, markers);
+    
+    if (clusters) {
+      clustersRef.current = clusters;
+    }
   };
 
   // Charger Google Maps automatiquement
@@ -70,9 +97,14 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
 
     console.log('📍 Mise à jour des marqueurs:', fields.length);
 
-    // Supprimer les anciens marqueurs
-    markersRef.current.forEach(marker => marker.setMap(null));
+    // Supprimer les anciens marqueurs et clusters
+    markersRef.current.forEach(item => item.marker.setMap(null));
     markersRef.current = [];
+    
+    clustersRef.current.forEach(cluster => {
+      if (cluster.setMap) cluster.setMap(null);
+    });
+    clustersRef.current = [];
 
     if (fields.length === 0) return;
 
@@ -86,7 +118,7 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
         
         const position = { lat: field.latitude, lng: field.longitude };
         
-        // Créer un marqueur personnalisé
+        // Créer un marqueur
         const marker = new window.google.maps.Marker({
           position,
           map: map.current,
@@ -127,11 +159,15 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
       } else {
         map.current.fitBounds(bounds);
         
-        // Éviter un zoom trop important
+        // Éviter un zoom trop important et créer les clusters
         const listener = window.google.maps.event.addListenerOnce(map.current, 'bounds_changed', () => {
           if (map.current.getZoom() > 15) {
             map.current.setZoom(15);
           }
+          // Créer les clusters après le zoom
+          setTimeout(() => {
+            updateMarkerClusters();
+          }, 100);
         });
       }
     }
