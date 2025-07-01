@@ -17,19 +17,21 @@ interface Field {
 interface SearchMapProps {
   fields: Field[];
   onFieldSelect?: (fieldId: string) => void;
-  mapboxToken: string;
 }
 
-const SearchMap: React.FC<SearchMapProps> = ({ fields, onFieldSelect, mapboxToken }) => {
+const SearchMap: React.FC<SearchMapProps> = ({ fields, onFieldSelect }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
 
+  // Token Mapbox intégré
+  const MAPBOX_TOKEN = 'pk.eyJ1IjoibWFtc2JpbCIsImEiOiJjbWNqcnE0bGowN3FlMm1za25ibGd4a3RhIn0.h4ayTwrTWhAZn95KnLWA9A';
+
   useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
+    if (!mapContainer.current) return;
 
     // Initialize map
-    mapboxgl.accessToken = mapboxToken;
+    mapboxgl.accessToken = MAPBOX_TOKEN;
     
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -54,7 +56,7 @@ const SearchMap: React.FC<SearchMapProps> = ({ fields, onFieldSelect, mapboxToke
     return () => {
       map.current?.remove();
     };
-  }, [mapboxToken]);
+  }, []);
 
   useEffect(() => {
     if (!map.current || !mapLoaded) return;
@@ -119,27 +121,6 @@ const SearchMap: React.FC<SearchMapProps> = ({ fields, onFieldSelect, mapboxToke
       }
     }
   }, [fields, mapLoaded, onFieldSelect]);
-
-  if (!mapboxToken) {
-    return (
-      <Card className="p-8 text-center">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Configuration Mapbox requise</h3>
-          <p className="text-gray-600">
-            Pour afficher la carte, veuillez configurer votre token Mapbox dans les paramètres.
-          </p>
-          <a 
-            href="https://mapbox.com/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors"
-          >
-            Obtenir un token Mapbox
-          </a>
-        </div>
-      </Card>
-    );
-  }
 
   return (
     <div className="relative w-full h-96 rounded-lg overflow-hidden shadow-md">

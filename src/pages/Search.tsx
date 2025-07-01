@@ -7,7 +7,6 @@ import SearchFilters from '@/components/search/SearchFilters';
 import SearchHeader from '@/components/search/SearchHeader';
 import SearchResults from '@/components/search/SearchResults';
 import SearchMap from '@/components/search/SearchMap';
-import MapboxTokenInput from '@/components/search/MapboxTokenInput';
 import ViewToggle from '@/components/search/ViewToggle';
 import FieldCard from '@/components/FieldCard';
 import { useSearchQuery } from '@/hooks/useSearchQuery';
@@ -15,7 +14,6 @@ import { useSearchQuery } from '@/hooks/useSearchQuery';
 const Search = () => {
   const [searchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
-  const [mapboxToken, setMapboxToken] = useState<string>('');
   const [filters, setFilters] = useState({
     priceMin: '',
     priceMax: '',
@@ -62,11 +60,6 @@ const Search = () => {
     }
   };
 
-  const handleTokenSubmit = (token: string) => {
-    setMapboxToken(token);
-    setViewMode('map');
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -81,20 +74,12 @@ const Search = () => {
           <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
         </div>
 
-        {/* Map Token Input Modal */}
-        {viewMode === 'map' && !mapboxToken && (
-          <div className="mb-8">
-            <MapboxTokenInput onTokenSubmit={handleTokenSubmit} />
-          </div>
-        )}
-
         {/* Map View */}
-        {viewMode === 'map' && mapboxToken && (
+        {viewMode === 'map' && (
           <div className="mb-8">
             <SearchMap 
               fields={transformedFields}
               onFieldSelect={handleFieldSelect}
-              mapboxToken={mapboxToken}
             />
           </div>
         )}
@@ -131,7 +116,7 @@ const Search = () => {
         )}
 
         {/* Results below map in map view */}
-        {viewMode === 'map' && mapboxToken && (
+        {viewMode === 'map' && (
           <div className="mt-8">
             <h3 className="text-lg font-semibold mb-4">Tous les terrains</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

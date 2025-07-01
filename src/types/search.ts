@@ -12,6 +12,8 @@ export interface Field {
   amenities: string[];
   capacity: number;
   field_type: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface SearchFilters {
