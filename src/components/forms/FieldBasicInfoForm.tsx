@@ -1,9 +1,9 @@
-
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MapPin } from 'lucide-react';
 
 interface FieldBasicInfoFormProps {
   formData: {
@@ -136,6 +136,20 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
           placeholder="Ex: Rue des Sports, Cocody, Abidjan"
           required
         />
+        
+        {/* Indication d'aide pour l'adresse */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="flex items-start space-x-2">
+            <MapPin className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-blue-800">
+              <p className="font-medium mb-1">💡 Conseil pour une localisation précise :</p>
+              <p>
+                Copiez l'adresse directement depuis <strong>Google Maps</strong> et collez-la ici, 
+                ou utilisez le bouton <strong>"Utiliser ma position"</strong> ci-dessus pour une géolocalisation automatique.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-2">
