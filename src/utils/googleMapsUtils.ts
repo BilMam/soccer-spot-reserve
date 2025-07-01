@@ -114,7 +114,7 @@ export const MYSPORT_MAP_STYLES = [
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyCNNLn7HVkUSRlrWn2Qsz_0aEQP99j7LLs';
 
 // Fonction pour charger Google Maps de manière asynchrone
-export const loadGoogleMaps = (apiKey: string = GOOGLE_MAPS_API_KEY): Promise<typeof google> => {
+export const loadGoogleMaps = (apiKey: string = GOOGLE_MAPS_API_KEY): Promise<any> => {
   return new Promise((resolve, reject) => {
     if (window.google && window.google.maps) {
       resolve(window.google);
@@ -144,6 +144,12 @@ export const loadGoogleMaps = (apiKey: string = GOOGLE_MAPS_API_KEY): Promise<ty
 
 // Fonction pour créer un marqueur personnalisé
 export const createCustomMarker = (field: any) => {
+  // Vérification que Google Maps est disponible
+  if (!window.google || !window.google.maps) {
+    console.warn('Google Maps API not loaded yet');
+    return null;
+  }
+
   return {
     position: { lat: field.latitude, lng: field.longitude },
     icon: {
