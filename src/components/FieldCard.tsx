@@ -44,6 +44,7 @@ const FieldCard: React.FC<FieldCardProps> = ({ field }) => {
 
   return (
     <Card 
+      id={`field-${field.id}`}
       className="group cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 shadow-md"
       onClick={handleClick}
     >

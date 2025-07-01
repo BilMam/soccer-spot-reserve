@@ -6,11 +6,16 @@ import SearchBar from '@/components/SearchBar';
 import SearchFilters from '@/components/search/SearchFilters';
 import SearchHeader from '@/components/search/SearchHeader';
 import SearchResults from '@/components/search/SearchResults';
+import SearchMap from '@/components/search/SearchMap';
+import MapboxTokenInput from '@/components/search/MapboxTokenInput';
+import ViewToggle from '@/components/search/ViewToggle';
+import FieldCard from '@/components/FieldCard';
 import { useSearchQuery } from '@/hooks/useSearchQuery';
 
 const Search = () => {
   const [searchParams] = useSearchParams();
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
+  const [mapboxToken, setMapboxToken] = useState<string>('');
   const [filters, setFilters] = useState({
     priceMin: '',
     priceMax: '',
@@ -44,8 +49,23 @@ const Search = () => {
     capacity: field.capacity,
     type: field.field_type === 'natural_grass' ? 'Gazon naturel' :
           field.field_type === 'synthetic' ? 'Synthétique' :
-          field.field_type === 'indoor' ? 'Indoor' : 'Bitume'
+          field.field_type === 'indoor' ? 'Indoor' : 'Bitume',
+    latitude: field.latitude,
+    longitude: field.longitude
   })) || [];
+
+  const handleFieldSelect = (fieldId: string) => {
+    // Scroll to the field card or navigate to field detail
+    const fieldElement = document.getElementById(`field-${fieldId}`);
+    if (fieldElement) {
+      fieldElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleTokenSubmit = (token: string) => {
+    setMapboxToken(token);
+    setViewMode('map');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -56,34 +76,71 @@ const Search = () => {
           <SearchBar />
         </div>
 
-        {/* Mobile: Stack vertically, Desktop: Side by side */}
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Filters - Full width on mobile, sidebar on desktop */}
-          <div className="w-full lg:w-1/4">
-            <SearchFilters 
-              filters={filters}
-              onFiltersChange={setFilters}
-            />
-          </div>
-
-          {/* Results - Full width on mobile, main content on desktop */}
-          <div className="w-full lg:flex-1">
-            <SearchHeader
-              resultsCount={transformedFields.length}
-              location={location}
-              date={date}
-              timeSlot={timeSlot}
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-            />
-
-            <SearchResults
-              fields={transformedFields}
-              isLoading={isLoading}
-              viewMode={viewMode}
-            />
-          </div>
+        {/* Mobile View Toggle */}
+        <div className="md:hidden mb-4">
+          <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
         </div>
+
+        {/* Map Token Input Modal */}
+        {viewMode === 'map' && !mapboxToken && (
+          <div className="mb-8">
+            <MapboxTokenInput onTokenSubmit={handleTokenSubmit} />
+          </div>
+        )}
+
+        {/* Map View */}
+        {viewMode === 'map' && mapboxToken && (
+          <div className="mb-8">
+            <SearchMap 
+              fields={transformedFields}
+              onFieldSelect={handleFieldSelect}
+              mapboxToken={mapboxToken}
+            />
+          </div>
+        )}
+
+        {/* List/Grid Views */}
+        {viewMode !== 'map' && (
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Filters - Full width on mobile, sidebar on desktop */}
+            <div className="w-full lg:w-1/4">
+              <SearchFilters 
+                filters={filters}
+                onFiltersChange={setFilters}
+              />
+            </div>
+
+            {/* Results - Full width on mobile, main content on desktop */}
+            <div className="w-full lg:flex-1">
+              <SearchHeader
+                resultsCount={transformedFields.length}
+                location={location}
+                date={date}
+                timeSlot={timeSlot}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+              />
+
+              <SearchResults
+                fields={transformedFields}
+                isLoading={isLoading}
+                viewMode={viewMode}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Results below map in map view */}
+        {viewMode === 'map' && mapboxToken && (
+          <div className="mt-8">
+            <h3 className="text-lg font-semibold mb-4">Tous les terrains</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {transformedFields.map((field) => (
+                <FieldCard key={field.id} field={field} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

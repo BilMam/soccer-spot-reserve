@@ -1,15 +1,15 @@
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { MapPin, Grid, List } from 'lucide-react';
+import { MapPin } from 'lucide-react';
+import ViewToggle from './ViewToggle';
 
 interface SearchHeaderProps {
   resultsCount: number;
   location?: string;
   date?: string;
   timeSlot?: string;
-  viewMode: 'grid' | 'list';
-  onViewModeChange: (mode: 'grid' | 'list') => void;
+  viewMode: 'grid' | 'list' | 'map';
+  onViewModeChange: (mode: 'grid' | 'list' | 'map') => void;
 }
 
 const SearchHeader: React.FC<SearchHeaderProps> = ({
@@ -39,21 +39,8 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
         </span>
       </div>
       
-      <div className="hidden md:flex items-center space-x-2">
-        <Button
-          variant={viewMode === 'grid' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => onViewModeChange('grid')}
-        >
-          <Grid className="w-4 h-4" />
-        </Button>
-        <Button
-          variant={viewMode === 'list' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => onViewModeChange('list')}
-        >
-          <List className="w-4 h-4" />
-        </Button>
+      <div className="hidden md:flex">
+        <ViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
       </div>
     </div>
   );
