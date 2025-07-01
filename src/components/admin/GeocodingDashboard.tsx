@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
-import { MapPin, CheckCircle, XCircle, RefreshCw, AlertTriangle, X } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { geocodeExistingFields } from '@/utils/geocodingUtils';
+import { GeocodingStats } from './geocoding/GeocodingStats';
+import { GeocodingProgress } from './geocoding/GeocodingProgress';
+import { GeocodingActions } from './geocoding/GeocodingActions';
+import { GeocodingResults } from './geocoding/GeocodingResults';
 
-interface GeocodingStats {
+interface GeocodingStatsType {
   total: number;
   withCoordinates: number;
   withoutCoordinates: number;
@@ -17,7 +18,7 @@ interface GeocodingStats {
 }
 
 const GeocodingDashboard: React.FC = () => {
-  const [stats, setStats] = useState<GeocodingStats>({
+  const [stats, setStats] = useState<GeocodingStatsType>({
     total: 0,
     withCoordinates: 0,
     withoutCoordinates: 0,
@@ -129,177 +130,22 @@ const GeocodingDashboard: React.FC = () => {
     );
   }
 
-  const completionRate = stats.total > 0 ? (stats.withCoordinates / stats.total) * 100 : 0;
-
   return (
     <div className="space-y-6">
-      {/* Statistiques générales */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <MapPin className="w-5 h-5 text-blue-500" />
-              <div>
-                <p className="text-sm text-gray-600">Total des terrains</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              <div>
-                <p className="text-sm text-gray-600">Avec coordionnées</p>
-                <p className="text-2xl font-bold text-green-600">{stats.withCoordinates}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <XCircle className="w-5 h-5 text-red-500" />
-              <div>
-                <p className="text-sm text-gray-600">Sans coordonnées</p>
-                <p className="text-2xl font-bold text-red-600">{stats.withoutCoordinates}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <RefreshCw className="w-5 h-5 text-purple-500" />
-              <div>
-                <p className="text-sm text-gray-600">Mis à jour (24h)</p>
-                <p className="text-2xl font-bold text-purple-600">{stats.recentlyUpdated}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Progression globale */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Progression du géocodage</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex justify-between text-sm">
-              <span>Terrains géocodés</span>
-              <span>{completionRate.toFixed(1)}%</span>
-            </div>
-            <Progress value={completionRate} className="h-2" />
-            <p className="text-sm text-gray-600">
-              {stats.withCoordinates} sur {stats.total} terrains ont des coordonnées GPS
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Actions de géocodage */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Actions de géocodage</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {stats.withoutCoordinates > 0 ? (
-            <Alert>
-              <AlertTriangle className="w-4 h-4" />
-              <AlertDescription>
-                {stats.withoutCoordinates} terrain(s) n'ont pas de coordonnées GPS. 
-                Le géocodage automatique va tenter de les localiser.
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <Alert>
-              <CheckCircle className="w-4 h-4" />
-              <AlertDescription>
-                Tous les terrains ont des coordonnées GPS ! 🎉
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="flex space-x-3">
-            <Button
-              onClick={handleBulkGeocode}
-              disabled={isGeocoding || stats.withoutCoordinates === 0}
-              className="flex-1"
-            >
-              {isGeocoding ? (
-                <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <MapPin className="w-4 h-4 mr-2" />
-              )}
-              {isGeocoding ? 'Géocodage en cours...' : 'Géocoder tous les terrains'}
-            </Button>
-
-            <Button
-              onClick={fetchStats}
-              variant="outline"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Actualiser
-            </Button>
-          </div>
-
-          {isGeocoding && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Progression</span>
-                <span>{geocodingProgress}%</span>
-              </div>
-              <Progress value={geocodingProgress} className="h-2" />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Résultats du géocodage */}
+      <GeocodingStats stats={stats} />
+      <GeocodingProgress stats={stats} />
+      <GeocodingActions
+        stats={stats}
+        isGeocoding={isGeocoding}
+        geocodingProgress={geocodingProgress}
+        onBulkGeocode={handleBulkGeocode}
+        onRefreshStats={fetchStats}
+      />
       {geocodingResults && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex justify-between items-center">
-              <span>Résultats du géocodage</span>
-              <Button onClick={resetGeocodingResults} size="sm" variant="outline">
-                <X className="w-4 h-4" />
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">{geocodingResults.success}</p>
-                <p className="text-sm text-gray-600">Réussis</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-red-600">{geocodingResults.failed}</p>
-                <p className="text-sm text-gray-600">Échecs</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600">{geocodingResults.total}</p>
-                <p className="text-sm text-gray-600">Total traités</p>
-              </div>
-            </div>
-
-            {geocodingResults.errors.length > 0 && (
-              <div>
-                <h4 className="font-medium text-red-600 mb-2">Erreurs rencontrées:</h4>
-                <div className="space-y-1 max-h-40 overflow-y-auto">
-                  {geocodingResults.errors.map((error: string, i: number) => (
-                    <p key={i} className="text-sm text-red-600">• {error}</p>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <GeocodingResults
+          results={geocodingResults}
+          onReset={resetGeocodingResults}
+        />
       )}
     </div>
   );
