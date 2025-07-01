@@ -14,6 +14,15 @@ export interface Field {
   field_type: string;
   latitude?: number;
   longitude?: number;
+  // Adding missing Supabase fields
+  owner_id: string;
+  description?: string;
+  availability_start: string;
+  availability_end: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  currency: string;
 }
 
 export interface SearchFilters {
