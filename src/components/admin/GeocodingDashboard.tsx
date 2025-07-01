@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { MapPin, CheckCircle, XCircle, RefreshCw, AlertTriangle } from 'lucide-react';
+import { MapPin, CheckCircle, XCircle, RefreshCw, AlertTriangle, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { geocodeExistingFields } from '@/utils/geocodingUtils';
