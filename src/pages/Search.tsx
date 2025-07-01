@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -35,13 +34,6 @@ const Search = () => {
     timeSlot,
     players,
     filters
-  });
-
-  console.log('📊 Search Page - Données reçues du hook:', {
-    fieldsCount: fields?.length,
-    isLoading,
-    fieldsWithGPS: fields?.filter(f => f.latitude && f.longitude).length,
-    fieldsWithoutGPS: fields?.filter(f => !f.latitude || !f.longitude).length
   });
 
   const transformedFields = fields?.map(field => {
@@ -145,8 +137,6 @@ const Search = () => {
                 location={location}
                 date={date}
                 timeSlot={timeSlot}
-                viewMode={viewMode}
-                onViewModeChange={setViewMode}
               />
 
               <SearchResults
