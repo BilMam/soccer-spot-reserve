@@ -6,7 +6,7 @@ import SearchBar from '@/components/SearchBar';
 import SearchFilters from '@/components/search/SearchFilters';
 import SearchHeader from '@/components/search/SearchHeader';
 import SearchResults from '@/components/search/SearchResults';
-import SearchMap from '@/components/search/SearchMap';
+import GoogleMap from '@/components/search/GoogleMap';
 import ViewToggle from '@/components/search/ViewToggle';
 import FieldCard from '@/components/FieldCard';
 import { useSearchQuery } from '@/hooks/useSearchQuery';
@@ -77,7 +77,7 @@ const Search = () => {
         {/* Map View */}
         {viewMode === 'map' && (
           <div className="mb-8">
-            <SearchMap 
+            <GoogleMap 
               fields={transformedFields}
               onFieldSelect={handleFieldSelect}
             />
