@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,12 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader } from 'lucide-react';
+import { Loader, MapPin, Locate } from 'lucide-react';
 import ImageUpload from '@/components/ImageUpload';
 import FieldBasicInfoForm from './FieldBasicInfoForm';
 import FieldScheduleForm from './FieldScheduleForm';
 import FieldAmenitiesForm from './FieldAmenitiesForm';
 import ErrorAlert from '@/components/ErrorAlert';
+import { useGeocodingService } from '@/hooks/useGeocodingService';
+import { toast } from 'sonner';
 
 interface EditFieldFormProps {
   fieldId: string;
@@ -21,7 +23,7 @@ interface EditFieldFormProps {
 const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { toast: uiToast } = useToast();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -35,13 +37,32 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
     availability_start: '08:00',
     availability_end: '22:00',
     amenities: [] as string[],
-    images: [] as string[]
+    images: [] as string[],
+    latitude: null as number | null,
+    longitude: null as number | null
   });
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldOwner, setFieldOwner] = useState<string | null>(null);
+  const [locationSource, setLocationSource] = useState<'geocoding' | 'geolocation' | null>(null);
+
+  const { 
+    geocodeFieldAddress, 
+    getCurrentLocation,
+    isLoading: isGeocoding,
+    isGeolocating,
+    error: geocodingError,
+    isApiReady,
+    initializeGoogleMaps,
+    clearError
+  } = useGeocodingService();
+
+  // Charger Google Maps API au montage du composant
+  useEffect(() => {
+    initializeGoogleMaps();
+  }, [initializeGoogleMaps]);
 
   useEffect(() => {
     const fetchField = async () => {
@@ -91,8 +112,15 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
           availability_start: data.availability_start || '08:00',
           availability_end: data.availability_end || '22:00',
           amenities: data.amenities || [],
-          images: data.images || []
+          images: data.images || [],
+          latitude: data.latitude || null,
+          longitude: data.longitude || null
         });
+
+        // Définir la source de localisation si les coordonnées existent
+        if (data.latitude && data.longitude) {
+          setLocationSource('geocoding');
+        }
       } catch (error: any) {
         console.error('Error in fetchField:', error);
         setError(`Impossible de charger les données du terrain: ${error.message}`);
@@ -102,10 +130,76 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
     };
 
     fetchField();
-  }, [fieldId, user, navigate, toast]);
+  }, [fieldId, user, navigate, uiToast]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Effacer les coordonnées et les erreurs quand l'utilisateur modifie l'adresse
+    if ((field === 'address' || field === 'city') && geocodingError) {
+      clearError();
+    }
+    
+    // Si l'utilisateur modifie l'adresse après avoir utilisé la géolocalisation, effacer les coordonnées
+    if ((field === 'address' || field === 'city') && locationSource === 'geolocation') {
+      setFormData(prev => ({
+        ...prev,
+        latitude: null,
+        longitude: null
+      }));
+      setLocationSource(null);
+    }
+  };
+
+  // Fonction de géocodage avec debounce
+  const performGeocode = useCallback(async (address: string, city: string) => {
+    if (!address.trim() || !city.trim()) return;
+    
+    console.log('🔍 Début du géocodage automatique...');
+    const result = await geocodeFieldAddress(address.trim(), city.trim());
+    
+    if (result) {
+      setFormData(prev => ({
+        ...prev,
+        latitude: result.latitude,
+        longitude: result.longitude
+      }));
+      setLocationSource('geocoding');
+      toast.success('📍 Adresse localisée avec succès !');
+    } else if (geocodingError) {
+      toast.error(`❌ ${geocodingError}`);
+    }
+  }, [geocodeFieldAddress, geocodingError]);
+
+  // Géocodage automatique avec debounce
+  useEffect(() => {
+    if (!isApiReady || locationSource === 'geolocation') return;
+
+    const timer = setTimeout(() => {
+      if (formData.address && formData.city) {
+        performGeocode(formData.address, formData.city);
+      }
+    }, 2000); // Attendre 2 secondes après la dernière modification
+
+    return () => clearTimeout(timer);
+  }, [formData.address, formData.city, isApiReady, performGeocode, locationSource]);
+
+  // Géolocalisation utilisateur
+  const handleUserGeolocation = async () => {
+    const result = await getCurrentLocation();
+    
+    if (result) {
+      setFormData(prev => ({
+        ...prev,
+        latitude: result.latitude,
+        longitude: result.longitude,
+        // Optionnellement pré-remplir l'adresse si elle a été trouvée
+        address: result.address.includes(',') ? result.address.split(',')[0].trim() : prev.address,
+        city: result.address.includes(',') ? result.address.split(',')[1]?.trim() || prev.city : prev.city
+      }));
+      setLocationSource('geolocation');
+      toast.success('📍 Position géolocalisée avec succès !');
+    }
   };
 
   const handleAmenityChange = (amenity: string, checked: boolean) => {
@@ -155,6 +249,8 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
         availability_end: formData.availability_end,
         amenities: formData.amenities,
         images: formData.images,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
         updated_at: new Date().toISOString()
       };
 
@@ -179,7 +275,7 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
         throw new Error('Aucune ligne mise à jour. Vérifiez que vous êtes bien le propriétaire de ce terrain.');
       }
 
-      toast({
+      uiToast({
         title: "Terrain mis à jour",
         description: "Les modifications ont été sauvegardées avec succès.",
       });
@@ -189,7 +285,7 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
       console.error('Error in handleSubmit:', error);
       const errorMessage = error.message || 'Erreur inconnue lors de la mise à jour';
       setError(`Impossible de mettre à jour le terrain: ${errorMessage}`);
-      toast({
+      uiToast({
         title: "Erreur",
         description: errorMessage,
         variant: "destructive"
@@ -198,6 +294,8 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
       setIsSubmitting(false);
     }
   };
+
+  const isLocationLoading = isGeocoding || isGeolocating;
 
   if (isLoading) {
     return (
@@ -233,6 +331,63 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
     <Card className="max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle>Informations du terrain</CardTitle>
+        
+        {/* État de l'API Google Maps */}
+        {!isApiReady && (
+          <div className="text-sm text-amber-600 flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600"></div>
+            <span>Chargement de Google Maps...</span>
+          </div>
+        )}
+
+        {/* État du géocodage */}
+        {isGeocoding && (
+          <div className="text-sm text-blue-600 flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            <span>Localisation de l'adresse en cours...</span>
+          </div>
+        )}
+
+        {/* État de la géolocalisation */}
+        {isGeolocating && (
+          <div className="text-sm text-purple-600 flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+            <span>Géolocalisation en cours...</span>
+          </div>
+        )}
+
+        {/* État de localisation réussie */}
+        {formData.latitude && formData.longitude && (
+          <div className="text-sm text-green-600 flex items-center space-x-2">
+            <MapPin className="w-4 h-4" />
+            <span>
+              ✅ Terrain localisé {locationSource === 'geolocation' ? '(via votre position)' : '(via l\'adresse)'} : {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+            </span>
+          </div>
+        )}
+
+        {/* Erreurs de géocodage */}
+        {geocodingError && (
+          <div className="text-sm text-red-600 flex items-center p-3 bg-red-50 rounded-md">
+            <span>❌ {geocodingError}</span>
+          </div>
+        )}
+
+        {/* Bouton de géolocalisation */}
+        {isApiReady && (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleUserGeolocation}
+              disabled={isLocationLoading || !isApiReady}
+              className="flex items-center"
+            >
+              <Locate className="w-4 h-4 mr-2" />
+              {isGeolocating ? 'Géolocalisation...' : 'Utiliser ma position'}
+            </Button>
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -264,7 +419,7 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
             </Button>
             <Button 
               type="submit" 
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLocationLoading}
               className="bg-green-600 hover:bg-green-700"
             >
               {isSubmitting ? 'Mise à jour...' : 'Mettre à jour'}
