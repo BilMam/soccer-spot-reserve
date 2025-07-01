@@ -1,4 +1,11 @@
 
+// Déclaration globale pour Google Maps
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
 // Utilitaires pour Google Maps
 
 export interface GoogleMapsConfig {
@@ -103,8 +110,11 @@ export const MYSPORT_MAP_STYLES = [
   }
 ];
 
+// Clé API Google Maps
+export const GOOGLE_MAPS_API_KEY = 'AIzaSyCNNLn7HVkUSRlrWn2Qsz_0aEQP99j7LLs';
+
 // Fonction pour charger Google Maps de manière asynchrone
-export const loadGoogleMaps = (apiKey: string): Promise<typeof google> => {
+export const loadGoogleMaps = (apiKey: string = GOOGLE_MAPS_API_KEY): Promise<typeof google> => {
   return new Promise((resolve, reject) => {
     if (window.google && window.google.maps) {
       resolve(window.google);
@@ -133,11 +143,11 @@ export const loadGoogleMaps = (apiKey: string): Promise<typeof google> => {
 };
 
 // Fonction pour créer un marqueur personnalisé
-export const createCustomMarker = (google: any, field: any) => {
+export const createCustomMarker = (field: any) => {
   return {
     position: { lat: field.latitude, lng: field.longitude },
     icon: {
-      path: google.maps.SymbolPath.CIRCLE,
+      path: window.google.maps.SymbolPath.CIRCLE,
       scale: 12,
       fillColor: '#16a34a',
       fillOpacity: 1,

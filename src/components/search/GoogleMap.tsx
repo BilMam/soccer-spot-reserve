@@ -1,9 +1,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { MapPin } from 'lucide-react';
+import { loadGoogleMaps, ABIDJAN_CONFIG, MYSPORT_MAP_STYLES, createCustomMarker, createInfoWindowContent } from '@/utils/googleMapsUtils';
 
 interface Field {
   id: string;
@@ -13,6 +12,7 @@ interface Field {
   rating: number;
   latitude?: number;
   longitude?: number;
+  reviews?: number;
 }
 
 interface GoogleMapProps {
@@ -20,51 +20,12 @@ interface GoogleMapProps {
   onFieldSelect?: (fieldId: string) => void;
 }
 
-// Déclaration globale pour Google Maps
-declare global {
-  interface Window {
-    google: any;
-    initGoogleMaps: () => void;
-  }
-}
-
 const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [showInput, setShowInput] = useState(true);
   const [error, setError] = useState('');
-
-  // Fonction pour charger le script Google Maps
-  const loadGoogleMapsScript = (key: string) => {
-    return new Promise((resolve, reject) => {
-      if (window.google && window.google.maps) {
-        resolve(window.google);
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=geometry,places`;
-      script.async = true;
-      script.defer = true;
-      
-      script.onload = () => {
-        if (window.google && window.google.maps) {
-          resolve(window.google);
-        } else {
-          reject(new Error('Google Maps API failed to load'));
-        }
-      };
-      
-      script.onerror = () => {
-        reject(new Error('Failed to load Google Maps script'));
-      };
-      
-      document.head.appendChild(script);
-    });
-  };
 
   // Initialiser la carte
   const initializeMap = () => {
@@ -72,20 +33,10 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
 
     // Configuration de la carte centrée sur Abidjan
     const mapOptions = {
-      center: { lat: 5.347, lng: -3.996 },
-      zoom: 11,
+      center: ABIDJAN_CONFIG.center,
+      zoom: ABIDJAN_CONFIG.zoom,
       mapTypeId: window.google.maps.MapTypeId.ROADMAP,
-      styles: [
-        {
-          featureType: "poi",
-          elementType: "labels",
-          stylers: [{ visibility: "on" }]
-        },
-        {
-          featureType: "poi.business",
-          stylers: [{ visibility: "on" }]
-        }
-      ],
+      styles: MYSPORT_MAP_STYLES,
       mapTypeControl: true,
       streetViewControl: true,
       fullscreenControl: true,
@@ -94,31 +45,36 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
 
     map.current = new window.google.maps.Map(mapContainer.current, mapOptions);
     setIsLoaded(true);
+    console.log('🗺️ Carte Google Maps initialisée avec succès');
   };
 
-  // Charger Google Maps quand la clé API est fournie
+  // Charger Google Maps automatiquement
   useEffect(() => {
-    if (apiKey && !isLoaded) {
-      loadGoogleMapsScript(apiKey)
+    if (!isLoaded) {
+      console.log('🔄 Chargement de Google Maps...');
+      loadGoogleMaps()
         .then(() => {
           initializeMap();
           setError('');
-          setShowInput(false);
         })
         .catch((err) => {
-          console.error('Erreur chargement Google Maps:', err);
-          setError('Erreur lors du chargement de Google Maps. Vérifiez votre clé API.');
+          console.error('❌ Erreur chargement Google Maps:', err);
+          setError('Erreur lors du chargement de Google Maps. Vérifiez votre connexion internet.');
         });
     }
-  }, [apiKey, isLoaded]);
+  }, [isLoaded]);
 
   // Gérer les marqueurs
   useEffect(() => {
     if (!map.current || !isLoaded || !window.google) return;
 
+    console.log('📍 Mise à jour des marqueurs:', fields.length);
+
     // Supprimer les anciens marqueurs
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current = [];
+
+    if (fields.length === 0) return;
 
     // Ajouter les nouveaux marqueurs
     const bounds = new window.google.maps.LatLngBounds();
@@ -147,28 +103,18 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
 
         // Créer une InfoWindow
         const infoWindow = new window.google.maps.InfoWindow({
-          content: `
-            <div style="padding: 8px; min-width: 200px;">
-              <h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">${field.name}</h3>
-              <p style="margin: 0 0 4px 0; font-size: 12px; color: #666;">${field.location}</p>
-              <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #16a34a;">
-                ${field.price.toLocaleString()} XOF/h
-              </p>
-              <div style="display: flex; align-items: center; margin-top: 4px;">
-                <span style="color: #fbbf24; margin-right: 4px;">★</span>
-                <span style="font-size: 12px;">${field.rating}</span>
-              </div>
-            </div>
-          `
+          content: createInfoWindowContent(field)
         });
 
         // Événements du marqueur
         marker.addListener('click', () => {
+          // Fermer toutes les autres InfoWindows
+          markersRef.current.forEach(({ infoWindow: iw }) => iw?.close());
           infoWindow.open(map.current, marker);
           onFieldSelect?.(field.id);
         });
 
-        markersRef.current.push(marker);
+        markersRef.current.push({ marker, infoWindow });
         bounds.extend(position);
       }
     });
@@ -191,60 +137,14 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
     }
   }, [fields, isLoaded, onFieldSelect]);
 
-  const handleApiKeySubmit = () => {
-    if (apiKey.trim()) {
-      setError('');
-      // La carte sera initialisée par l'effet useEffect
-    } else {
-      setError('Veuillez entrer une clé API valide');
-    }
-  };
-
-  if (showInput) {
+  if (error) {
     return (
       <Card className="p-8 text-center">
-        <div className="space-y-6">
+        <div className="space-y-4">
+          <MapPin className="w-12 h-12 mx-auto text-red-500" />
           <div>
-            <MapPin className="w-12 h-12 mx-auto text-green-600 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Configuration Google Maps</h3>
-            <p className="text-gray-600 text-sm">
-              Pour afficher la carte interactive, veuillez entrer votre clé API Google Maps.
-            </p>
-          </div>
-          
-          <div className="max-w-md mx-auto space-y-4">
-            <Input
-              type="password"
-              placeholder="Clé API Google Maps"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="w-full"
-            />
-            
-            {error && (
-              <p className="text-red-500 text-sm">{error}</p>
-            )}
-            
-            <Button 
-              onClick={handleApiKeySubmit}
-              className="w-full bg-green-600 hover:bg-green-700"
-            >
-              Charger la carte
-            </Button>
-          </div>
-          
-          <div className="text-xs text-gray-500 space-y-1">
-            <p>
-              <a 
-                href="https://console.cloud.google.com/google/maps-apis" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-green-600 hover:underline"
-              >
-                Obtenir une clé API Google Maps
-              </a>
-            </p>
-            <p>Assurez-vous d'activer les APIs Maps JavaScript et Places</p>
+            <h3 className="text-lg font-semibold mb-2 text-red-600">Erreur de chargement</h3>
+            <p className="text-gray-600 text-sm">{error}</p>
           </div>
         </div>
       </Card>
@@ -256,7 +156,10 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
       <div ref={mapContainer} className="absolute inset-0" />
       {!isLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-          <div className="text-gray-600">Chargement de la carte...</div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
+            <div className="text-gray-600">Chargement de Google Maps...</div>
+          </div>
         </div>
       )}
     </div>
