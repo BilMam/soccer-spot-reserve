@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import type { Field, SearchFilters } from '@/types/search';
 import { geocodeLocationQuery, filterFieldsByDistance } from './geocodingUtils';
@@ -84,7 +85,7 @@ export const performIntelligentSearch = async (
 
   // Étape 5: Calculer la distance pour chaque terrain si on a des coordonnées de recherche
   if (searchCoordinates) {
-    filteredResults = filteredResults.map((field: IntelligentSearchResult) => {
+    filteredResults = filteredResults.map((field: IntelligentSearchResult): IntelligentSearchResult => {
       if (field.latitude && field.longitude) {
         const distance = Math.sqrt(
           Math.pow(field.latitude - searchCoordinates!.lat, 2) + 
@@ -103,7 +104,7 @@ export const performIntelligentSearch = async (
   } else if (filters.sortBy === 'price_desc') {
     filteredResults.sort((a, b) => b.price_per_hour - a.price_per_hour);
   } else if (filters.sortBy === 'distance' && searchCoordinates) {
-    filteredResults.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+    filteredResults.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
   } else {
     // Tri par pertinence puis par rating
     filteredResults.sort((a, b) => {
@@ -118,7 +119,7 @@ export const performIntelligentSearch = async (
 
   console.log('🧠 Résultats finaux après filtrage:', filteredResults.length);
 
-  // Retourner sans le score de pertinence pour correspondre au type Field
+  // Retourner sans le score de pertinence et distance pour correspondre au type Field
   return filteredResults.map(({ relevance_score, distance, ...field }) => field as Field);
 };
 
