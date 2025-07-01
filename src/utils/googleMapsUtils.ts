@@ -2,6 +2,7 @@
 declare global {
   interface Window {
     google: any;
+    initMap?: () => void;
   }
 }
 
@@ -17,127 +18,82 @@ export interface GoogleMapsConfig {
 export const ABIDJAN_CONFIG: GoogleMapsConfig = {
   center: { lat: 5.347, lng: -3.996 },
   zoom: 11,
-  styles: [
-    {
-      featureType: "poi",
-      elementType: "labels",
-      stylers: [{ visibility: "on" }]
-    },
-    {
-      featureType: "poi.business",
-      stylers: [{ visibility: "on" }]
-    },
-    {
-      featureType: "poi.sports_complex",
-      stylers: [{ visibility: "on" }]
-    },
-    {
-      featureType: "poi.park",
-      stylers: [{ visibility: "on" }]
-    }
-  ]
+  styles: []
 };
 
-// Styles personnalisés pour MySport
+// Styles personnalisés pour MySport (temporairement simplifiés)
 export const MYSPORT_MAP_STYLES = [
-  {
-    featureType: "water",
-    elementType: "geometry",
-    stylers: [{ color: "#e9e9e9" }, { lightness: 17 }]
-  },
-  {
-    featureType: "landscape",
-    elementType: "geometry",
-    stylers: [{ color: "#f5f5f5" }, { lightness: 20 }]
-  },
-  {
-    featureType: "road.highway",
-    elementType: "geometry.fill",
-    stylers: [{ color: "#ffffff" }, { lightness: 17 }]
-  },
-  {
-    featureType: "road.highway",
-    elementType: "geometry.stroke",
-    stylers: [{ color: "#ffffff" }, { lightness: 29 }, { weight: 0.2 }]
-  },
-  {
-    featureType: "road.arterial",
-    elementType: "geometry",
-    stylers: [{ color: "#ffffff" }, { lightness: 18 }]
-  },
-  {
-    featureType: "road.local",
-    elementType: "geometry",
-    stylers: [{ color: "#ffffff" }, { lightness: 16 }]
-  },
-  {
-    featureType: "poi",
-    elementType: "geometry",
-    stylers: [{ color: "#f5f5f5" }, { lightness: 21 }]
-  },
-  {
-    featureType: "poi.park",
-    elementType: "geometry",
-    stylers: [{ color: "#dedede" }, { lightness: 21 }]
-  },
-  {
-    elementType: "labels.text.stroke",
-    stylers: [{ visibility: "on" }, { color: "#ffffff" }, { lightness: 16 }]
-  },
-  {
-    elementType: "labels.text.fill",
-    stylers: [{ saturation: 36 }, { color: "#333333" }, { lightness: 40 }]
-  },
-  {
-    elementType: "labels.icon",
-    stylers: [{ visibility: "off" }]
-  },
-  {
-    featureType: "transit",
-    elementType: "geometry",
-    stylers: [{ color: "#f2f2f2" }, { lightness: 19 }]
-  },
-  {
-    featureType: "administrative",
-    elementType: "geometry.fill",
-    stylers: [{ color: "#fefefe" }, { lightness: 20 }]
-  },
-  {
-    featureType: "administrative",
-    elementType: "geometry.stroke",
-    stylers: [{ color: "#fefefe" }, { lightness: 17 }, { weight: 1.2 }]
-  }
+  // Styles temporairement désactivés pour le diagnostic
 ];
 
 // Clé API Google Maps
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyCNNLn7HVkUSRlrWn2Qsz_0aEQP99j7LLs';
 
-// Fonction pour charger Google Maps de manière asynchrone avec clustering
+// Fonction pour charger Google Maps de manière asynchrone avec un meilleur debugging
 export const loadGoogleMaps = (apiKey: string = GOOGLE_MAPS_API_KEY): Promise<any> => {
   return new Promise((resolve, reject) => {
+    console.log('🔄 loadGoogleMaps: Début du chargement...');
+    
     if (window.google && window.google.maps) {
+      console.log('✅ loadGoogleMaps: Google Maps déjà chargé');
       resolve(window.google);
       return;
     }
 
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,places&callback=initMap`;
-    script.async = true;
-    script.defer = true;
+    // Vérifier si un script est déjà en cours de chargement
+    const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+    if (existingScript) {
+      console.log('⏳ loadGoogleMaps: Script déjà en cours de chargement, attente...');
+      
+      // Attendre que le script existant se charge
+      const checkLoaded = setInterval(() => {
+        if (window.google && window.google.maps) {
+          clearInterval(checkLoaded);
+          console.log('✅ loadGoogleMaps: Google Maps chargé par script existant');
+          resolve(window.google);
+        }
+      }, 100);
+      
+      // Timeout après 10 secondes
+      setTimeout(() => {
+        clearInterval(checkLoaded);
+        reject(new Error('Timeout lors du chargement de Google Maps'));
+      }, 10000);
+      
+      return;
+    }
+
+    console.log('📦 loadGoogleMaps: Création du script...');
     
-    // Créer une fonction callback globale
-    (window as any).initMap = () => {
+    const script = document.createElement('script');
+    const callbackName = 'initGoogleMapsCallback_' + Date.now();
+    
+    // Créer une fonction callback unique
+    (window as any)[callbackName] = () => {
+      console.log('🎉 loadGoogleMaps: Callback exécuté');
+      
       if (window.google && window.google.maps) {
+        console.log('✅ loadGoogleMaps: Google Maps chargé avec succès');
+        // Nettoyer la fonction callback
+        delete (window as any)[callbackName];
         resolve(window.google);
       } else {
-        reject(new Error('Google Maps API failed to load'));
+        console.error('❌ loadGoogleMaps: Google Maps non disponible après callback');
+        reject(new Error('Google Maps API failed to load properly'));
       }
     };
     
-    script.onerror = () => {
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,places&callback=${callbackName}`;
+    script.async = true;
+    script.defer = true;
+    
+    script.onerror = (error) => {
+      console.error('❌ loadGoogleMaps: Erreur de chargement du script:', error);
+      delete (window as any)[callbackName];
       reject(new Error('Failed to load Google Maps script'));
     };
     
+    console.log('🌐 loadGoogleMaps: Ajout du script au DOM');
     document.head.appendChild(script);
   });
 };

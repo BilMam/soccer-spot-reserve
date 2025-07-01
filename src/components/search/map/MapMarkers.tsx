@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
-import { createInfoWindowContent, createMarkerCluster } from '@/utils/googleMapsUtils';
+import { createInfoWindowContent } from '@/utils/googleMapsUtils';
 
 interface Field {
   id: string;
@@ -27,80 +27,83 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
   searchLocation 
 }) => {
   const markersRef = useRef<any[]>([]);
-  const clustersRef = useRef<any[]>([]);
-
-  // Fonction pour mettre à jour les clusters
-  const updateMarkerClusters = () => {
-    if (!map || markersRef.current.length === 0) return;
-
-    // Nettoyer les anciens clusters
-    clustersRef.current.forEach(cluster => {
-      if (cluster.setMap) cluster.setMap(null);
-    });
-    clustersRef.current = [];
-
-    // Créer de nouveaux clusters
-    const markers = markersRef.current.map(item => item.marker);
-    const clusters = createMarkerCluster(map, markers);
-    
-    if (clusters) {
-      clustersRef.current = clusters;
-    }
-  };
 
   useEffect(() => {
-    if (!map || !window.google) return;
+    if (!map || !window.google) {
+      console.log('⚠️ Carte ou Google Maps non disponible pour les marqueurs');
+      return;
+    }
 
-    console.log('📍 Mise à jour des marqueurs:', fields.length);
+    console.log('📍 Début mise à jour des marqueurs');
+    console.log('📊 Nombre total de terrains:', fields.length);
+    console.log('📋 Détails des terrains:', fields.map(f => ({
+      id: f.id,
+      name: f.name,
+      lat: f.latitude,
+      lng: f.longitude,
+      hasCoords: !!(f.latitude && f.longitude)
+    })));
 
-    // Supprimer les anciens marqueurs et clusters
-    markersRef.current.forEach(item => item.marker.setMap(null));
-    markersRef.current = [];
-    
-    clustersRef.current.forEach(cluster => {
-      if (cluster.setMap) cluster.setMap(null);
+    // Supprimer les anciens marqueurs
+    markersRef.current.forEach(item => {
+      console.log('🗑️ Suppression ancien marqueur');
+      item.marker.setMap(null);
     });
-    clustersRef.current = [];
+    markersRef.current = [];
 
-    if (fields.length === 0) return;
+    if (fields.length === 0) {
+      console.log('⚠️ Aucun terrain à afficher');
+      return;
+    }
 
     // Filtrer les terrains avec des coordonnées valides
-    const fieldsWithCoordinates = fields.filter(field => 
-      field.latitude && field.longitude && 
-      !isNaN(field.latitude) && !isNaN(field.longitude)
-    );
+    const fieldsWithCoordinates = fields.filter(field => {
+      const hasValidCoords = field.latitude && field.longitude && 
+        !isNaN(field.latitude) && !isNaN(field.longitude);
+      
+      if (!hasValidCoords) {
+        console.log(`⚠️ Terrain "${field.name}" sans coordonnées valides:`, {
+          lat: field.latitude,
+          lng: field.longitude
+        });
+      }
+      
+      return hasValidCoords;
+    });
 
-    console.log('📍 Terrains avec coordonnées:', fieldsWithCoordinates.length);
+    console.log('✅ Terrains avec coordonnées valides:', fieldsWithCoordinates.length);
 
     if (fieldsWithCoordinates.length === 0) {
-      console.warn('⚠️ Aucun terrain avec coordonnées GPS valides');
+      console.warn('❌ Aucun terrain avec coordonnées GPS valides à afficher');
       return;
     }
 
     // Ajouter les nouveaux marqueurs
     const bounds = new window.google.maps.LatLngBounds();
-    let hasValidCoordinates = false;
+    let markersCreated = 0;
 
-    fieldsWithCoordinates.forEach(field => {
-      if (field.latitude && field.longitude) {
-        hasValidCoordinates = true;
+    fieldsWithCoordinates.forEach((field, index) => {
+      try {
+        const position = { lat: field.latitude!, lng: field.longitude! };
+        console.log(`📍 Création marqueur ${index + 1}/${fieldsWithCoordinates.length} pour "${field.name}":`, position);
         
-        const position = { lat: field.latitude, lng: field.longitude };
-        
-        // Créer un marqueur
+        // Créer un marqueur avec une icône plus visible
         const marker = new window.google.maps.Marker({
           position,
           map: map,
           title: field.name,
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 12,
+            scale: 15, // Augmenté pour plus de visibilité
             fillColor: '#16a34a',
             fillOpacity: 1,
             strokeColor: '#ffffff',
-            strokeWeight: 2,
+            strokeWeight: 3, // Augmenté pour plus de visibilité
           },
+          animation: window.google.maps.Animation.DROP, // Animation pour voir si le marqueur apparaît
         });
+
+        console.log('✅ Marqueur créé pour:', field.name);
 
         // Créer une InfoWindow
         const infoWindow = new window.google.maps.InfoWindow({
@@ -109,6 +112,7 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
 
         // Événements du marqueur
         marker.addListener('click', () => {
+          console.log('🖱️ Clic sur marqueur:', field.name);
           // Fermer toutes les autres InfoWindows
           markersRef.current.forEach(({ infoWindow: iw }) => iw?.close());
           infoWindow.open(map, marker);
@@ -117,52 +121,43 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
 
         markersRef.current.push({ marker, infoWindow });
         bounds.extend(position);
+        markersCreated++;
+        
+      } catch (error) {
+        console.error(`❌ Erreur création marqueur pour "${field.name}":`, error);
       }
     });
 
-    // Ajuster la vue pour montrer tous les marqueurs seulement s'il n'y a pas de recherche spécifique
-    if (hasValidCoordinates && markersRef.current.length > 0 && !searchLocation) {
-      if (markersRef.current.length === 1) {
-        map.setCenter(bounds.getCenter());
+    console.log(`✅ ${markersCreated} marqueur(s) créé(s) avec succès`);
+
+    // Ajuster la vue pour montrer tous les marqueurs
+    if (markersCreated > 0) {
+      console.log('🎯 Ajustement de la vue de la carte...');
+      
+      if (searchLocation) {
+        console.log('🔍 Recherche spécifique, pas d\'ajustement automatique');
+      } else if (markersCreated === 1) {
+        const center = bounds.getCenter();
+        console.log('📍 Un seul marqueur, centrage sur:', center.toJSON());
+        map.setCenter(center);
         map.setZoom(15);
       } else {
+        console.log('🗺️ Plusieurs marqueurs, ajustement des limites');
         map.fitBounds(bounds);
         
-        // Éviter un zoom trop important et créer les clusters
+        // Éviter un zoom trop important
         const listener = window.google.maps.event.addListenerOnce(map, 'bounds_changed', () => {
-          if (map.getZoom() > 15) {
+          const currentZoom = map.getZoom();
+          console.log('🔍 Zoom après fitBounds:', currentZoom);
+          if (currentZoom > 15) {
+            console.log('📏 Limitation du zoom à 15');
             map.setZoom(15);
           }
-          // Créer les clusters après le zoom
-          setTimeout(() => {
-            updateMarkerClusters();
-          }, 100);
         });
       }
-    } else if (hasValidCoordinates && markersRef.current.length > 0) {
-      // Si il y a une recherche, créer les clusters directement
-      setTimeout(() => {
-        updateMarkerClusters();
-      }, 100);
     }
+
   }, [map, fields, onFieldSelect, searchLocation]);
-
-  // Écouter les changements de zoom pour recalculer les clusters
-  useEffect(() => {
-    if (!map) return;
-
-    const zoomListener = map.addListener('zoom_changed', () => {
-      if (markersRef.current.length > 0) {
-        updateMarkerClusters();
-      }
-    });
-
-    return () => {
-      if (zoomListener) {
-        window.google?.maps?.event?.removeListener(zoomListener);
-      }
-    };
-  }, [map]);
 
   return null;
 };
