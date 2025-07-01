@@ -1,7 +1,10 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { MapPin } from 'lucide-react';
+import { MapPin, Navigation } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { loadGoogleMaps, ABIDJAN_CONFIG, MYSPORT_MAP_STYLES, createInfoWindowContent, createMarkerCluster } from '@/utils/googleMapsUtils';
+import { geocodeLocationQuery } from '@/utils/geocodingUtils';
 
 interface Field {
   id: string;
@@ -17,15 +20,17 @@ interface Field {
 interface GoogleMapProps {
   fields: Field[];
   onFieldSelect?: (fieldId: string) => void;
+  searchLocation?: string;
 }
 
-const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
+const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect, searchLocation }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const clustersRef = useRef<any[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState('');
+  const [isGeocoding, setIsGeocoding] = useState(false);
 
   // Initialiser la carte
   const initializeMap = () => {
@@ -54,6 +59,25 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
     
     setIsLoaded(true);
     console.log('🗺️ Carte Google Maps initialisée avec succès');
+  };
+
+  // Centrer la carte sur la zone de recherche
+  const centerMapOnSearchLocation = async (location: string) => {
+    if (!map.current || !location) return;
+
+    setIsGeocoding(true);
+    try {
+      const coordinates = await geocodeLocationQuery(location);
+      if (coordinates) {
+        map.current.setCenter(coordinates);
+        map.current.setZoom(13);
+        console.log('🎯 Carte centrée sur:', location, coordinates);
+      }
+    } catch (error) {
+      console.error('Erreur centrage carte:', error);
+    } finally {
+      setIsGeocoding(false);
+    }
   };
 
   // Fonction pour mettre à jour les clusters
@@ -91,6 +115,13 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
     }
   }, [isLoaded]);
 
+  // Centrer la carte quand la localisation de recherche change
+  useEffect(() => {
+    if (isLoaded && searchLocation) {
+      centerMapOnSearchLocation(searchLocation);
+    }
+  }, [isLoaded, searchLocation]);
+
   // Gérer les marqueurs
   useEffect(() => {
     if (!map.current || !isLoaded || !window.google) return;
@@ -108,11 +139,24 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
 
     if (fields.length === 0) return;
 
+    // Filtrer les terrains avec des coordonnées valides
+    const fieldsWithCoordinates = fields.filter(field => 
+      field.latitude && field.longitude && 
+      !isNaN(field.latitude) && !isNaN(field.longitude)
+    );
+
+    console.log('📍 Terrains avec coordonnées:', fieldsWithCoordinates.length);
+
+    if (fieldsWithCoordinates.length === 0) {
+      console.warn('⚠️ Aucun terrain avec coordonnées GPS valides');
+      return;
+    }
+
     // Ajouter les nouveaux marqueurs
     const bounds = new window.google.maps.LatLngBounds();
     let hasValidCoordinates = false;
 
-    fields.forEach(field => {
+    fieldsWithCoordinates.forEach(field => {
       if (field.latitude && field.longitude) {
         hasValidCoordinates = true;
         
@@ -151,8 +195,8 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
       }
     });
 
-    // Ajuster la vue pour montrer tous les marqueurs
-    if (hasValidCoordinates && markersRef.current.length > 0) {
+    // Ajuster la vue pour montrer tous les marqueurs seulement s'il n'y a pas de recherche spécifique
+    if (hasValidCoordinates && markersRef.current.length > 0 && !searchLocation) {
       if (markersRef.current.length === 1) {
         map.current.setCenter(bounds.getCenter());
         map.current.setZoom(15);
@@ -170,8 +214,13 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
           }, 100);
         });
       }
+    } else if (hasValidCoordinates && markersRef.current.length > 0) {
+      // Si il y a une recherche, créer les clusters directement
+      setTimeout(() => {
+        updateMarkerClusters();
+      }, 100);
     }
-  }, [fields, isLoaded, onFieldSelect]);
+  }, [fields, isLoaded, onFieldSelect, searchLocation]);
 
   if (error) {
     return (
@@ -190,10 +239,32 @@ const GoogleMap: React.FC<GoogleMapProps> = ({ fields, onFieldSelect }) => {
   return (
     <div className="relative w-full h-96 rounded-lg overflow-hidden shadow-md">
       <div ref={mapContainer} className="absolute inset-0" />
+      
+      {/* Indicateur de géocodage */}
+      {isGeocoding && (
+        <div className="absolute top-4 left-4 bg-white rounded-lg shadow-md p-3 flex items-center space-x-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+          <span className="text-sm text-gray-700">Localisation en cours...</span>
+        </div>
+      )}
+      
+      {/* Indicateur de terrains trouvés */}
+      {isLoaded && fields.length > 0 && (
+        <div className="absolute top-4 right-4 bg-white rounded-lg shadow-md p-3">
+          <div className="flex items-center space-x-2">
+            <MapPin className="w-4 h-4 text-green-600" />
+            <span className="text-sm font-medium text-gray-700">
+              {fields.filter(f => f.latitude && f.longitude).length} terrain(s) localisé(s)
+            </span>
+          </div>
+        </div>
+      )}
+      
+      {/* Chargement initial */}
       {!isLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4</div>
             <div className="text-gray-600">Chargement de Google Maps...</div>
           </div>
         </div>

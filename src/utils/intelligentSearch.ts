@@ -1,9 +1,11 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { Field, SearchFilters } from '@/types/search';
+import { geocodeLocationQuery, filterFieldsByDistance } from './geocodingUtils';
 
 interface IntelligentSearchResult extends Field {
   relevance_score: number;
+  distance?: number;
 }
 
 export const performIntelligentSearch = async (
@@ -13,12 +15,18 @@ export const performIntelligentSearch = async (
 ): Promise<Field[]> => {
   console.log('🧠 Recherche intelligente avec:', { location, players, filters });
 
+  // Étape 1: Géocoder la localisation de recherche pour obtenir les coordonnées
+  let searchCoordinates: {lat: number, lng: number} | null = null;
+  if (location && location.trim().length > 0) {
+    searchCoordinates = await geocodeLocationQuery(location.trim());
+  }
+
+  // Étape 2: Recherche textuelle intelligente
   let query = supabase.rpc('intelligent_field_search', {
     search_query: location || '',
     similarity_threshold: 0.2
   });
 
-  // Récupérer les résultats de la recherche intelligente
   const { data: intelligentResults, error } = await query;
 
   if (error) {
@@ -32,8 +40,21 @@ export const performIntelligentSearch = async (
     return [];
   }
 
-  // Appliquer les filtres supplémentaires côté client
-  let filteredResults = intelligentResults.filter((field: IntelligentSearchResult) => {
+  // Étape 3: Filtrer par distance géographique si on a des coordonnées
+  let geographicallyFilteredResults = intelligentResults;
+  if (searchCoordinates) {
+    console.log('📍 Filtrage géographique autour de:', searchCoordinates);
+    geographicallyFilteredResults = filterFieldsByDistance(
+      intelligentResults, 
+      searchCoordinates.lat, 
+      searchCoordinates.lng, 
+      15 // Rayon de 15km pour la recherche urbaine
+    );
+    console.log('📍 Terrains dans la zone géographique:', geographicallyFilteredResults.length);
+  }
+
+  // Étape 4: Appliquer les filtres supplémentaires côté client
+  let filteredResults = geographicallyFilteredResults.filter((field: IntelligentSearchResult) => {
     // Filtre par prix minimum
     if (filters.priceMin && field.price_per_hour < parseFloat(filters.priceMin)) {
       return false;
@@ -62,13 +83,30 @@ export const performIntelligentSearch = async (
     return true;
   });
 
-  // Appliquer le tri
+  // Étape 5: Calculer la distance pour chaque terrain si on a des coordonnées de recherche
+  if (searchCoordinates) {
+    filteredResults = filteredResults.map((field: IntelligentSearchResult) => {
+      if (field.latitude && field.longitude) {
+        const distance = Math.sqrt(
+          Math.pow(field.latitude - searchCoordinates!.lat, 2) + 
+          Math.pow(field.longitude - searchCoordinates!.lng, 2)
+        ) * 111; // Conversion approximative en km
+        
+        return { ...field, distance };
+      }
+      return field;
+    });
+  }
+
+  // Étape 6: Appliquer le tri
   if (filters.sortBy === 'price_asc') {
     filteredResults.sort((a, b) => a.price_per_hour - b.price_per_hour);
   } else if (filters.sortBy === 'price_desc') {
     filteredResults.sort((a, b) => b.price_per_hour - a.price_per_hour);
+  } else if (filters.sortBy === 'distance' && searchCoordinates) {
+    filteredResults.sort((a, b) => (a.distance || 0) - (b.distance || 0));
   } else {
-    // Tri par pertinence puis par rating (déjà fait côté SQL)
+    // Tri par pertinence puis par rating
     filteredResults.sort((a, b) => {
       // D'abord par score de pertinence
       if (b.relevance_score !== a.relevance_score) {
@@ -82,7 +120,7 @@ export const performIntelligentSearch = async (
   console.log('🧠 Résultats finaux après filtrage:', filteredResults.length);
 
   // Retourner sans le score de pertinence pour correspondre au type Field
-  return filteredResults.map(({ relevance_score, ...field }) => field as Field);
+  return filteredResults.map(({ relevance_score, distance, ...field }) => field as Field);
 };
 
 export const buildFallbackQuery = (
@@ -94,7 +132,9 @@ export const buildFallbackQuery = (
   let query = supabase
     .from('fields')
     .select('*')
-    .eq('is_active', true);
+    .eq('is_active', true)
+    .not('latitude', 'is', null)
+    .not('longitude', 'is', null); // Filtrer les terrains sans coordonnées
 
   // Location filter (méthode classique)
   if (location) {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
@@ -24,11 +24,14 @@ interface FieldFormData {
   availability_end: string;
   amenities: string[];
   images: string[];
+  latitude?: number;
+  longitude?: number;
 }
 
 const AddField = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -38,6 +41,11 @@ const AddField = () => {
       
       if (!user) {
         throw new Error('Utilisateur non connecté');
+      }
+
+      // Vérifier que les coordonnées GPS sont présentes
+      if (!fieldData.latitude || !fieldData.longitude) {
+        throw new Error('Coordonnées GPS manquantes. Veuillez localiser le terrain avant de soumettre.');
       }
 
       // Vérifier que l'utilisateur a un profil
@@ -76,7 +84,7 @@ const AddField = () => {
         }
       }
 
-      // Créer le terrain - EN ATTENTE D'APPROBATION
+      // Créer le terrain avec les coordonnées GPS
       const { data, error } = await supabase
         .from('fields')
         .insert({
@@ -93,6 +101,8 @@ const AddField = () => {
           images: fieldData.images,
           availability_start: fieldData.availability_start,
           availability_end: fieldData.availability_end,
+          latitude: fieldData.latitude,
+          longitude: fieldData.longitude,
           is_active: false, // Terrain en attente d'approbation
           rating: 0,
           total_reviews: 0
@@ -105,13 +115,17 @@ const AddField = () => {
         throw error;
       }
 
-      console.log('Field created successfully (pending approval):', data);
+      console.log('Field created successfully with GPS coordinates:', data);
       return data;
     },
     onSuccess: (data) => {
-      console.log('Field created successfully (pending approval):', data);
+      console.log('Field created successfully:', data);
       setSuccess(true);
       setError(null);
+      
+      // Invalider le cache des terrains pour rafraîchir la carte
+      queryClient.invalidateQueries({ queryKey: ['fields'] });
+      
       toast.success('Terrain soumis avec succès ! En attente d\'approbation.');
       
       // Rediriger vers le dashboard après 3 secondes
@@ -125,7 +139,9 @@ const AddField = () => {
       let errorMessage = 'Une erreur inattendue s\'est produite';
       
       if (error?.message) {
-        if (error.message.includes('violates row-level security')) {
+        if (error.message.includes('Coordonnées GPS manquantes')) {
+          errorMessage = 'Veuillez localiser le terrain en saisissant une adresse valide ou en utilisant votre position GPS.';
+        } else if (error.message.includes('violates row-level security')) {
           errorMessage = 'Vous n\'avez pas les permissions pour créer un terrain. Veuillez vous connecter en tant que propriétaire.';
         } else if (error.message.includes('duplicate key value')) {
           errorMessage = 'Un terrain avec ces informations existe déjà.';
