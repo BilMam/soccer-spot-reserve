@@ -1,4 +1,5 @@
 
+
 export interface Field {
   id: string;
   name: string;
@@ -14,9 +15,9 @@ export interface Field {
   field_type: string;
   latitude?: number;
   longitude?: number;
-  // Adding missing Supabase fields
+  // Adding missing Supabase fields with correct required/optional status
   owner_id: string;
-  description?: string;
+  description: string; // Made required to match Supabase schema
   availability_start: string;
   availability_end: string;
   is_active: boolean;
@@ -40,3 +41,4 @@ export interface UseSearchQueryProps {
   players: string;
   filters: SearchFilters;
 }
+
