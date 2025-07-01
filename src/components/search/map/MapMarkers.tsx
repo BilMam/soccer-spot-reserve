@@ -34,35 +34,46 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
       return;
     }
 
-    console.log('📍 Début mise à jour des marqueurs');
+    console.log('📍 === DÉBUT MISE À JOUR DES MARQUEURS ===');
     console.log('📊 Nombre total de terrains reçus:', fields.length);
-    console.log('📋 Détails des terrains reçus:', fields.map(f => ({
-      id: f.id,
-      name: f.name,
-      lat: f.latitude,
-      lng: f.longitude,
-      hasCoords: !!(f.latitude && f.longitude)
-    })));
+    console.log('📋 Liste complète des terrains reçus:');
+    fields.forEach((field, index) => {
+      console.log(`  ${index + 1}. "${field.name}"`);
+      console.log(`     - ID: ${field.id}`);
+      console.log(`     - Latitude: ${field.latitude}`);
+      console.log(`     - Longitude: ${field.longitude}`);
+      console.log(`     - A des coordonnées: ${!!(field.latitude && field.longitude)}`);
+      console.log(`     - Localisation: ${field.location}`);
+      console.log('     ---');
+    });
 
     // Supprimer les anciens marqueurs
+    console.log('🗑️ Suppression des anciens marqueurs:', markersRef.current.length);
     markersRef.current.forEach(item => {
-      console.log('🗑️ Suppression ancien marqueur');
       item.marker.setMap(null);
     });
     markersRef.current = [];
 
     if (fields.length === 0) {
-      console.log('⚠️ Aucun terrain à afficher');
+      console.log('⚠️ Aucun terrain à afficher - array vide');
       return;
     }
 
     // Filtrer les terrains avec des coordonnées valides
     const fieldsWithCoordinates = fields.filter(field => {
       const hasValidCoords = field.latitude && field.longitude && 
-        !isNaN(field.latitude) && !isNaN(field.longitude);
+        !isNaN(field.latitude) && !isNaN(field.longitude) &&
+        field.latitude !== 0 && field.longitude !== 0;
       
       if (!hasValidCoords) {
-        console.log(`⚠️ Terrain "${field.name}" sans coordonnées valides:`, {
+        console.log(`⚠️ Terrain "${field.name}" EXCLU - coordonnées invalides:`, {
+          lat: field.latitude,
+          lng: field.longitude,
+          latType: typeof field.latitude,
+          lngType: typeof field.longitude
+        });
+      } else {
+        console.log(`✅ Terrain "${field.name}" INCLUS - coordonnées valides:`, {
           lat: field.latitude,
           lng: field.longitude
         });
@@ -71,10 +82,14 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
       return hasValidCoords;
     });
 
-    console.log('✅ Terrains avec coordonnées valides:', fieldsWithCoordinates.length);
+    console.log('📊 RÉSULTAT DU FILTRAGE:');
+    console.log('  - Terrains total:', fields.length);
+    console.log('  - Terrains avec coordonnées valides:', fieldsWithCoordinates.length);
+    console.log('  - Terrains exclus:', fields.length - fieldsWithCoordinates.length);
 
     if (fieldsWithCoordinates.length === 0) {
-      console.warn('❌ Aucun terrain avec coordonnées GPS valides à afficher');
+      console.error('❌ AUCUN TERRAIN avec coordonnées GPS valides à afficher');
+      console.log('💡 Vérifiez que les terrains sont bien géocodés dans la base de données');
       return;
     }
 
@@ -82,29 +97,32 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
     const bounds = new window.google.maps.LatLngBounds();
     let markersCreated = 0;
 
+    console.log('📍 === CRÉATION DES MARQUEURS ===');
     fieldsWithCoordinates.forEach((field, index) => {
       try {
         const position = { lat: field.latitude!, lng: field.longitude! };
-        console.log(`📍 Création marqueur ${index + 1}/${fieldsWithCoordinates.length} pour "${field.name}":`, position);
+        console.log(`📍 Création marqueur ${index + 1}/${fieldsWithCoordinates.length}:`);
+        console.log(`  - Terrain: "${field.name}"`);
+        console.log(`  - Position: ${position.lat}, ${position.lng}`);
         
-        // ✅ CORRECTION : Créer un marqueur rouge plus visible
+        // ✅ CORRECTION : Créer un marqueur rouge très visible
         const marker = new window.google.maps.Marker({
           position,
           map: map,
           title: field.name,
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 18, // Taille plus importante
+            scale: 20, // Marqueur plus grand
             fillColor: '#dc2626', // Rouge vif
             fillOpacity: 1,
             strokeColor: '#ffffff',
-            strokeWeight: 4, // Contour plus épais
+            strokeWeight: 3,
           },
           animation: window.google.maps.Animation.DROP,
-          zIndex: 1000, // S'assurer que les marqueurs sont au-dessus
+          zIndex: 1000,
         });
 
-        console.log('✅ Marqueur rouge créé pour:', field.name);
+        console.log(`✅ Marqueur rouge créé avec succès pour: "${field.name}"`);
 
         // Créer une InfoWindow
         const infoWindow = new window.google.maps.InfoWindow({
@@ -113,33 +131,33 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
 
         // Événements du marqueur
         marker.addListener('click', () => {
-          console.log('🖱️ Clic sur marqueur:', field.name);
+          console.log(`🖱️ Clic sur marqueur: "${field.name}"`);
           // Fermer toutes les autres InfoWindows
           markersRef.current.forEach(({ infoWindow: iw }) => iw?.close());
           infoWindow.open(map, marker);
           onFieldSelect?.(field.id);
         });
 
-        // Effet de survol pour améliorer l'interactivité
+        // Effet de survol
         marker.addListener('mouseover', () => {
           marker.setIcon({
             path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 22, // Plus grand au survol
+            scale: 24, // Plus grand au survol
             fillColor: '#b91c1c', // Rouge plus foncé
             fillOpacity: 1,
             strokeColor: '#ffffff',
-            strokeWeight: 4,
+            strokeWeight: 3,
           });
         });
 
         marker.addListener('mouseout', () => {
           marker.setIcon({
             path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 18,
+            scale: 20,
             fillColor: '#dc2626',
             fillOpacity: 1,
             strokeColor: '#ffffff',
-            strokeWeight: 4,
+            strokeWeight: 3,
           });
         });
 
@@ -148,11 +166,13 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
         markersCreated++;
         
       } catch (error) {
-        console.error(`❌ Erreur création marqueur pour "${field.name}":`, error);
+        console.error(`❌ ERREUR création marqueur pour "${field.name}":`, error);
       }
     });
 
+    console.log('📊 === RÉSULTAT CRÉATION MARQUEURS ===');
     console.log(`✅ ${markersCreated} marqueur(s) rouge(s) créé(s) avec succès`);
+    console.log('📍 Marqueurs actifs sur la carte:', markersRef.current.length);
 
     // Ajuster la vue pour montrer tous les marqueurs
     if (markersCreated > 0) {
@@ -160,18 +180,17 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
       
       if (searchLocation) {
         console.log('🔍 Recherche spécifique, centrage avec zoom adapté');
-        // Centrer sur la zone de recherche mais montrer les marqueurs
         if (markersCreated === 1) {
           const center = bounds.getCenter();
           map.setCenter(center);
           map.setZoom(15);
+          console.log('📍 Centrage sur marqueur unique:', center.toJSON());
         } else {
           map.fitBounds(bounds);
-          // Zoom adapté pour voir tous les marqueurs
           const listener = window.google.maps.event.addListenerOnce(map, 'bounds_changed', () => {
             const currentZoom = map.getZoom();
             if (currentZoom > 14) {
-              map.setZoom(14); // Zoom optimal pour voir les marqueurs
+              map.setZoom(14);
             }
           });
         }
@@ -194,7 +213,11 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
           }
         });
       }
+    } else {
+      console.error('❌ AUCUN MARQUEUR CRÉÉ - problème critique');
     }
+
+    console.log('📍 === FIN MISE À JOUR DES MARQUEURS ===');
 
   }, [map, fields, onFieldSelect, searchLocation]);
 

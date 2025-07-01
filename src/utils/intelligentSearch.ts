@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import type { Field, SearchFilters } from '@/types/search';
 import { geocodeLocationQuery, filterFieldsByDistance } from './geocodingUtils';
@@ -31,20 +32,22 @@ export const performIntelligentSearch = async (
   // Étape 2: Recherche textuelle intelligente avec coordonnées GPS
   let query = supabase.rpc('intelligent_field_search', {
     search_query: location || '',
-    similarity_threshold: 0.2
+    similarity_threshold: 0.1 // Réduire le seuil pour plus de résultats
   });
 
   const { data: intelligentResults, error } = await query;
 
   if (error) {
-    console.error('Erreur recherche intelligente:', error);
-    throw error;
+    console.warn('⚠️ Erreur recherche intelligente, utilisation du fallback:', error);
+    // Fallback vers la recherche standard
+    return await performFallbackSearch(location, players, filters);
   }
 
   console.log('🧠 Résultats bruts recherche intelligente:', intelligentResults?.length);
 
   if (!intelligentResults || intelligentResults.length === 0) {
-    return [];
+    console.log('📋 Aucun résultat intelligent, tentative de fallback...');
+    return await performFallbackSearch(location, players, filters);
   }
 
   // Étape 3: Ajouter les coordonnées GPS des terrains depuis la base
@@ -161,13 +164,34 @@ export const performIntelligentSearch = async (
   return filteredResults.map(({ relevance_score, distance, ...field }) => field as Field);
 };
 
+// Nouvelle fonction de fallback pour récupérer tous les terrains actifs
+export const performFallbackSearch = async (
+  location: string,
+  players: string,
+  filters: SearchFilters
+): Promise<Field[]> => {
+  console.log('🔄 Recherche de fallback avec:', { location, players, filters });
+  
+  const { data, error } = await buildFallbackQuery(location, players, filters, false);
+  
+  if (error) {
+    console.error('❌ Erreur dans la recherche fallback:', error);
+    throw error;
+  }
+  
+  console.log('📋 Résultats fallback:', data?.length);
+  return data as Field[] || [];
+};
+
 export const buildFallbackQuery = (
   location: string,
   players: string,
   filters: SearchFilters,
-  requireGPS: boolean = false // Ne plus exiger GPS par défaut
+  requireGPS: boolean = false
 ) => {
-  // Fallback vers l'ancienne méthode
+  console.log('🔧 Construction requête fallback:', { location, players, filters, requireGPS });
+  
+  // Requête de base pour tous les terrains actifs
   let query = supabase
     .from('fields')
     .select('*')
@@ -181,7 +205,8 @@ export const buildFallbackQuery = (
   }
 
   // ✅ CORRECTION : Améliorer la recherche textuelle pour les quartiers
-  if (location) {
+  if (location && location.trim().length > 0) {
+    console.log('🔍 Ajout des filtres de localisation pour:', location);
     // Recherche élargie pour inclure les quartiers d'Abidjan
     const searchTerms = [
       `city.ilike.%${location}%`,
@@ -190,10 +215,14 @@ export const buildFallbackQuery = (
       `name.ilike.%${location}%`
     ];
     
-    // Si c'est "Cocody", chercher aussi dans "Abidjan"
-    if (location.toLowerCase().includes('cocody')) {
+    // Si c'est "Cocody" ou un quartier d'Abidjan, chercher aussi dans "Abidjan"
+    const locationLower = location.toLowerCase();
+    if (locationLower.includes('cocody') || locationLower.includes('yopougon') || 
+        locationLower.includes('plateau') || locationLower.includes('marcory') ||
+        locationLower.includes('treichville') || locationLower.includes('adjame') ||
+        locationLower.includes('abobo') || locationLower.includes('koumassi')) {
       searchTerms.push(`city.ilike.%Abidjan%`);
-      searchTerms.push(`address.ilike.%Cocody%`);
+      searchTerms.push(`address.ilike.%${location}%`);
     }
     
     query = query.or(searchTerms.join(','));
@@ -231,5 +260,6 @@ export const buildFallbackQuery = (
     query = query.order('rating', { ascending: false });
   }
 
+  console.log('✅ Requête fallback construite');
   return query;
 };

@@ -27,6 +27,8 @@ const Search = () => {
   const timeSlot = searchParams.get('timeSlot') || '';
   const players = searchParams.get('players') || '';
 
+  console.log('🔍 Search Page - Paramètres URL:', { location, date, timeSlot, players });
+
   const { data: fields, isLoading } = useSearchQuery({
     location,
     date,
@@ -35,12 +37,19 @@ const Search = () => {
     filters
   });
 
+  console.log('📊 Search Page - Données reçues:', {
+    fieldsCount: fields?.length,
+    isLoading,
+    fields: fields?.map(f => ({ name: f.name, hasGPS: !!(f.latitude && f.longitude) }))
+  });
+
   const transformedFields = fields?.map(field => {
-    console.log(`🔍 Transformation terrain "${field.name}":`, {
+    console.log(`🔄 Transformation terrain "${field.name}":`, {
       id: field.id,
       latitude: field.latitude,
       longitude: field.longitude,
-      hasCoords: !!(field.latitude && field.longitude)
+      hasCoords: !!(field.latitude && field.longitude),
+      originalData: { lat: field.latitude, lng: field.longitude }
     });
     
     return {
@@ -56,17 +65,17 @@ const Search = () => {
       type: field.field_type === 'natural_grass' ? 'Gazon naturel' :
             field.field_type === 'synthetic' ? 'Synthétique' :
             field.field_type === 'indoor' ? 'Indoor' : 'Bitume',
-      // ✅ CORRECTION : Ajouter les coordonnées GPS
+      // ✅ CORRECTION CRITIQUE : S'assurer que les coordonnées GPS sont bien transmises
       latitude: field.latitude,
       longitude: field.longitude
     };
   }) || [];
 
-  console.log('📊 Terrains transformés avec coordonnées:', {
+  console.log('🎯 Search Page - Terrains transformés FINAUX pour GoogleMap:', {
     total: transformedFields.length,
     withCoords: transformedFields.filter(f => f.latitude && f.longitude).length,
     withoutCoords: transformedFields.filter(f => !f.latitude || !f.longitude).length,
-    details: transformedFields.map(f => ({
+    detailsForMap: transformedFields.map(f => ({
       name: f.name,
       hasCoords: !!(f.latitude && f.longitude),
       lat: f.latitude,
