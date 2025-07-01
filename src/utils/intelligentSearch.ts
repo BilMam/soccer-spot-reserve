@@ -40,17 +40,25 @@ export const performIntelligentSearch = async (
     return [];
   }
 
-  // Étape 3: Filtrer par distance géographique si on a des coordonnées
+  // Étape 3: Filtrer par distance géographique si on a des coordonnées (optionnel)
   let geographicallyFilteredResults = intelligentResults;
   if (searchCoordinates) {
     console.log('📍 Filtrage géographique autour de:', searchCoordinates);
-    geographicallyFilteredResults = filterFieldsByDistance(
-      intelligentResults, 
+    const fieldsWithCoordinates = intelligentResults.filter(f => f.latitude && f.longitude);
+    const fieldsWithoutCoordinates = intelligentResults.filter(f => !f.latitude || !f.longitude);
+    
+    // Filtrer par distance seulement ceux qui ont des coordonnées
+    const geographicallyFiltered = filterFieldsByDistance(
+      fieldsWithCoordinates, 
       searchCoordinates.lat, 
       searchCoordinates.lng, 
       15 // Rayon de 15km pour la recherche urbaine
     );
-    console.log('📍 Terrains dans la zone géographique:', geographicallyFilteredResults.length);
+    
+    // Combiner les résultats : terrains dans la zone + terrains sans coordonnées
+    geographicallyFilteredResults = [...geographicallyFiltered, ...fieldsWithoutCoordinates];
+    console.log('📍 Terrains dans la zone géographique:', geographicallyFiltered.length);
+    console.log('📍 Terrains sans coordonnées inclus:', fieldsWithoutCoordinates.length);
   }
 
   // Étape 4: Appliquer les filtres supplémentaires côté client
@@ -104,7 +112,13 @@ export const performIntelligentSearch = async (
   } else if (filters.sortBy === 'price_desc') {
     filteredResults.sort((a, b) => b.price_per_hour - a.price_per_hour);
   } else if (filters.sortBy === 'distance' && searchCoordinates) {
-    filteredResults.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+    filteredResults.sort((a, b) => {
+      // Terrains avec distance en premier, puis terrains sans coordonnées
+      if (!a.distance && !b.distance) return 0;
+      if (!a.distance) return 1;
+      if (!b.distance) return -1;
+      return a.distance - b.distance;
+    });
   } else {
     // Tri par pertinence puis par rating
     filteredResults.sort((a, b) => {
@@ -126,15 +140,21 @@ export const performIntelligentSearch = async (
 export const buildFallbackQuery = (
   location: string,
   players: string,
-  filters: SearchFilters
+  filters: SearchFilters,
+  requireGPS: boolean = true // Nouveau paramètre pour contrôler le filtrage GPS
 ) => {
-  // Fallback vers l'ancienne méthode en cas d'échec
+  // Fallback vers l'ancienne méthode
   let query = supabase
     .from('fields')
     .select('*')
-    .eq('is_active', true)
-    .not('latitude', 'is', null)
-    .not('longitude', 'is', null); // Filtrer les terrains sans coordonnées
+    .eq('is_active', true);
+
+  // Filtrer par coordonnées GPS seulement si requis
+  if (requireGPS) {
+    query = query
+      .not('latitude', 'is', null)
+      .not('longitude', 'is', null);
+  }
 
   // Location filter (méthode classique)
   if (location) {

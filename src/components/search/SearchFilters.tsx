@@ -80,7 +80,7 @@ const FilterContent: React.FC<{
   <div className={isMobile ? "space-y-4" : "space-y-6"}>
     <div>
       <label className="text-sm font-medium text-gray-700 mb-3 block">
-        Prix par heure
+        Prix par heure (FCFA)
       </label>
       <div className="flex space-x-3">
         <Input
@@ -140,6 +140,7 @@ const FilterContent: React.FC<{
           <SelectItem value="rating">Mieux notés</SelectItem>
           <SelectItem value="price_asc">Prix croissant</SelectItem>
           <SelectItem value="price_desc">Prix décroissant</SelectItem>
+          <SelectItem value="distance">Distance (si applicable)</SelectItem>
         </SelectContent>
       </Select>
     </div>

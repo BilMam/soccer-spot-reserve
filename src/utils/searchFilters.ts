@@ -19,13 +19,13 @@ export const buildSearchQuery = async (
     } catch (error) {
       console.warn('🔄 Fallback vers recherche classique:', error);
       // En cas d'erreur, fallback vers l'ancienne méthode
-      const fallbackQuery = buildFallbackQuery(location, players, filters);
+      const fallbackQuery = buildFallbackQuery(location, players, filters, false); // Ne pas filtrer par GPS
       return await fallbackQuery;
     }
   }
 
-  // Si pas de location, utiliser la méthode classique
+  // Si pas de location, utiliser la méthode classique sans filtrage GPS
   console.log('📋 Utilisation de la recherche classique (pas de location)');
-  const fallbackQuery = buildFallbackQuery(location, players, filters);
+  const fallbackQuery = buildFallbackQuery(location, players, filters, false); // Ne pas filtrer par GPS
   return await fallbackQuery;
 };
