@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { Field, SearchFilters } from '@/types/search';
 import { geocodeLocationQuery, filterFieldsByDistance } from './geocodingUtils';
@@ -54,7 +53,7 @@ export const performIntelligentSearch = async (
   }
 
   // Étape 4: Appliquer les filtres supplémentaires côté client
-  let filteredResults = geographicallyFilteredResults.filter((field: IntelligentSearchResult) => {
+  let filteredResults: IntelligentSearchResult[] = geographicallyFilteredResults.filter((field: IntelligentSearchResult) => {
     // Filtre par prix minimum
     if (filters.priceMin && field.price_per_hour < parseFloat(filters.priceMin)) {
       return false;
