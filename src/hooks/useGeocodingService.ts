@@ -1,15 +1,17 @@
 
 import { useState, useCallback, useRef } from 'react';
-import { geocodeAddress, loadGoogleMaps } from '@/utils/googleMapsUtils';
+import { geocodeAddress, loadGoogleMaps, reverseGeocode } from '@/utils/googleMapsUtils';
 
 interface GeocodingResult {
   latitude: number;
   longitude: number;
   address: string;
+  source: 'geocoding' | 'geolocation';
 }
 
 export const useGeocodingService = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeolocating, setIsGeolocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isApiReady, setIsApiReady] = useState(false);
   const retryCount = useRef(0);
@@ -59,7 +61,8 @@ export const useGeocodingService = () => {
         return {
           latitude: coordinates.lat,
           longitude: coordinates.lng,
-          address: fullAddress
+          address: fullAddress,
+          source: 'geocoding'
         };
       } else {
         // Retry logic pour les échecs temporaires
@@ -93,6 +96,73 @@ export const useGeocodingService = () => {
     }
   }, [isApiReady, initializeGoogleMaps]);
 
+  const getCurrentLocation = useCallback(async (): Promise<GeocodingResult | null> => {
+    setIsGeolocating(true);
+    setError(null);
+
+    try {
+      // Vérifier si la géolocalisation est supportée
+      if (!navigator.geolocation) {
+        setError('La géolocalisation n\'est pas supportée par votre navigateur.');
+        return null;
+      }
+
+      // Vérifier si l'API Google Maps est prête
+      if (!isApiReady) {
+        const loaded = await initializeGoogleMaps();
+        if (!loaded) {
+          return null;
+        }
+      }
+
+      console.log('📍 Demande de géolocalisation...');
+
+      // Obtenir la position actuelle
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000 // 5 minutes
+          }
+        );
+      });
+
+      const { latitude, longitude } = position.coords;
+      console.log('✅ Position obtenue:', { latitude, longitude });
+
+      // Faire du reverse geocoding pour obtenir l'adresse
+      const address = await reverseGeocode(latitude, longitude);
+      
+      return {
+        latitude,
+        longitude,
+        address: address || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+        source: 'geolocation'
+      };
+
+    } catch (err: any) {
+      console.error('❌ Erreur de géolocalisation:', err);
+      
+      let errorMessage = 'Erreur lors de la géolocalisation.';
+      
+      if (err.code === 1) {
+        errorMessage = 'Permission de géolocalisation refusée. Veuillez autoriser l\'accès à votre position.';
+      } else if (err.code === 2) {
+        errorMessage = 'Position non disponible. Vérifiez votre connexion GPS.';
+      } else if (err.code === 3) {
+        errorMessage = 'Délai d\'attente dépassé pour la géolocalisation.';
+      }
+      
+      setError(errorMessage);
+      return null;
+    } finally {
+      setIsGeolocating(false);
+    }
+  }, [isApiReady, initializeGoogleMaps]);
+
   const manualGeocode = useCallback(async (address: string, city: string) => {
     retryCount.current = 0; // Reset retry count for manual attempts
     return await geocodeFieldAddress(address, city);
@@ -100,8 +170,10 @@ export const useGeocodingService = () => {
 
   return {
     geocodeFieldAddress,
+    getCurrentLocation,
     manualGeocode,
     isLoading,
+    isGeolocating,
     error,
     isApiReady,
     initializeGoogleMaps,

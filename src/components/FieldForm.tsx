@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MapPin, RefreshCw } from 'lucide-react';
+import { MapPin, RefreshCw, Locate } from 'lucide-react';
 import FieldBasicInfoForm from '@/components/forms/FieldBasicInfoForm';
 import FieldScheduleForm from '@/components/forms/FieldScheduleForm';
 import FieldAmenitiesForm from '@/components/forms/FieldAmenitiesForm';
@@ -51,10 +51,14 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     longitude: null as number | null
   });
 
+  const [locationSource, setLocationSource] = useState<'geocoding' | 'geolocation' | null>(null);
+
   const { 
     geocodeFieldAddress, 
+    getCurrentLocation,
     manualGeocode,
-    isLoading: isGeocoding, 
+    isLoading: isGeocoding,
+    isGeolocating,
     error: geocodingError,
     isApiReady,
     initializeGoogleMaps,
@@ -69,9 +73,19 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
-    // Effacer les erreurs de géocodage quand l'utilisateur modifie l'adresse
+    // Effacer les coordonnées et les erreurs quand l'utilisateur modifie l'adresse
     if ((field === 'address' || field === 'city') && geocodingError) {
       clearError();
+    }
+    
+    // Si l'utilisateur modifie l'adresse après avoir utilisé la géolocalisation, effacer les coordonnées
+    if ((field === 'address' || field === 'city') && locationSource === 'geolocation') {
+      setFormData(prev => ({
+        ...prev,
+        latitude: null,
+        longitude: null
+      }));
+      setLocationSource(null);
     }
   };
 
@@ -88,6 +102,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
         latitude: result.latitude,
         longitude: result.longitude
       }));
+      setLocationSource('geocoding');
       toast.success('📍 Adresse localisée avec succès !');
     } else if (geocodingError) {
       toast.error(`❌ ${geocodingError}`);
@@ -96,7 +111,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
 
   // Géocodage automatique avec debounce amélioré
   useEffect(() => {
-    if (!isApiReady) return;
+    if (!isApiReady || locationSource === 'geolocation') return;
 
     const timer = setTimeout(() => {
       if (formData.address && formData.city) {
@@ -105,7 +120,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     }, 2000); // Attendre 2 secondes après la dernière modification
 
     return () => clearTimeout(timer);
-  }, [formData.address, formData.city, isApiReady, performGeocode]);
+  }, [formData.address, formData.city, isApiReady, performGeocode, locationSource]);
 
   // Géocodage manuel
   const handleManualGeocode = async () => {
@@ -122,7 +137,26 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
         latitude: result.latitude,
         longitude: result.longitude
       }));
+      setLocationSource('geocoding');
       toast.success('📍 Adresse localisée avec succès !');
+    }
+  };
+
+  // Géolocalisation utilisateur
+  const handleUserGeolocation = async () => {
+    const result = await getCurrentLocation();
+    
+    if (result) {
+      setFormData(prev => ({
+        ...prev,
+        latitude: result.latitude,
+        longitude: result.longitude,
+        // Optionnellement pré-remplir l'adresse si elle a été trouvée
+        address: result.address.includes(',') ? result.address.split(',')[0].trim() : prev.address,
+        city: result.address.includes(',') ? result.address.split(',')[1]?.trim() || prev.city : prev.city
+      }));
+      setLocationSource('geolocation');
+      toast.success('📍 Position géolocalisée avec succès !');
     }
   };
 
@@ -143,7 +177,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     e.preventDefault();
     
     if (!formData.latitude || !formData.longitude) {
-      toast.error('📍 Veuillez localiser le terrain en saisissant une adresse valide');
+      toast.error('📍 Veuillez localiser le terrain en saisissant une adresse valide ou en utilisant votre position');
       return;
     }
     
@@ -167,6 +201,8 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     await onSubmit(fieldData);
   };
 
+  const isLocationLoading = isGeocoding || isGeolocating;
+
   return (
     <Card className="max-w-4xl mx-auto">
       <CardHeader>
@@ -188,12 +224,20 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
           </div>
         )}
 
+        {/* État de la géolocalisation */}
+        {isGeolocating && (
+          <div className="text-sm text-purple-600 flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+            <span>Géolocalisation en cours...</span>
+          </div>
+        )}
+
         {/* État de localisation réussie */}
         {formData.latitude && formData.longitude && (
           <div className="text-sm text-green-600 flex items-center space-x-2">
             <MapPin className="w-4 h-4" />
             <span>
-              ✅ Terrain localisé : {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+              ✅ Terrain localisé {locationSource === 'geolocation' ? '(via votre position)' : '(via l\'adresse)'} : {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
             </span>
           </div>
         )}
@@ -207,7 +251,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
               variant="outline"
               size="sm"
               onClick={handleManualGeocode}
-              disabled={isGeocoding || !isApiReady}
+              disabled={isLocationLoading || !isApiReady}
               className="ml-2"
             >
               <RefreshCw className="w-3 h-3 mr-1" />
@@ -216,17 +260,34 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
           </div>
         )}
 
-        {/* Bouton de géocodage manuel */}
-        {isApiReady && formData.address && formData.city && !formData.latitude && !isGeocoding && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleManualGeocode}
-            className="w-fit"
-          >
-            <MapPin className="w-4 h-4 mr-2" />
-            Localiser l'adresse
-          </Button>
+        {/* Boutons de localisation */}
+        {isApiReady && (
+          <div className="flex flex-wrap gap-2">
+            {/* Bouton de géocodage manuel */}
+            {formData.address && formData.city && !formData.latitude && !isLocationLoading && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleManualGeocode}
+                disabled={isLocationLoading}
+              >
+                <MapPin className="w-4 h-4 mr-2" />
+                Localiser l'adresse
+              </Button>
+            )}
+
+            {/* Bouton de géolocalisation */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleUserGeolocation}
+              disabled={isLocationLoading || !isApiReady}
+              className="flex items-center"
+            >
+              <Locate className="w-4 h-4 mr-2" />
+              {isGeolocating ? 'Géolocalisation...' : 'Utiliser ma position'}
+            </Button>
+          </div>
         )}
       </CardHeader>
       
@@ -252,7 +313,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
             onImagesChange={handleImagesChange}
           />
 
-          <FieldFormActions isLoading={isLoading || isGeocoding} />
+          <FieldFormActions isLoading={isLoading || isLocationLoading} />
         </form>
       </CardContent>
     </Card>

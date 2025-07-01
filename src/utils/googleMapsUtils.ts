@@ -201,6 +201,53 @@ export const geocodeAddress = async (address: string): Promise<{lat: number, lng
   }
 };
 
+// Fonction de géocodage inverse pour convertir des coordonnées en adresse
+export const reverseGeocode = async (latitude: number, longitude: number): Promise<string | null> => {
+  // Vérification que Google Maps est disponible
+  if (!window.google || !window.google.maps || !window.google.maps.Geocoder) {
+    console.warn('⚠️ Google Maps API ou Geocoder non disponible');
+    return null;
+  }
+
+  const geocoder = new window.google.maps.Geocoder();
+  
+  try {
+    console.log('🔍 Géocodage inverse de:', { latitude, longitude });
+    
+    const results = await new Promise((resolve, reject) => {
+      geocoder.geocode({ 
+        location: { lat: latitude, lng: longitude },
+        language: 'fr' // Réponses en français
+      }, (results: any, status: any) => {
+        console.log('📍 Statut géocodage inverse:', status);
+        
+        if (status === 'OK' && results && results.length > 0) {
+          console.log('✅ Résultats géocodage inverse:', results);
+          resolve(results);
+        } else {
+          const errorMsg = status === 'ZERO_RESULTS' 
+            ? 'Aucune adresse trouvée pour ces coordonnées'
+            : `Échec du géocodage inverse: ${status}`;
+          
+          console.warn('⚠️', errorMsg);
+          reject(new Error(errorMsg));
+        }
+      });
+    });
+
+    const result = (results as any)[0];
+    const formattedAddress = result.formatted_address;
+    
+    console.log('✅ Adresse formatée:', formattedAddress);
+    
+    return formattedAddress;
+    
+  } catch (error) {
+    console.error('❌ Erreur de géocodage inverse:', error);
+    return null;
+  }
+};
+
 // Fonction pour créer un marqueur personnalisé
 export const createCustomMarker = (field: any) => {
   // Vérification que Google Maps est disponible
