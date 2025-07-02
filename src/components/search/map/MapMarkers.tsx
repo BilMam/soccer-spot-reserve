@@ -20,6 +20,19 @@ interface MapMarkersProps {
   searchLocation?: string;
 }
 
+// Fonction harmonisée pour valider les coordonnées GPS (identique à MapOverlays)
+const hasValidGPS = (field: Field): boolean => {
+  if (!field.latitude || !field.longitude) return false;
+  
+  const lat = Number(field.latitude);
+  const lng = Number(field.longitude);
+  
+  return !isNaN(lat) && !isNaN(lng) &&
+         lat !== 0 && lng !== 0 &&
+         lat >= -90 && lat <= 90 &&
+         lng >= -180 && lng <= 180;
+};
+
 const MapMarkers: React.FC<MapMarkersProps> = ({ 
   map, 
   fields, 
@@ -52,9 +65,7 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
         longitude: field.longitude,
         latType: typeof field.latitude,
         lngType: typeof field.longitude,
-        hasValidCoords: !!(field.latitude && field.longitude && 
-          !isNaN(Number(field.latitude)) && !isNaN(Number(field.longitude)) &&
-          Number(field.latitude) !== 0 && Number(field.longitude) !== 0)
+        hasValidGPS: hasValidGPS(field)
       });
     });
 
@@ -74,32 +85,29 @@ const MapMarkers: React.FC<MapMarkersProps> = ({
 
     // Filtrer les terrains avec des coordonnées valides
     const fieldsWithCoordinates = fields.filter(field => {
-      const lat = Number(field.latitude);
-      const lng = Number(field.longitude);
-      const hasValidCoords = field.latitude && field.longitude && 
-        !isNaN(lat) && !isNaN(lng) &&
-        lat !== 0 && lng !== 0 &&
-        lat >= -90 && lat <= 90 &&
-        lng >= -180 && lng <= 180;
+      const isValid = hasValidGPS(field);
       
-      if (!hasValidCoords) {
+      if (!isValid) {
         console.log(`❌ Terrain "${field.name}" EXCLU:`, {
           latitude: field.latitude,
           longitude: field.longitude,
-          latNum: lat,
-          lngNum: lng,
+          latNum: Number(field.latitude),
+          lngNum: Number(field.longitude),
           reason: !field.latitude ? 'pas de latitude' :
                   !field.longitude ? 'pas de longitude' :
-                  isNaN(lat) ? 'latitude non numérique' :
-                  isNaN(lng) ? 'longitude non numérique' :
-                  lat === 0 || lng === 0 ? 'coordonnées zéro' :
+                  isNaN(Number(field.latitude)) ? 'latitude non numérique' :
+                  isNaN(Number(field.longitude)) ? 'longitude non numérique' :
+                  Number(field.latitude) === 0 || Number(field.longitude) === 0 ? 'coordonnées zéro' :
                   'coordonnées hors limites'
         });
       } else {
-        console.log(`✅ Terrain "${field.name}" INCLUS:`, { lat, lng });
+        console.log(`✅ Terrain "${field.name}" INCLUS:`, { 
+          lat: Number(field.latitude), 
+          lng: Number(field.longitude) 
+        });
       }
       
-      return hasValidCoords;
+      return isValid;
     });
 
     console.log('📊 RÉSULTAT DU FILTRAGE:');

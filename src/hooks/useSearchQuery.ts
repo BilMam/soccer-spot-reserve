@@ -69,28 +69,41 @@ export const useSearchQuery = ({ location, date, timeSlot, players, filters }: U
       }
 
       console.log('📊 Terrains récupérés:', allFields?.length);
-      
-      // Logs détaillés des terrains
-      allFields?.forEach((field, index) => {
-        console.log(`🏟️ Terrain ${index + 1}:`, {
-          name: field.name,
-          city: field.city,
-          hasGPS: !!(field.latitude && field.longitude),
-          coords: { lat: field.latitude, lng: field.longitude }
-        });
-      });
 
-      if (!allFields || allFields.length === 0) {
-        console.log('⚠️ Aucun terrain trouvé dans la base');
+      // Convertir latitude et longitude en nombres et ajouter des logs détaillés
+      const fieldsWithNumericCoords = allFields?.map(field => {
+        const numericField = {
+          ...field,
+          latitude: field.latitude ? Number(field.latitude) : null,
+          longitude: field.longitude ? Number(field.longitude) : null,
+        };
+        
+        console.log(`🏟️ Terrain transformé ${field.name}:`, {
+          originalLat: field.latitude,
+          originalLng: field.longitude,
+          numericLat: numericField.latitude,
+          numericLng: numericField.longitude,
+          latType: typeof numericField.latitude,
+          lngType: typeof numericField.longitude,
+          hasValidGPS: !!(numericField.latitude && numericField.longitude && 
+            !isNaN(numericField.latitude) && !isNaN(numericField.longitude) &&
+            numericField.latitude !== 0 && numericField.longitude !== 0)
+        });
+        
+        return numericField;
+      }) || [];
+
+      if (fieldsWithNumericCoords.length === 0) {
+        console.log('⚠️ Aucun terrain trouvé dans la base ou avec coordonnées valides après conversion');
         return [];
       }
 
-      let filteredFields = allFields;
+      let filteredFields = fieldsWithNumericCoords;
 
       // Filtrer par localisation si spécifiée
       if (location && location.trim().length > 0) {
         console.log('🔍 Filtrage par localisation:', location);
-        filteredFields = allFields.filter(field => matchesSearch(field, location));
+        filteredFields = fieldsWithNumericCoords.filter(field => matchesSearch(field, location));
         console.log('📊 Terrains après filtrage localisation:', filteredFields.length);
       }
 
@@ -144,12 +157,19 @@ export const useSearchQuery = ({ location, date, timeSlot, players, filters }: U
         console.log('✅ Terrains disponibles après filtrage horaire:', finalFields?.length);
       }
 
+      // Logs finaux avec coordonnées GPS
       console.log('✅ Résultats finaux:', {
         total: finalFields?.length,
-        withGPS: finalFields?.filter(f => f.latitude && f.longitude).length,
+        withValidGPS: finalFields?.filter(f => 
+          f.latitude && f.longitude && 
+          !isNaN(Number(f.latitude)) && !isNaN(Number(f.longitude)) &&
+          Number(f.latitude) !== 0 && Number(f.longitude) !== 0
+        ).length,
         terrains: finalFields?.map(f => ({ 
           name: f.name, 
-          hasGPS: !!(f.latitude && f.longitude),
+          hasValidGPS: !!(f.latitude && f.longitude && 
+            !isNaN(Number(f.latitude)) && !isNaN(Number(f.longitude)) &&
+            Number(f.latitude) !== 0 && Number(f.longitude) !== 0),
           coords: { lat: f.latitude, lng: f.longitude }
         }))
       });

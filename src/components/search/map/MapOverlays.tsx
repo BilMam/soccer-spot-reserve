@@ -19,11 +19,26 @@ interface MapOverlaysProps {
   fields: Field[];
 }
 
+// Fonction harmonisée pour valider les coordonnées GPS
+const hasValidGPS = (field: Field): boolean => {
+  if (!field.latitude || !field.longitude) return false;
+  
+  const lat = Number(field.latitude);
+  const lng = Number(field.longitude);
+  
+  return !isNaN(lat) && !isNaN(lng) &&
+         lat !== 0 && lng !== 0 &&
+         lat >= -90 && lat <= 90 &&
+         lng >= -180 && lng <= 180;
+};
+
 const MapOverlays: React.FC<MapOverlaysProps> = ({ 
   isGeocoding, 
   isLoaded, 
   fields 
 }) => {
+  const fieldsWithValidGPS = fields.filter(hasValidGPS);
+  
   return (
     <>
       {/* Indicateur de géocodage */}
@@ -40,7 +55,7 @@ const MapOverlays: React.FC<MapOverlaysProps> = ({
           <div className="flex items-center space-x-2">
             <MapPin className="w-4 h-4 text-green-600" />
             <span className="text-sm font-medium text-gray-700">
-              {fields.filter(f => f.latitude && f.longitude).length} terrain(s) localisé(s)
+              {fieldsWithValidGPS.length} terrain(s) localisé(s)
             </span>
           </div>
         </div>
