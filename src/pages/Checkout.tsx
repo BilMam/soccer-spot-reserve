@@ -96,7 +96,6 @@ const Checkout = () => {
           owner_amount: ownerAmount,
           status: 'pending',
           payment_status: 'pending',
-          escrow_status: 'none',
           currency: 'XOF'
         })
         .select()

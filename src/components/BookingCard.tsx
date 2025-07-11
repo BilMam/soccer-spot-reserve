@@ -19,8 +19,6 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
           <CardTitle className="text-lg">{booking.fields.name}</CardTitle>
           <BookingStatusBadge 
             status={booking.status} 
-            escrowStatus="none"
-            windowType={null}
           />
         </div>
       </CardHeader>

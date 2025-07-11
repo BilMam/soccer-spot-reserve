@@ -84,7 +84,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
           special_requests: specialRequests || null,
           status: 'pending',
           payment_status: 'pending',
-          escrow_status: 'none',
           currency: 'XOF'
         })
         .select()
