@@ -37,7 +37,7 @@ serve(async (req) => {
         profiles!inner(email, full_name),
         fields!inner(name, location, owner_id)
       `)
-      .eq('cinetpay_transaction_id', cpm_trans_id)
+      .eq('payment_intent_id', cpm_trans_id)
       .single()
 
     if (bookingError || !booking) {
@@ -48,76 +48,28 @@ serve(async (req) => {
     console.log('Réservation trouvée:', booking.id)
 
     if (cpm_trans_status === 'ACCEPTED' || cpm_trans_status === '1') {
-      // Paiement accepté - Utiliser le système de confirmation intelligente
-      console.log('Paiement accepté - Traitement avec confirmation intelligente')
+      // Paiement accepté - Traitement simple sans escrow
+      console.log('Paiement accepté - Confirmation directe')
 
-      // Utiliser la nouvelle fonction de traitement intelligent
-      const { data: escrowTransaction, error: escrowError } = await supabaseClient
-        .rpc('process_smart_booking_confirmation', {
-          p_booking_id: booking.id,
-          p_transaction_type: 'payment_received',
-          p_amount: booking.total_price,
-          p_cinetpay_transaction_id: cpm_trans_id,
-          p_platform_fee: booking.platform_fee || 0
-        })
-
-      if (escrowError) {
-        console.error('Erreur traitement confirmation intelligente:', escrowError)
-        throw escrowError
-      }
-
-      // Récupérer les informations mises à jour
-      const { data: updatedBooking } = await supabaseClient
-        .from('bookings')
-        .select('*')
-        .eq('id', booking.id)
-        .single()
-
-      // Mettre à jour le statut de base
+      // Simplifier la mise à jour - pas d'escrow
       await supabaseClient
         .from('bookings')
         .update({
           payment_status: 'paid',
-          status: updatedBooking?.status || 'confirmed',
-          escrow_status: 'funds_held',
-          cinetpay_transaction_id: cpm_trans_id,
+          status: 'confirmed',
           updated_at: new Date().toISOString()
         })
         .eq('id', booking.id)
-
-      // Envoyer notifications selon le type de fenêtre
-      if (updatedBooking?.confirmation_window_type === 'auto') {
-        // Auto-confirmation immédiate - notifier que c'est confirmé
-        await supabaseClient.functions.invoke('send-booking-email', {
-          body: {
-            booking_id: booking.id,
-            notification_type: 'auto_confirmed',
-            window_type: 'auto'
-          }
-        })
-      } else {
-        // Envoyer notification au propriétaire avec délai adaptatif
-        await supabaseClient.functions.invoke('send-booking-email', {
-          body: {
-            booking_id: booking.id,
-            notification_type: 'smart_owner_confirmation_required',
-            window_type: updatedBooking?.confirmation_window_type,
-            deadline: updatedBooking?.confirmation_deadline,
-            auto_action: updatedBooking?.auto_action
-          }
-        })
-      }
 
       // Envoyer confirmation de paiement au client
       await supabaseClient.functions.invoke('send-booking-email', {
         body: {
           booking_id: booking.id,
-          notification_type: 'smart_payment_confirmation',
-          window_type: updatedBooking?.confirmation_window_type
+          notification_type: 'payment_confirmation'
         }
       })
 
-      console.log('Traitement intelligent complété - Type de fenêtre:', updatedBooking?.confirmation_window_type)
+      console.log('Paiement accepté - Réservation confirmée')
 
     } else if (cpm_trans_status === 'DECLINED' || cpm_trans_status === '0') {
       // Paiement refusé
@@ -126,7 +78,6 @@ serve(async (req) => {
         .update({
           payment_status: 'failed',
           status: 'cancelled',
-          cinetpay_transaction_id: cpm_trans_id,
           updated_at: new Date().toISOString()
         })
         .eq('id', booking.id)

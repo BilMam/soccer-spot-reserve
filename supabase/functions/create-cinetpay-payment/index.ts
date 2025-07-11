@@ -233,13 +233,11 @@ serve(async (req) => {
     const { error: updateError } = await supabaseClient
       .from('bookings')
       .update({
-        cinetpay_transaction_id: transactionId,
-        payment_provider: 'cinetpay',
+        payment_intent_id: transactionId,
         platform_fee: platformFee,
         owner_amount: ownerAmount,
         payment_status: 'pending',
-        escrow_status: 'none',
-        status: 'pending_payment',
+        status: 'pending',
         updated_at: new Date().toISOString()
       })
       .eq('id', booking_id)

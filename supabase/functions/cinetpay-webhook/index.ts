@@ -64,7 +64,7 @@ serve(async (req) => {
         payment_status: paymentStatus,
         updated_at: new Date().toISOString()
       })
-      .eq('cinetpay_transaction_id', cpm_trans_id)
+      .eq('payment_intent_id', cpm_trans_id)
       .select(`
         *,
         profiles!inner(email, full_name),
