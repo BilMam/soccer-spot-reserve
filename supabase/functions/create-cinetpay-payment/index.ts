@@ -71,8 +71,23 @@ serve(async (req) => {
     });
 
     console.log('📥 Phase 2 - Lecture données request...');
-    const paymentData: PaymentRequest = await req.json()
-    console.log('📥 Données reçues Phase 2:', paymentData)
+    
+    // Protection robuste contre le parsing JSON
+    let paymentData: PaymentRequest;
+    try {
+      const rawBody = await req.text();
+      console.log('📥 Raw body length:', rawBody.length);
+      
+      if (!rawBody || rawBody.trim() === '') {
+        throw new Error('Body de la requête vide');
+      }
+      
+      paymentData = JSON.parse(rawBody);
+      console.log('📥 Données reçues Phase 2:', paymentData);
+    } catch (parseError) {
+      console.error('❌ Erreur parsing JSON:', parseError);
+      throw new Error(`Body JSON invalide: ${parseError.message}`);
+    }
 
     const { booking_id, amount, field_name, date, time } = paymentData
 
