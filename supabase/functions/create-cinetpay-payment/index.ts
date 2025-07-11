@@ -179,7 +179,7 @@ serve(async (req) => {
       notifyUrl
     });
 
-const cinetpayPaymentData = {
+    const cinetpayPaymentData = {
       apikey: cinetpayApiKey,
       site_id: cinetpaySiteId,
       transaction_id: transactionId,
@@ -196,13 +196,16 @@ const cinetpayPaymentData = {
       metadata: booking_id
     }
 
+    const cinetpayUrl = Deno.env.get('CINETPAY_CHECKOUT_URL') || 'https://api-checkout.cinetpay.com/v2/payment'
+    
     console.log('💳 Phase 2 - Appel API CinetPay...');
+    console.log('💳 URL CinetPay:', cinetpayUrl);
     console.log('💳 Données envoyées Phase 2:', {
       ...cinetpayPaymentData,
       apikey: '***MASKED***' // Masquer la clé API dans les logs
     });
 
-    const cinetpayResponse = await fetch('https://api-checkout.cinetpay.com/v2/payment', {
+    const cinetpayResponse = await fetch(cinetpayUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -211,10 +214,19 @@ const cinetpayPaymentData = {
     })
 
     console.log('📡 Phase 2 - Statut réponse CinetPay:', cinetpayResponse.status);
+    console.log('📡 Content-Type:', cinetpayResponse.headers.get('content-type'));
     console.log('📡 Headers réponse Phase 2:', Object.fromEntries(cinetpayResponse.headers.entries()));
 
-    const result = await cinetpayResponse.json()
-    console.log('📡 Phase 2 - Contenu réponse CinetPay:', result)
+    let result: any;
+    try {
+      result = await cinetpayResponse.json()
+      console.log('📡 Phase 2 - Contenu réponse CinetPay:', result)
+    } catch (parseError) {
+      const rawText = await cinetpayResponse.text()
+      console.error('❌ Erreur parsing JSON Phase 2:', parseError);
+      console.error('❌ Réponse brute CinetPay (non-JSON):', rawText.slice(0, 500));
+      throw new Error(`CinetPay réponse non-JSON (${cinetpayResponse.status}): ${rawText.slice(0, 200)}`)
+    }
 
     if (!cinetpayResponse.ok) {
       console.error('❌ Erreur HTTP CinetPay:', {
@@ -223,10 +235,7 @@ const cinetpayPaymentData = {
         headers: Object.fromEntries(cinetpayResponse.headers.entries())
       });
       
-      const errorText = await cinetpayResponse.text();
-      console.error('❌ Réponse brute CinetPay:', errorText);
-      
-      throw new Error(`Erreur HTTP CinetPay: ${cinetpayResponse.status} - ${errorText}`)
+      throw new Error(`Erreur HTTP CinetPay: ${cinetpayResponse.status} - ${JSON.stringify(result)}`)
     }
 
     if (result.code !== '201') {
