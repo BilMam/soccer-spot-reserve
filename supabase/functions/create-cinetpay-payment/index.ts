@@ -1,19 +1,11 @@
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface PaymentRequest {
-  booking_id: string;
-  amount: number;
-  field_name: string;
-  date: string;
-  time: string;
-}
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { corsHeaders, handleCorsPreFlight } from './cors.ts';
+import { authenticateUser } from './auth.ts';
+import { parseAndValidateRequest } from './validation.ts';
+import { getBookingData, updateBookingPayment } from './database.ts';
+import { getCinetPayConfig, createPaymentData, callCinetPayAPI } from './cinetpay.ts';
+import type { PaymentResponse } from './types.ts';
 
 serve(async (req) => {
   console.log('🚀 PHASE 2 - Edge Function create-cinetpay-payment');
@@ -22,155 +14,33 @@ serve(async (req) => {
   console.log('📋 Headers:', Object.fromEntries(req.headers.entries()));
 
   if (req.method === 'OPTIONS') {
-    console.log('✅ Réponse OPTIONS pour CORS');
-    return new Response('ok', { headers: corsHeaders })
+    return handleCorsPreFlight();
   }
 
   try {
-    console.log('🔧 Phase 2 - Initialisation client Supabase...');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
-    console.log('🔧 Variables d\'environnement Supabase:', {
-      supabaseUrl: supabaseUrl ? `✅ OK (${supabaseUrl.substring(0, 30)}...)` : '❌ MANQUANT',
-      supabaseServiceKey: supabaseServiceKey ? '✅ OK' : '❌ MANQUANT'
-    });
+    // Authentification
+    const { user, supabaseClient } = await authenticateUser(req);
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Configuration Supabase manquante - vérifier les variables d\'environnement');
-    }
+    // Validation des données
+    const paymentData = await parseAndValidateRequest(req);
+    const { booking_id, amount, field_name, date, time } = paymentData;
 
-    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+    // Récupération et vérification de la réservation
+    const booking = await getBookingData(supabaseClient, booking_id, user.id);
 
-    console.log('🔐 Phase 2 - Vérification authentification...');
-    const authHeader = req.headers.get('Authorization');
-    console.log('🔐 Auth header présent:', !!authHeader);
-    
-    if (!authHeader) {
-      throw new Error('Header Authorization manquant');
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    console.log('🔐 Token extrait:', token ? 'présent' : 'absent');
-
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-    
-    if (authError) {
-      console.error('❌ Erreur authentification:', authError);
-      throw new Error(`Erreur authentification: ${authError.message}`);
-    }
-
-    if (!user) {
-      console.error('❌ Utilisateur non authentifié');
-      throw new Error('Utilisateur non authentifié')
-    }
-
-    console.log('✅ Utilisateur authentifié:', {
-      id: user.id,
-      email: user.email
-    });
-
-    console.log('📥 Phase 2 - Lecture données request...');
-    
-    // Protection robuste contre le parsing JSON
-    let paymentData: PaymentRequest;
-    try {
-      const rawBody = await req.text();
-      console.log('📥 Raw body length:', rawBody.length);
-      
-      if (!rawBody || rawBody.trim() === '') {
-        throw new Error('Body de la requête vide');
-      }
-      
-      paymentData = JSON.parse(rawBody);
-      console.log('📥 Données reçues Phase 2:', paymentData);
-    } catch (parseError) {
-      console.error('❌ Erreur parsing JSON:', parseError);
-      throw new Error(`Body JSON invalide: ${parseError.message}`);
-    }
-
-    const { booking_id, amount, field_name, date, time } = paymentData
-
-    // Validation renforcée Phase 2
-    console.log('🔍 Phase 2 - Validation renforcée des données...');
-    const validationErrors = [];
-    
-    if (!booking_id) validationErrors.push('booking_id manquant');
-    if (!amount || amount <= 0) validationErrors.push(`amount invalide: ${amount}`);
-    if (!field_name) validationErrors.push('field_name manquant');
-    if (!date) validationErrors.push('date manquante');
-    if (!time) validationErrors.push('time manquant');
-
-    // Vérification du montant minimum (100 XOF pour CinetPay)
-    if (amount < 100) {
-      validationErrors.push(`Montant trop faible: ${amount} XOF (minimum 100 XOF)`);
-    }
-
-    if (validationErrors.length > 0) {
-      console.error('❌ Erreurs validation Phase 2:', validationErrors);
-      throw new Error(`Validation échouée: ${validationErrors.join(', ')}`);
-    }
-
-    console.log('✅ Validation Phase 2 réussie');
-
-    // Récupérer et vérifier la réservation
-    console.log('📖 Phase 2 - Récupération réservation...');
-    const { data: booking, error: bookingError } = await supabaseClient
-      .from('bookings')
-      .select(`
-        *,
-        fields!inner(owner_id, name)
-      `)
-      .eq('id', booking_id)
-      .single()
-
-    if (bookingError) {
-      console.error('❌ Erreur récupération réservation:', bookingError)
-      throw new Error(`Réservation non trouvée: ${bookingError.message}`)
-    }
-
-    console.log('✅ Réservation trouvée Phase 2:', {
-      id: booking.id,
-      user_id: booking.user_id,
-      total_price: booking.total_price,
-      field_name: booking.fields.name,
-      status: booking.status,
-      payment_status: booking.payment_status
-    });
-
-    // Vérifier que l'utilisateur est propriétaire de la réservation
-    if (booking.user_id !== user.id) {
-      console.error('❌ Utilisateur non autorisé pour cette réservation');
-      throw new Error('Non autorisé - cette réservation ne vous appartient pas');
-    }
-
-    // Vérifier les clés API CinetPay
-    console.log('🔑 Phase 2 - Vérification clés CinetPay...');
-    const cinetpayApiKey = Deno.env.get('CINETPAY_API_KEY')
-    const cinetpaySiteId = Deno.env.get('CINETPAY_SITE_ID')
-
-    console.log('🔑 Clés CinetPay Phase 2:', {
-      apiKey: cinetpayApiKey ? `✅ OK (${cinetpayApiKey.substring(0, 10)}...)` : '❌ MANQUANT',
-      siteId: cinetpaySiteId ? `✅ OK (${cinetpaySiteId})` : '❌ MANQUANT',
-      siteIdType: typeof cinetpaySiteId,
-      siteIdParsed: cinetpaySiteId ? parseInt(cinetpaySiteId) : 'N/A'
-    });
-
-    if (!cinetpayApiKey || !cinetpaySiteId) {
-      console.error('❌ Clés API CinetPay non configurées');
-      throw new Error('Configuration CinetPay manquante')
-    }
+    // Configuration CinetPay
+    const cinetpayConfig = getCinetPayConfig();
 
     // Calculer les montants (commission de 5%)
-    const platformFee = Math.round(amount * 0.05)
-    const ownerAmount = amount - platformFee
+    const platformFee = Math.round(amount * 0.05);
+    const ownerAmount = amount - platformFee;
 
     console.log('💰 Phase 2 - Calcul montants:', { 
       amount, 
       platformFee, 
       ownerAmount,
       verificationBooking: booking.total_price
-    })
+    });
 
     // Vérifier cohérence montant
     if (Math.abs(amount - booking.total_price) > 1) {
@@ -182,11 +52,11 @@ serve(async (req) => {
     }
 
     // Créer la transaction CinetPay
-    const transactionId = `escrow_${booking_id}_${Date.now()}`
+    const transactionId = `escrow_${booking_id}_${Date.now()}`;
     
-    const baseUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com')
-    const returnUrl = `${baseUrl}/booking-success?session_id=booking_${booking_id}`
-    const notifyUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/cinetpay-webhook`
+    const baseUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com');
+    const returnUrl = `${baseUrl}/booking-success?session_id=booking_${booking_id}`;
+    const notifyUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/cinetpay-webhook`;
 
     console.log('🔗 Phase 2 - URLs configurées:', {
       baseUrl,
@@ -194,100 +64,27 @@ serve(async (req) => {
       notifyUrl
     });
 
-    const cinetpayPaymentData = {
-      apikey: cinetpayApiKey,
-      site_id: cinetpaySiteId,
-      transaction_id: transactionId,
-      amount: amount,
-      currency: 'XOF',
-      description: `Réservation terrain ${field_name} - ${date} à ${time}`,
-      customer_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Client',
-      customer_surname: user.user_metadata?.last_name || '',
-      customer_email: user.email,
-      customer_phone_number: user.user_metadata?.phone || user.phone || '',
-      return_url: returnUrl,
-      notify_url: notifyUrl,
-      channels: 'ALL',
-      metadata: booking_id
-    }
+    // Préparer les données de paiement
+    const cinetpayPaymentData = createPaymentData(
+      cinetpayConfig,
+      transactionId,
+      amount,
+      field_name,
+      date,
+      time,
+      user,
+      returnUrl,
+      notifyUrl,
+      booking_id
+    );
 
-    const cinetpayUrl = Deno.env.get('CINETPAY_CHECKOUT_URL') || 'https://api-checkout.cinetpay.com/v2/payment'
-    
-    console.log('💳 Phase 2 - Appel API CinetPay...');
-    console.log('💳 URL CinetPay:', cinetpayUrl);
-    console.log('💳 Données envoyées Phase 2:', {
-      ...cinetpayPaymentData,
-      apikey: '***MASKED***' // Masquer la clé API dans les logs
-    });
-
-    const cinetpayResponse = await fetch(cinetpayUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(cinetpayPaymentData)
-    })
-
-    console.log('📡 Phase 2 - Statut réponse CinetPay:', cinetpayResponse.status);
-    console.log('📡 Content-Type:', cinetpayResponse.headers.get('content-type'));
-    console.log('📡 Headers réponse Phase 2:', Object.fromEntries(cinetpayResponse.headers.entries()));
-
-    let result: any;
-    try {
-      result = await cinetpayResponse.json()
-      console.log('📡 Phase 2 - Contenu réponse CinetPay:', result)
-    } catch (parseError) {
-      const rawText = await cinetpayResponse.text()
-      console.error('❌ Erreur parsing JSON Phase 2:', parseError);
-      console.error('❌ Réponse brute CinetPay (non-JSON):', rawText.slice(0, 500));
-      throw new Error(`CinetPay réponse non-JSON (${cinetpayResponse.status}): ${rawText.slice(0, 200)}`)
-    }
-
-    if (!cinetpayResponse.ok) {
-      console.error('❌ Erreur HTTP CinetPay:', {
-        status: cinetpayResponse.status,
-        statusText: cinetpayResponse.statusText,
-        headers: Object.fromEntries(cinetpayResponse.headers.entries())
-      });
-      
-      throw new Error(`Erreur HTTP CinetPay: ${cinetpayResponse.status} - ${JSON.stringify(result)}`)
-    }
-
-    if (result.code !== '201') {
-      console.error('❌ Erreur API CinetPay:', {
-        code: result.code,
-        message: result.message,
-        description: result.description,
-        data: result.data,
-        fullResponse: result
-      });
-      throw new Error(`Erreur CinetPay API (${result.code}): ${result.message || result.description || 'Code de réponse inattendu'}`)
-    }
-
-    console.log('✅ Phase 2 - Paiement CinetPay créé avec succès');
+    // Appeler l'API CinetPay
+    const result = await callCinetPayAPI(cinetpayConfig, cinetpayPaymentData);
 
     // Mettre à jour la réservation
-    console.log('📝 Phase 2 - Mise à jour réservation...');
-    const { error: updateError } = await supabaseClient
-      .from('bookings')
-      .update({
-        payment_intent_id: transactionId,
-        platform_fee: platformFee,
-        owner_amount: ownerAmount,
-        payment_status: 'pending',
-        status: 'pending',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', booking_id)
+    await updateBookingPayment(supabaseClient, booking_id, transactionId, platformFee, ownerAmount);
 
-    if (updateError) {
-      console.error('❌ Erreur mise à jour réservation Phase 2:', updateError)
-      throw updateError
-    }
-
-    console.log('✅ Phase 2 - Réservation mise à jour');
-
-    const responseData = {
+    const responseData: PaymentResponse = {
       url: result.data.payment_url,
       transaction_id: transactionId,
       escrow_mode: true,
@@ -305,13 +102,13 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       },
-    )
+    );
 
   } catch (error) {
-    console.error('💥 ERREUR GLOBALE Phase 2 Edge Function:', error)
-    console.error('💥 Stack trace Phase 2:', error.stack)
-    console.error('💥 Type erreur:', typeof error)
-    console.error('💥 Nom erreur:', error.name)
+    console.error('💥 ERREUR GLOBALE Phase 2 Edge Function:', error);
+    console.error('💥 Stack trace Phase 2:', error.stack);
+    console.error('💥 Type erreur:', typeof error);
+    console.error('💥 Nom erreur:', error.name);
     
     return new Response(
       JSON.stringify({ 
@@ -325,6 +122,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       },
-    )
+    );
   }
-})
+});
