@@ -136,7 +136,9 @@ serve(async (req) => {
 
     console.log('🔑 Clés CinetPay Phase 2:', {
       apiKey: cinetpayApiKey ? `✅ OK (${cinetpayApiKey.substring(0, 10)}...)` : '❌ MANQUANT',
-      siteId: cinetpaySiteId ? `✅ OK (${cinetpaySiteId})` : '❌ MANQUANT'
+      siteId: cinetpaySiteId ? `✅ OK (${cinetpaySiteId})` : '❌ MANQUANT',
+      siteIdType: typeof cinetpaySiteId,
+      siteIdParsed: cinetpaySiteId ? parseInt(cinetpaySiteId) : 'N/A'
     });
 
     if (!cinetpayApiKey || !cinetpaySiteId) {
@@ -177,13 +179,13 @@ serve(async (req) => {
       notifyUrl
     });
 
-    const cinetpayPaymentData = {
+const cinetpayPaymentData = {
       apikey: cinetpayApiKey,
-      site_id: parseInt(cinetpaySiteId),
+      site_id: cinetpaySiteId,
       transaction_id: transactionId,
       amount: amount,
       currency: 'XOF',
-      description: 'Réservation terrain MySport',
+      description: `Réservation terrain ${field_name} - ${date} à ${time}`,
       customer_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Client',
       customer_surname: user.user_metadata?.last_name || '',
       customer_email: user.email,
@@ -214,16 +216,28 @@ serve(async (req) => {
     const result = await cinetpayResponse.json()
     console.log('📡 Phase 2 - Contenu réponse CinetPay:', result)
 
-    if (!cinetpayResponse.ok || result.code !== '201') {
-      console.error('❌ Erreur API CinetPay Phase 2:', {
+    if (!cinetpayResponse.ok) {
+      console.error('❌ Erreur HTTP CinetPay:', {
         status: cinetpayResponse.status,
-        ok: cinetpayResponse.ok,
+        statusText: cinetpayResponse.statusText,
+        headers: Object.fromEntries(cinetpayResponse.headers.entries())
+      });
+      
+      const errorText = await cinetpayResponse.text();
+      console.error('❌ Réponse brute CinetPay:', errorText);
+      
+      throw new Error(`Erreur HTTP CinetPay: ${cinetpayResponse.status} - ${errorText}`)
+    }
+
+    if (result.code !== '201') {
+      console.error('❌ Erreur API CinetPay:', {
         code: result.code,
         message: result.message,
         description: result.description,
-        details: result
+        data: result.data,
+        fullResponse: result
       });
-      throw new Error(`Erreur CinetPay (${result.code}): ${result.message || result.description || 'Erreur inconnue'}`)
+      throw new Error(`Erreur CinetPay API (${result.code}): ${result.message || result.description || 'Code de réponse inattendu'}`)
     }
 
     console.log('✅ Phase 2 - Paiement CinetPay créé avec succès');
