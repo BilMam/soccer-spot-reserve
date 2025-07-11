@@ -49,7 +49,7 @@ const Checkout = () => {
 
   const checkoutData = location.state as CheckoutState;
   
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
+  // Plus besoin de sélecteur - CinetPay gère tous les moyens de paiement
 
   // Rediriger si pas de données de checkout
   React.useEffect(() => {
@@ -154,15 +154,6 @@ const Checkout = () => {
   });
 
   const handlePayment = () => {
-    if (!selectedPaymentMethod) {
-      toast({
-        title: "Moyen de paiement requis",
-        description: "Veuillez sélectionner un moyen de paiement",
-        variant: "destructive"
-      });
-      return;
-    }
-
     createBookingMutation.mutate();
   };
 
@@ -203,13 +194,7 @@ const Checkout = () => {
     );
   }
 
-  const paymentMethods = [
-    { id: 'orange_money', name: 'Orange Money', icon: Smartphone, color: 'bg-orange-500' },
-    { id: 'mtn_money', name: 'MTN Mobile Money', icon: Smartphone, color: 'bg-yellow-500' },
-    { id: 'moov_money', name: 'Moov Money', icon: Smartphone, color: 'bg-blue-500' },
-    { id: 'wave', name: 'Wave', icon: Smartphone, color: 'bg-blue-600' },
-    { id: 'visa_mastercard', name: 'Visa / Mastercard', icon: CreditCard, color: 'bg-gray-700' }
-  ];
+  // Supprimé : CinetPay affiche directement tous les moyens de paiement
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -230,34 +215,17 @@ const Checkout = () => {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl">Choisir votre moyen de paiement</CardTitle>
+                <CardTitle className="text-2xl">Paiement sécurisé</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Moyens de paiement */}
-                <div>
-                  <div className="grid grid-cols-1 gap-3">
-                    {paymentMethods.map((method) => (
-                      <button
-                        key={method.id}
-                        type="button"
-                        onClick={() => setSelectedPaymentMethod(method.id)}
-                        className={`p-4 border-2 rounded-lg flex items-center space-x-3 transition-all hover:bg-gray-50 ${
-                          selectedPaymentMethod === method.id
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-gray-200'
-                        }`}
-                      >
-                        <div className={`p-2 rounded-lg text-white ${method.color}`}>
-                          <method.icon className="w-5 h-5" />
-                        </div>
-                        <span className="font-medium">{method.name}</span>
-                        {selectedPaymentMethod === method.id && (
-                          <div className="ml-auto w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                            <div className="w-2 h-2 bg-white rounded-full"></div>
-                          </div>
-                        )}
-                      </button>
-                    ))}
+                {/* Info moyens de paiement */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <CreditCard className="w-5 h-5 text-green-600 mt-0.5" />
+                    <div className="text-sm text-green-800">
+                      <p className="font-medium mb-1">Tous les moyens de paiement disponibles</p>
+                      <p>Orange Money, MTN Mobile Money, Moov Money, Wave, Visa/Mastercard - Choisissez directement sur la page de paiement CinetPay.</p>
+                    </div>
                   </div>
                 </div>
 
