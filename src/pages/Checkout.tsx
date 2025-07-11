@@ -114,6 +114,14 @@ const Checkout = () => {
         time: `${checkoutData.selectedStartTime} - ${checkoutData.selectedEndTime}`
       };
 
+      console.log('🔍 Debug paymentRequestData:', paymentRequestData);
+      console.log('🔍 booking.id:', booking.id);
+      console.log('🔍 checkoutData.totalPrice:', checkoutData.totalPrice);
+      console.log('🔍 field.name:', field.name);
+      console.log('🔍 selectedDate:', checkoutData.selectedDate);
+      console.log('🔍 selectedStartTime:', checkoutData.selectedStartTime);
+      console.log('🔍 selectedEndTime:', checkoutData.selectedEndTime);
+
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-cinetpay-payment', {
         body: paymentRequestData,
         headers: {
