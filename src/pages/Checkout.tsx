@@ -122,12 +122,18 @@ const Checkout = () => {
       console.log('🔍 selectedStartTime:', checkoutData.selectedStartTime);
       console.log('🔍 selectedEndTime:', checkoutData.selectedEndTime);
 
-      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-cinetpay-payment', {
-        body: paymentRequestData,
+      const response = await fetch('https://zldawmyoscicxoiqvfpu.supabase.co/functions/v1/create-cinetpay-payment', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        }
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsZGF3bXlvc2NpY3hvaXF2ZnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MjY5NDAsImV4cCI6MjA2NTUwMjk0MH0.kKLUE9qwd4eCiegvGYvM3TKTPp8PuyycGp5L3wsUJu4'
+        },
+        body: JSON.stringify(paymentRequestData)
       });
+
+      const paymentData = await response.json();
+      const paymentError = !response.ok ? paymentData : null;
 
       if (paymentError) {
         throw new Error(`Erreur de paiement: ${paymentError.message}`);
