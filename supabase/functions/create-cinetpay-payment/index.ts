@@ -169,7 +169,7 @@ serve(async (req) => {
     
     const baseUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com')
     const returnUrl = `${baseUrl}/booking-success?session_id=booking_${booking_id}`
-    const notifyUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/cinetpay-escrow-webhook`
+    const notifyUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/cinetpay-webhook`
 
     console.log('🔗 Phase 2 - URLs configurées:', {
       baseUrl,
@@ -183,12 +183,15 @@ serve(async (req) => {
       transaction_id: transactionId,
       amount: amount,
       currency: 'XOF',
-      description: `Réservation ${field_name} - ${date} ${time}`,
+      description: 'Réservation terrain MySport',
+      customer_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Client',
+      customer_surname: user.user_metadata?.last_name || '',
+      customer_email: user.email,
+      customer_phone_number: user.user_metadata?.phone || user.phone || '',
       return_url: returnUrl,
       notify_url: notifyUrl,
-      customer_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Client',
-      customer_email: user.email,
       channels: 'ALL',
+      metadata: booking_id
     }
 
     console.log('💳 Phase 2 - Appel API CinetPay...');

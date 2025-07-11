@@ -51,7 +51,7 @@ serve(async (req) => {
     if (cpm_result === '00' && cpm_trans_status === 'ACCEPTED') {
       bookingStatus = 'confirmed'
       paymentStatus = 'paid'
-    } else if (cmp_trans_status === 'REFUSED') {
+    } else if (cpm_trans_status === 'REFUSED') {
       bookingStatus = 'cancelled'
       paymentStatus = 'failed'
     }
