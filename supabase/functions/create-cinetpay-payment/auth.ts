@@ -17,11 +17,12 @@ export async function authenticateUser(req: Request) {
   const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
 
   console.log('🔐 Phase 2 - Vérification authentification...');
-  const authHeader = req.headers.get('Authorization');
+  const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
   console.log('🔐 Auth header présent:', !!authHeader);
+  console.log('🔐 Headers disponibles:', [...req.headers.keys()]);
   
   if (!authHeader) {
-    throw new Error('Header Authorization manquant');
+    throw new Error('Erreur authentification: Auth session missing!');
   }
 
   const token = authHeader.replace('Bearer ', '');
