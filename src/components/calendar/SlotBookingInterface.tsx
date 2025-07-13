@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { supabase } from '@/integrations/supabase/client';
 import { normalizeTime } from '@/utils/timeUtils';
 import { SlotValidationLogic } from './SlotValidationLogic';
 import { SlotPriceCalculator } from './SlotPriceCalculator';
@@ -11,6 +10,7 @@ import OccupiedSlotsDisplay from './OccupiedSlotsDisplay';
 import TimeSlotSelector from './TimeSlotSelector';
 import BookingSummary from './BookingSummary';
 import SlotBookingActions from './SlotBookingActions';
+import { useBookingData } from '@/hooks/useBookingData';
 
 interface AvailabilitySlot {
   id: string;
@@ -43,59 +43,34 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
 }) => {
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
   const [selectedEndTime, setSelectedEndTime] = useState<string>('');
-  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [unavailableSlots, setUnavailableSlots] = useState<string[]>([]);
 
+  // Utiliser le hook temps réel pour les réservations
+  const dateStr = format(selectedDate, 'yyyy-MM-dd');
+  const { bookedSlotsByDate } = useBookingData(fieldId, dateStr, dateStr);
+  
+  // Convertir les données du hook au format attendu
+  const bookedSlots = Array.from(bookedSlotsByDate[dateStr] || []);
+
   // Debug: Afficher les informations reçues
-  console.log('🔍 SlotBookingInterface - Date sélectionnée:', format(selectedDate, 'yyyy-MM-dd'));
+  console.log('🔍 SlotBookingInterface - Date sélectionnée:', dateStr);
   console.log('🔍 SlotBookingInterface - Field ID:', fieldId);
   console.log('🔍 SlotBookingInterface - Créneaux reçus:', availableSlots.length);
+  console.log('🔍 SlotBookingInterface - Créneaux réservés (temps réel):', bookedSlots);
 
-  // Récupérer les créneaux réservés et indisponibles
+  // Calculer les créneaux indisponibles (pas de réservation mais is_available = false)
   useEffect(() => {
-    const fetchSlotStatus = async () => {
-      if (!selectedDate) return;
-      
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      console.log('🔍 Vérification statut créneaux pour:', dateStr);
-      
-      try {
-        // Récupérer les réservations actives
-        const { data: bookings, error: bookingError } = await supabase
-          .from('bookings')
-          .select('start_time, end_time')
-          .eq('field_id', fieldId)
-          .eq('booking_date', dateStr)
-          .in('status', ['pending', 'confirmed', 'owner_confirmed']);
-
-        if (bookingError) {
-          console.error('Erreur lors de la récupération des réservations:', bookingError);
-        } else {
-          const booked = bookings?.map(booking => `${normalizeTime(booking.start_time)}-${normalizeTime(booking.end_time)}`) || [];
-          console.log('🔍 Créneaux réservés trouvés:', booked);
-          setBookedSlots(booked);
-        }
-
-        // Séparer les créneaux indisponibles (pas de réservation mais is_available = false)
-        const unavailable = availableSlots
-          .filter(slot => !slot.is_available)
-          .filter(slot => {
-            const slotKey = `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`;
-            return !bookings?.some(booking => 
-              `${normalizeTime(booking.start_time)}-${normalizeTime(booking.end_time)}` === slotKey
-            );
-          })
-          .map(slot => `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`);
-        
-        console.log('🔍 Créneaux indisponibles trouvés:', unavailable);
-        setUnavailableSlots(unavailable);
-      } catch (error) {
-        console.error('Erreur lors de la vérification des créneaux:', error);
-      }
-    };
-
-    fetchSlotStatus();
-  }, [selectedDate, fieldId, availableSlots]);
+    const unavailable = availableSlots
+      .filter(slot => !slot.is_available)
+      .filter(slot => {
+        const slotKey = `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`;
+        return !bookedSlots.includes(slotKey);
+      })
+      .map(slot => `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`);
+    
+    console.log('🔍 Créneaux indisponibles trouvés:', unavailable);
+    setUnavailableSlots(unavailable);
+  }, [availableSlots, bookedSlots]);
 
   // Réinitialiser l'heure de fin quand l'heure de début change
   useEffect(() => {
