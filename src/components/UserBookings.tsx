@@ -41,7 +41,7 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
   const queryClient = useQueryClient();
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const { pendingReviews, checkCompletedBookings, sendReviewReminder } = usePendingReviews();
+  const { pendingReviews, checkCompletedBookings, sendReviewReminder, refreshPendingReviews } = usePendingReviews();
 
   // Vérifier automatiquement les réservations terminées au chargement
   useEffect(() => {
@@ -153,9 +153,15 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
   };
 
   const handleReviewSubmitted = () => {
+    // Invalidation immédiate et complète
     queryClient.invalidateQueries({ queryKey: ['user-bookings', userId] });
     queryClient.invalidateQueries({ queryKey: ['pending-reviews', userId] });
+    queryClient.invalidateQueries({ queryKey: ['pending-reviews'] }); // Sans userId pour couvrir tous les cas
     setReviewDialogOpen(false);
+    
+    // Force un re-fetch immédiat des avis en attente
+    checkCompletedBookings();
+    refreshPendingReviews();
   };
 
   const handleSendReminder = (bookingId: string, fieldName: string) => {

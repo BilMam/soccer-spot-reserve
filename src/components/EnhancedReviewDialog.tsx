@@ -101,6 +101,12 @@ const EnhancedReviewDialog: React.FC<EnhancedReviewDialogProps> = ({
         title: "Avis publié avec succès ! ⭐",
         description: "Merci pour votre contribution à la communauté !",
       });
+      
+      // Invalidation complète de toutes les requêtes liées aux avis et réservations
+      queryClient.invalidateQueries({ queryKey: ['pending-reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['user-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['field-reviews'] });
+      
       resetForm();
       onReviewSubmitted();
     },

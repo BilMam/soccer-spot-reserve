@@ -10,7 +10,7 @@ export const usePendingReviews = () => {
   const { preferences, sendSMSNotification } = useNotificationPreferences();
 
   // Récupérer les réservations en attente d'avis
-  const { data: pendingReviews = [] } = useQuery({
+  const { data: pendingReviews = [], refetch } = useQuery({
     queryKey: ['pending-reviews', user?.id],
     queryFn: async () => {
       if (!user) return [];
@@ -29,7 +29,9 @@ export const usePendingReviews = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user
+    enabled: !!user,
+    staleTime: 0, // Toujours considérer les données comme périmées
+    refetchOnWindowFocus: true, // Re-fetch quand la fenêtre redevient active
   });
 
   // Mutation pour changer le statut des réservations terminées
@@ -119,10 +121,16 @@ export const usePendingReviews = () => {
     updateCompletedBookings.mutate();
   };
 
+  // Fonction pour forcer le re-fetch des avis en attente
+  const refreshPendingReviews = () => {
+    refetch();
+  };
+
   return {
     pendingReviews,
     pendingCount: pendingReviews.length,
     checkCompletedBookings,
-    sendReviewReminder
+    sendReviewReminder,
+    refreshPendingReviews
   };
 };

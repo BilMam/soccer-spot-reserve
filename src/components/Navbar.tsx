@@ -21,7 +21,7 @@ const Navbar = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { hasAdminPermissions } = useAdminPermissions();
-  const { pendingCount } = usePendingReviews();
+  const { pendingCount, refreshPendingReviews } = usePendingReviews();
 
   // Vérifier le type d'utilisateur (owner, etc.)
   const { data: profile } = useQuery({

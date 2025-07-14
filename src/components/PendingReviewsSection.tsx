@@ -40,8 +40,10 @@ const PendingReviewsSection: React.FC<PendingReviewsSectionProps> = ({
   };
 
   const handleReviewSubmitted = () => {
+    // Forcer la mise à jour des données après soumission d'avis
     onReviewSubmitted();
     setReviewDialogOpen(false);
+    setSelectedBooking(null);
   };
 
   const handleSendReminder = (booking: Booking) => {
