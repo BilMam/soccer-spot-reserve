@@ -80,14 +80,11 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
               
               console.log('🔍 Heure de début:', time, 'status:', status, 'disabled:', isDisabled);
               
-              return (
-                <SelectItem key={time} value={time} disabled={isDisabled} className="flex items-center justify-between">
-                  <div className="flex items-center justify-between w-full">
-                    <span className={isDisabled ? 'text-gray-400' : ''}>{time}</span>
-                    <SlotStatusBadge status={status} />
-                  </div>
-                </SelectItem>
-              );
+               return (
+                 <SelectItem key={time} value={time} disabled={isDisabled}>
+                   <span className={isDisabled ? 'text-gray-400' : ''}>{time}</span>
+                 </SelectItem>
+               );
             })}
           </SelectContent>
         </Select>
