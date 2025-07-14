@@ -47,10 +47,11 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
 
   // Utiliser le hook temps réel pour les réservations
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
-  const { bookedSlotsByDate } = useBookingData(fieldId, dateStr, dateStr);
+  const { bookedSlotsByDate, bookingsByDate } = useBookingData(fieldId, dateStr, dateStr);
   
   // Convertir les données du hook au format attendu
   const bookedSlots = Array.from(bookedSlotsByDate[dateStr] || []);
+  const bookings = bookingsByDate[dateStr] || [];
 
   // Debug: Afficher les informations reçues
   console.log('🔍 SlotBookingInterface - Date sélectionnée:', dateStr);
@@ -128,6 +129,8 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               onEndTimeChange={setSelectedEndTime}
               availableSlots={availableSlots}
               fieldId={fieldId}
+              bookedSlots={bookedSlots}
+              bookings={bookings}
             />
 
             <BookingSummary

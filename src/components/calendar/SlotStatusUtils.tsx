@@ -1,7 +1,6 @@
 
 import { normalizeTime } from '@/utils/timeUtils';
 import { SlotOverlapUtils } from './SlotOverlapUtils';
-import { supabase } from '@/integrations/supabase/client';
 
 interface AvailabilitySlot {
   id: string;
@@ -130,76 +129,3 @@ const timeToMinutes = (time: string): number => {
   return hours * 60 + minutes;
 };
 
-export const fetchBookedSlots = async (fieldId: string, dateStr: string): Promise<Set<string>> => {
-  if (!fieldId || !dateStr) {
-    console.log('🔍 Pas de fieldId ou date, skip fetch');
-    return new Set();
-  }
-
-  console.log('🔍 Vérification réservations pour:', { fieldId, dateStr });
-
-  try {
-    const { data: bookings, error } = await supabase
-      .from('bookings')
-      .select('start_time, end_time')
-      .eq('field_id', fieldId)
-      .eq('booking_date', dateStr)
-      .in('status', ['pending', 'confirmed', 'owner_confirmed']);
-
-    if (error) {
-      console.error('Erreur lors de la vérification des réservations:', error);
-      return new Set();
-    }
-
-    const bookedSlotKeys = new Set(
-      bookings?.map(booking => {
-        const normalizedStart = normalizeTime(booking.start_time);
-        const normalizedEnd = normalizeTime(booking.end_time);
-        const slotKey = `${normalizedStart}-${normalizedEnd}`;
-        console.log('🔍 Slot réservé normalisé:', slotKey, 'depuis:', booking.start_time, booking.end_time);
-        return slotKey;
-      }) || []
-    );
-    
-    console.log('🔍 Créneaux réservés récupérés:', Array.from(bookedSlotKeys));
-    return bookedSlotKeys;
-  } catch (error) {
-    console.error('Erreur lors de la vérification des réservations:', error);
-    return new Set();
-  }
-};
-
-// NOUVELLE: Fonction pour récupérer les réservations complètes (pas seulement les clés)
-export const fetchBookings = async (fieldId: string, dateStr: string): Promise<BookingSlot[]> => {
-  if (!fieldId || !dateStr) {
-    console.log('🔍 Pas de fieldId ou date, skip fetch bookings');
-    return [];
-  }
-
-  console.log('🔍 Récupération réservations complètes pour:', { fieldId, dateStr });
-
-  try {
-    const { data: bookings, error } = await supabase
-      .from('bookings')
-      .select('start_time, end_time')
-      .eq('field_id', fieldId)
-      .eq('booking_date', dateStr)
-      .in('status', ['pending', 'confirmed', 'owner_confirmed']);
-
-    if (error) {
-      console.error('Erreur lors de la récupération des réservations:', error);
-      return [];
-    }
-
-    const bookingSlots = bookings?.map(booking => ({
-      start_time: booking.start_time,
-      end_time: booking.end_time
-    })) || [];
-    
-    console.log('🔍 Réservations complètes récupérées:', bookingSlots);
-    return bookingSlots;
-  } catch (error) {
-    console.error('Erreur lors de la récupération des réservations:', error);
-    return [];
-  }
-};

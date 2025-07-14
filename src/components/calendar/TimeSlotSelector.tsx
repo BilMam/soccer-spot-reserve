@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateTimeOptions, timeToMinutes, minutesToTime } from '@/utils/timeUtils';
-import { SlotStatusUtils, fetchBookedSlots, fetchBookings } from './SlotStatusUtils';
+import { SlotStatusUtils } from './SlotStatusUtils';
 import { AvailableEndTimesCalculator } from './AvailableEndTimesCalculator';
 import SlotStatusBadge from './SlotStatusBadge';
 
@@ -25,6 +25,8 @@ interface TimeSlotSelectorProps {
   onEndTimeChange: (time: string) => void;
   availableSlots: AvailabilitySlot[];
   fieldId: string;
+  bookedSlots: string[];
+  bookings: Array<{start_time: string, end_time: string}>;
 }
 
 const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
@@ -33,46 +35,16 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
   onStartTimeChange,
   onEndTimeChange,
   availableSlots,
-  fieldId
+  fieldId,
+  bookedSlots,
+  bookings
 }) => {
-  const [bookedSlots, setBookedSlots] = useState<Set<string>>(new Set());
-  const [bookings, setBookings] = useState<Array<{start_time: string, end_time: string}>>([]);
   const timeOptions = generateTimeOptions();
 
   console.log('🔍 TimeSlotSelector - Field ID reçu:', fieldId);
   console.log('🔍 TimeSlotSelector - Créneaux disponibles:', availableSlots.length);
-
-  // Récupérer les créneaux réservés ET les réservations complètes
-  useEffect(() => {
-    const fetchSlots = async () => {
-      if (availableSlots.length === 0 || !fieldId) {
-        console.log('🔍 Pas de créneaux ou pas de fieldId, skip fetch');
-        return;
-      }
-      
-      const dateStr = availableSlots[0]?.date;
-      if (!dateStr) {
-        console.log('🔍 Pas de date trouvée dans les créneaux');
-        return;
-      }
-
-      // Récupérer à la fois les clés des créneaux et les réservations complètes
-      const [slots, fullBookings] = await Promise.all([
-        fetchBookedSlots(fieldId, dateStr),
-        fetchBookings(fieldId, dateStr)
-      ]);
-      
-      setBookedSlots(slots);
-      setBookings(fullBookings);
-      
-      console.log('🔍 État mis à jour:', { 
-        bookedSlots: Array.from(slots), 
-        bookings: fullBookings 
-      });
-    };
-
-    fetchSlots();
-  }, [availableSlots, fieldId]);
+  console.log('🔍 TimeSlotSelector - Créneaux réservés reçus:', bookedSlots);
+  console.log('🔍 TimeSlotSelector - Réservations reçues:', bookings);
 
   // Réinitialiser l'heure de fin quand l'heure de début change
   useEffect(() => {
@@ -82,7 +54,8 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
   }, [selectedStartTime, availableSlots, onEndTimeChange]);
 
   // Initialize utility classes AVEC les réservations complètes
-  const slotStatusUtils = new SlotStatusUtils(availableSlots, bookedSlots, bookings);
+  const bookedSlotsSet = new Set(bookedSlots);
+  const slotStatusUtils = new SlotStatusUtils(availableSlots, bookedSlotsSet, bookings);
   const endTimesCalculator = new AvailableEndTimesCalculator(slotStatusUtils);
 
   const availableEndTimes = endTimesCalculator.getAvailableEndTimes(selectedStartTime);
