@@ -24,12 +24,14 @@ export class SlotStatusUtils {
   private bookedSlots: Set<string>;
   private bookings: BookingSlot[];
   private overlapUtils: SlotOverlapUtils;
+  private selectedDate: Date;
 
-  constructor(availableSlots: AvailabilitySlot[], bookedSlots: Set<string>, bookings: BookingSlot[] = []) {
+  constructor(availableSlots: AvailabilitySlot[], bookedSlots: Set<string>, bookings: BookingSlot[] = [], selectedDate: Date) {
     this.availableSlots = availableSlots;
     this.bookedSlots = bookedSlots;
     this.bookings = bookings;
     this.overlapUtils = new SlotOverlapUtils(bookings);
+    this.selectedDate = selectedDate;
   }
 
   // Vérifier si un créneau spécifique est réservé (méthode héritée)
@@ -109,6 +111,12 @@ export class SlotStatusUtils {
 
   // MISE À JOUR: Vérifier le statut pour les heures de début (avec chevauchements)
   getStartTimeStatus(startTime: string): 'available' | 'booked' | 'unavailable' | 'not_created' {
+    // Vérifier si c'est une heure passée pour aujourd'hui
+    if (this.isPastTime(startTime)) {
+      console.log('🔍 getStartTimeStatus: unavailable (heure passée) pour', startTime);
+      return 'unavailable';
+    }
+    
     // Créer un créneau de 30 minutes pour tester
     const endTime = `${String(Math.floor((timeToMinutes(startTime) + 30) / 60)).padStart(2, '0')}:${String((timeToMinutes(startTime) + 30) % 60).padStart(2, '0')}`;
     
@@ -120,6 +128,25 @@ export class SlotStatusUtils {
     
     // Puis utiliser la logique normale
     return this.getSlotStatus(startTime, endTime);
+  }
+
+  // Vérifier si l'heure est déjà passée pour la date d'aujourd'hui
+  private isPastTime(time: string): boolean {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const selectedDay = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth(), this.selectedDate.getDate());
+    
+    // Si la date sélectionnée n'est pas aujourd'hui, toutes les heures sont valides
+    if (selectedDay.getTime() !== today.getTime()) {
+      return false;
+    }
+    
+    // Si c'est aujourd'hui, vérifier si l'heure est passée
+    const [hours, minutes] = time.split(':').map(Number);
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    
+    return (hours < currentHour) || (hours === currentHour && minutes <= currentMinute);
   }
 }
 

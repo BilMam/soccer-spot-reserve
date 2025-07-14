@@ -131,6 +131,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               fieldId={fieldId}
               bookedSlots={bookedSlots}
               bookings={bookings}
+              selectedDate={selectedDate}
             />
 
             <BookingSummary
