@@ -15,19 +15,36 @@ export const usePendingReviews = () => {
     queryFn: async () => {
       if (!user) return [];
 
-      const { data, error } = await supabase
+      // Récupérer toutes les réservations terminées
+      const { data: completedBookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
           *,
-          fields (id, name, location, address),
-          reviews (id)
+          fields (id, name, location, address)
         `)
         .eq('user_id', user.id)
-        .eq('status', 'completed')
-        .is('reviews.id', null);
+        .eq('status', 'completed');
 
-      if (error) throw error;
-      return data || [];
+      if (bookingsError) throw bookingsError;
+
+      if (!completedBookings || completedBookings.length === 0) return [];
+
+      // Récupérer les avis existants pour ces réservations
+      const { data: existingReviews, error: reviewsError } = await supabase
+        .from('reviews')
+        .select('booking_id')
+        .eq('user_id', user.id)
+        .in('booking_id', completedBookings.map(b => b.id));
+
+      if (reviewsError) throw reviewsError;
+
+      // Filtrer les réservations qui n'ont pas encore d'avis
+      const reviewedBookingIds = new Set(existingReviews?.map(r => r.booking_id) || []);
+      const pendingReviewBookings = completedBookings.filter(
+        booking => !reviewedBookingIds.has(booking.id)
+      );
+
+      return pendingReviewBookings;
     },
     enabled: !!user,
     staleTime: 0, // Toujours considérer les données comme périmées
