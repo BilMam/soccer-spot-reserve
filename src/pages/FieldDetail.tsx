@@ -12,7 +12,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Star, MapPin, Users, Clock, Wifi, Car, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import RealtimeTest from '@/components/debug/RealtimeTest';
 
 interface Field {
   id: string;
@@ -227,9 +226,6 @@ const FieldDetail = () => {
             </div>
           </div>
         </div>
-
-        {/* Composant de test temps réel */}
-        <RealtimeTest fieldId={field.id} fieldName={field.name} />
       </div>
     </div>
   );

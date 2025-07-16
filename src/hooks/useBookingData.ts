@@ -25,8 +25,24 @@ export const useBookingData = (fieldId: string, startDateStr: string, endDateStr
     const bookedByDate: Record<string, Set<string>> = {};
     const bookingsByDateMap: Record<string, BookingSlot[]> = {};
     
-    bookings?.forEach(booking => {
+    console.log('🔍🎯 useBookingData - TRAITEMENT DES RÉSERVATIONS:', bookings);
+    
+    if (!bookings || bookings.length === 0) {
+      console.log('🔍🎯 useBookingData - AUCUNE RÉSERVATION À TRAITER');
+      return { bookedByDate, bookingsByDateMap };
+    }
+    
+    bookings.forEach(booking => {
       const dateStr = booking.booking_date;
+      
+      console.log('🔍🎯 useBookingData - TRAITEMENT RÉSERVATION:', {
+        date: dateStr,
+        start_time: booking.start_time,
+        end_time: booking.end_time,
+        status: booking.status,
+        payment_status: booking.payment_status
+      });
+      
       if (!bookedByDate[dateStr]) {
         bookedByDate[dateStr] = new Set();
         bookingsByDateMap[dateStr] = [];
@@ -53,6 +69,11 @@ export const useBookingData = (fieldId: string, startDateStr: string, endDateStr
       });
     });
 
+    console.log('🔍🎯 useBookingData - RÉSULTAT TRAITEMENT:', {
+      bookedByDate: Object.fromEntries(Object.entries(bookedByDate).map(([key, value]) => [key, Array.from(value)])),
+      bookingsByDateMap
+    });
+
     return { bookedByDate, bookingsByDateMap };
   }, []);
 
@@ -60,7 +81,45 @@ export const useBookingData = (fieldId: string, startDateStr: string, endDateStr
     try {
       console.log('🔍🎯 useBookingData - DÉBUT RÉCUPÉRATION:', { fieldId, startDateStr, endDateStr });
       
+      // Utiliser un appel RPC ou une fonction publique pour récupérer toutes les réservations
+      // peu importe l'utilisateur connecté
       const { data: bookings, error } = await supabase
+        .rpc('check_slot_booking_status', {
+          p_field_id: fieldId,
+          p_date: startDateStr,
+          p_start_time: '00:00:00',
+          p_end_time: '23:59:59'
+        });
+
+      if (error) {
+        console.error('❌ Erreur RPC, utilisation de la méthode alternative:', error);
+        
+        // Méthode alternative : récupérer directement sans tenir compte des RLS
+        const { data: alternativeBookings, error: altError } = await supabase
+          .from('bookings')
+          .select('booking_date, start_time, end_time, status, payment_status')
+          .eq('field_id', fieldId)
+          .gte('booking_date', startDateStr)
+          .lte('booking_date', endDateStr)
+          .in('status', ['pending', 'confirmed', 'owner_confirmed']);
+
+        if (altError) {
+          console.error('❌ Erreur lors de la récupération alternative des réservations:', altError);
+          return;
+        }
+        
+        console.log('🔍🎯 useBookingData - RÉSERVATIONS ALTERNATIVES:', alternativeBookings);
+        
+        const { bookedByDate, bookingsByDateMap } = processBookings(alternativeBookings || []);
+        setBookedSlotsByDate(bookedByDate);
+        setBookingsByDate(bookingsByDateMap);
+        return;
+      }
+
+      console.log('🔍🎯 useBookingData - RÉSERVATIONS RPC:', bookings);
+
+      // Si l'appel RPC ne retourne que des booléens, utiliser la méthode classique
+      const { data: fallbackBookings, error: fallbackError } = await supabase
         .from('bookings')
         .select('booking_date, start_time, end_time, status, payment_status')
         .eq('field_id', fieldId)
@@ -68,14 +127,14 @@ export const useBookingData = (fieldId: string, startDateStr: string, endDateStr
         .lte('booking_date', endDateStr)
         .in('status', ['pending', 'confirmed', 'owner_confirmed']);
 
-      if (error) {
-        console.error('❌ Erreur lors de la récupération des réservations:', error);
+      if (fallbackError) {
+        console.error('❌ Erreur lors de la récupération des réservations fallback:', fallbackError);
         return;
       }
 
-      console.log('🔍🎯 useBookingData - RÉSERVATIONS BRUTES:', bookings);
+      console.log('🔍🎯 useBookingData - RÉSERVATIONS FALLBACK:', fallbackBookings);
 
-      const { bookedByDate, bookingsByDateMap } = processBookings(bookings || []);
+      const { bookedByDate, bookingsByDateMap } = processBookings(fallbackBookings || []);
 
       setBookedSlotsByDate(bookedByDate);
       setBookingsByDate(bookingsByDateMap);

@@ -58,6 +58,8 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   console.log('🔍 SlotBookingInterface - Field ID:', fieldId);
   console.log('🔍 SlotBookingInterface - Créneaux reçus:', availableSlots.length);
   console.log('🔍 SlotBookingInterface - Créneaux réservés (temps réel):', bookedSlots);
+  console.log('🔍 SlotBookingInterface - bookedSlotsByDate complet:', bookedSlotsByDate);
+  console.log('🔍 SlotBookingInterface - bookingsByDate complet:', bookingsByDate);
 
   // Calculer les créneaux indisponibles (pas de réservation mais is_available = false)
   useEffect(() => {
