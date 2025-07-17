@@ -1,25 +1,70 @@
-# MySport - Plateforme de réservation de terrains de sport
+# MySport - Plateforme de Réservation de Terrains de Sport
 
-Une plateforme moderne pour réserver des terrains de sport avec un système de paiement sécurisé intégré.
+MySport est une plateforme moderne de réservation de terrains de sport construite avec React, Supabase et intégrée avec CinetPay pour les paiements en Afrique de l'Ouest.
 
-## Fonctionnalités principales
+## 🏗️ Architecture
 
-- **Recherche et découverte** : Trouvez des terrains près de chez vous
-- **Réservation en temps réel** : Système de créneaux avec disponibilité instantanée
-- **Paiement sécurisé** : Intégration CinetPay avec système d'escrow
-- **Gestion propriétaires** : Interface complète pour gérer vos terrains
-- **Système d'avis** : Notation et commentaires après réservation
+### Frontend
+- **React 18** avec TypeScript
+- **Tailwind CSS** pour le design
+- **React Router** pour la navigation
+- **React Query** pour la gestion d'état
+- **Shadcn/ui** pour les composants UI
 
-## Architecture de paiement
+### Backend
+- **Supabase** pour la base de données et l'authentification
+- **Edge Functions** pour la logique métier
+- **Row Level Security (RLS)** pour la sécurité des données
 
-Le système de paiement MySport × CinetPay fonctionne selon le principe suivant :
+### Paiements
+- **CinetPay** pour les paiements mobiles (Orange Money, MTN Money, etc.)
+- **Système de commission à double niveau** (1,5% utilisateur + 3,5% propriétaire)
 
-1. **Paiement direct** : L'utilisateur clique sur "Payer" et est redirigé vers CinetPay
-2. **Choix des moyens** : Tous les moyens de paiement (Orange Money, MTN, Moov, Wave, Visa/Mastercard) sont disponibles directement sur la page CinetPay
-3. **Système d'escrow** : Les fonds sont sécurisés jusqu'à confirmation du propriétaire
-4. **Remboursement automatique** : Si pas de confirmation sous 24h
+## 💰 Système de Paiement CinetPay
 
-> **Note** : Le choix du moyen de paiement est désormais entièrement délégué à l'interface CinetPay pour une expérience utilisateur optimisée.
+### Structure des Commissions
+- **Commission totale plateforme**: 5% du prix du terrain
+- **Répartition**:
+  - 1,5% payé par le joueur au moment du checkout
+  - 3,5% déduit du payout vers le propriétaire
+
+### Flux de Paiement
+
+1. **Checkout** (`create-cinetpay-payment`)
+   - Calcul automatique des frais
+   - Intégration CinetPay Checkout v2
+   - Création de la réservation
+
+2. **Transfert Propriétaire** (`transfer-to-owner`)
+   - Vérification statut réservation
+   - Calcul montant propriétaire (arrondi multiple de 5)
+   - Transfert CinetPay vers contact propriétaire
+
+3. **Webhooks & Monitoring**
+   - Webhook transfert (`cinetpay-transfer-webhook`)
+   - Vérification automatique toutes les 15min (`check-cinetpay-transfers`)
+
+## 🎯 Fonctionnalités
+
+### Pour les Joueurs
+- 🔍 Recherche de terrains avec filtres avancés
+- 📅 Réservation en temps réel
+- 💳 Paiement sécurisé CinetPay
+- ⭐ Système d'avis et notes
+- 📱 Interface responsive
+
+### Pour les Propriétaires
+- 🏟️ Gestion des terrains
+- 📊 Tableau de bord avec statistiques
+- 💰 Suivi des paiements et revenus
+- 📋 Gestion des disponibilités
+- 🔄 Transferts automatiques
+
+### Pour les Administrateurs
+- 👥 Gestion des utilisateurs
+- ✅ Validation des demandes propriétaires
+- 📈 Analyse globale de la plateforme
+- 🛡️ Gestion des rôles et permissions
 
 ## Installation locale
 

@@ -113,22 +113,26 @@ export type Database = {
           booking_date: string
           cancellation_reason: string | null
           cancelled_at: string | null
+          cinetpay_checkout_fee: number | null
+          cinetpay_transfer_id: string | null
           confirmation_code: string | null
           confirmation_email_sent: boolean | null
           created_at: string | null
           currency: string | null
           end_time: string
           field_id: string
+          field_price: number | null
           id: string
           owner_amount: number | null
           payment_intent_id: string | null
           payment_status: string | null
           platform_fee: number | null
+          platform_fee_owner: number | null
+          platform_fee_user: number | null
           player_count: number | null
           special_requests: string | null
           start_time: string
           status: string | null
-          stripe_transfer_id: string | null
           total_price: number
           updated_at: string | null
           user_id: string
@@ -137,22 +141,26 @@ export type Database = {
           booking_date: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          cinetpay_checkout_fee?: number | null
+          cinetpay_transfer_id?: string | null
           confirmation_code?: string | null
           confirmation_email_sent?: boolean | null
           created_at?: string | null
           currency?: string | null
           end_time: string
           field_id: string
+          field_price?: number | null
           id?: string
           owner_amount?: number | null
           payment_intent_id?: string | null
           payment_status?: string | null
           platform_fee?: number | null
+          platform_fee_owner?: number | null
+          platform_fee_user?: number | null
           player_count?: number | null
           special_requests?: string | null
           start_time: string
           status?: string | null
-          stripe_transfer_id?: string | null
           total_price: number
           updated_at?: string | null
           user_id: string
@@ -161,22 +169,26 @@ export type Database = {
           booking_date?: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          cinetpay_checkout_fee?: number | null
+          cinetpay_transfer_id?: string | null
           confirmation_code?: string | null
           confirmation_email_sent?: boolean | null
           created_at?: string | null
           currency?: string | null
           end_time?: string
           field_id?: string
+          field_price?: number | null
           id?: string
           owner_amount?: number | null
           payment_intent_id?: string | null
           payment_status?: string | null
           platform_fee?: number | null
+          platform_fee_owner?: number | null
+          platform_fee_user?: number | null
           player_count?: number | null
           special_requests?: string | null
           start_time?: string
           status?: string | null
-          stripe_transfer_id?: string | null
           total_price?: number
           updated_at?: string | null
           user_id?: string
@@ -495,6 +507,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      payouts: {
+        Row: {
+          amount: number
+          booking_id: string
+          cinetpay_transfer_id: string | null
+          created_at: string
+          id: string
+          owner_id: string
+          platform_fee_owner: number
+          status: string
+          transfer_response: Json | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          booking_id: string
+          cinetpay_transfer_id?: string | null
+          created_at?: string
+          id?: string
+          owner_id: string
+          platform_fee_owner: number
+          status?: string
+          transfer_response?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          booking_id?: string
+          cinetpay_transfer_id?: string | null
+          created_at?: string
+          id?: string
+          owner_id?: string
+          platform_fee_owner?: number
+          status?: string
+          transfer_response?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payouts_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

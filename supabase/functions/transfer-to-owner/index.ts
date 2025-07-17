@@ -9,130 +9,90 @@ const corsHeaders = {
 interface CinetPayAuthResponse {
   code: string;
   message: string;
-  description: string;
-  data: {
-    token: string;
-  };
+  data: { token: string };
 }
 
 interface CinetPayTransferResponse {
   code: string;
   message: string;
-  description: string;
   data?: any;
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [transfer-to-owner] Function started`);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('🚀 Transfer to owner function started');
-
-    // Get environment variables
+    // Environment variables
     const transferLogin = Deno.env.get('CINETPAY_TRANSFER_LOGIN');
     const transferPwd = Deno.env.get('CINETPAY_TRANSFER_PWD');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!transferLogin || !transferPwd || !supabaseUrl || !supabaseServiceKey) {
-      console.error('❌ Missing environment variables');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: 'Configuration CinetPay Transfer manquante' 
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      throw new Error('Configuration CinetPay Transfer manquante');
     }
 
-    // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Parse request body
     const { booking_id } = await req.json();
-    console.log('📋 Processing transfer for booking:', booking_id);
 
-    if (!booking_id) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: 'booking_id requis' 
-        }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
+    console.log(`[${timestamp}] [transfer-to-owner] Processing booking: ${booking_id}`);
 
-    // Get booking details with field and owner info
+    // Get booking with field and owner info
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select(`
         *,
         fields (
           owner_id,
-          name,
-          price_per_hour
+          name
         )
       `)
       .eq('id', booking_id)
       .single();
 
     if (bookingError || !booking) {
-      console.error('❌ Erreur récupération booking:', bookingError);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: 'Réservation non trouvée' 
-        }),
-        { 
-          status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      throw new Error('Réservation non trouvée');
     }
 
-    // Check if booking is confirmed and paid
+    // Check booking status
     if (booking.status !== 'confirmed' || booking.payment_status !== 'completed') {
-      console.log('⏸️ Booking not ready for transfer:', { 
-        status: booking.status, 
-        payment_status: booking.payment_status 
-      });
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: 'Réservation non confirmée ou paiement non finalisé' 
-        }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      throw new Error('Réservation non confirmée ou paiement non finalisé');
     }
 
     // Check if transfer already done
-    if (booking.stripe_transfer_id) {
-      console.log('✅ Transfer already completed:', booking.stripe_transfer_id);
+    if (booking.cinetpay_transfer_id) {
+      console.log(`[${timestamp}] [transfer-to-owner] Transfer already completed: ${booking.cinetpay_transfer_id}`);
       return new Response(
         JSON.stringify({ 
           success: true, 
           message: 'Transfert déjà effectué',
-          transfer_id: booking.stripe_transfer_id
+          transfer_id: booking.cinetpay_transfer_id
         }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get owner contact info
+    // Calculate owner amount (field_price - platform_fee_owner) rounded to multiple of 5
+    const owner_amount_raw = (booking.field_price || 0) - (booking.platform_fee_owner || 0);
+    const owner_amount = Math.floor(owner_amount_raw / 5) * 5; // Round down to multiple of 5
+
+    if (owner_amount <= 0) {
+      throw new Error('Montant de transfert invalide');
+    }
+
+    console.log(`[${timestamp}] [transfer-to-owner] Amount calculation:`, {
+      field_price: booking.field_price,
+      platform_fee_owner: booking.platform_fee_owner,
+      owner_amount_raw,
+      owner_amount
+    });
+
+    // Get owner payment account
     const { data: paymentAccount, error: accountError } = await supabase
       .from('payment_accounts')
       .select('*')
@@ -141,26 +101,14 @@ serve(async (req) => {
       .single();
 
     if (accountError || !paymentAccount || !paymentAccount.cinetpay_contact_added) {
-      console.error('❌ Contact propriétaire non configuré:', accountError);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: 'Contact propriétaire non configuré dans CinetPay' 
-        }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      throw new Error('Contact propriétaire non configuré dans CinetPay');
     }
 
     // Step 1: Authenticate with CinetPay Transfer API
-    console.log('🔐 Authenticating with CinetPay Transfer API...');
+    console.log(`[${timestamp}] [transfer-to-owner] Authenticating with CinetPay Transfer API`);
     const authResponse = await fetch('https://client.cinetpay.com/v1/auth/login', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         login: transferLogin,
         password: transferPwd
@@ -168,96 +116,86 @@ serve(async (req) => {
     });
 
     const authResult: CinetPayAuthResponse = await authResponse.json();
-    console.log('🔐 Auth response:', authResult);
+    console.log(`[${timestamp}] [transfer-to-owner] Auth response:`, authResult);
 
     if (authResult.code !== 'OPERATION_SUCCES') {
-      console.error('❌ Authentication failed:', authResult.message);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: `Échec authentification CinetPay: ${authResult.message}` 
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      throw new Error(`Échec authentification CinetPay: ${authResult.message}`);
     }
 
-    const token = authResult.data.token;
-
     // Step 2: Perform transfer
-    console.log('💸 Performing transfer to owner...');
-    const transferAmount = booking.owner_amount || (booking.total_price - (booking.platform_fee || 0));
+    const client_transaction_id = `transfer_${booking_id}_${Date.now()}`;
+    const notifyUrl = `${supabaseUrl}/functions/v1/cinetpay-transfer-webhook`;
     
-    const transferData = {
-      amount: Math.round(transferAmount),
+    const transferData = [{
       prefix: paymentAccount.country_prefix || '225',
       phone: paymentAccount.phone,
-      transaction_id: `transfer_${booking_id}_${Date.now()}`,
-      description: `Paiement terrain ${booking.fields.name} - ${booking.booking_date}`
-    };
+      amount: owner_amount,
+      notify_url: notifyUrl,
+      client_transaction_id,
+      payment_method: 'ORANGE_MONEY' // Default payment method
+    }];
 
-    console.log('💸 Transfer data:', transferData);
+    console.log(`[${timestamp}] [transfer-to-owner] Transfer data:`, transferData);
 
-    const transferResponse = await fetch(`https://client.cinetpay.com/v1/transfer/money?token=${token}`, {
+    const transferResponse = await fetch(`https://client.cinetpay.com/v1/transfer/money/send/contact?token=${authResult.data.token}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(transferData)
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ data: JSON.stringify(transferData) })
     });
 
     const transferResult: CinetPayTransferResponse = await transferResponse.json();
-    console.log('💸 Transfer response:', transferResult);
+    console.log(`[${timestamp}] [transfer-to-owner] Transfer response:`, transferResult);
+
+    // Create payout record
+    const { data: payout, error: payoutError } = await supabase
+      .from('payouts')
+      .insert({
+        booking_id,
+        owner_id: booking.fields.owner_id,
+        amount: owner_amount,
+        platform_fee_owner: booking.platform_fee_owner,
+        cinetpay_transfer_id: client_transaction_id,
+        status: transferResult.code === 'OPERATION_SUCCES' ? 'pending' : 'failed',
+        transfer_response: transferResult
+      })
+      .select()
+      .single();
+
+    if (payoutError) {
+      console.error(`[${timestamp}] [transfer-to-owner] Payout creation failed:`, payoutError);
+    }
 
     // Update booking with transfer info
-    const { error: updateError } = await supabase
+    await supabase
       .from('bookings')
       .update({
-        stripe_transfer_id: transferData.transaction_id,
+        cinetpay_transfer_id: client_transaction_id,
         updated_at: new Date().toISOString()
       })
       .eq('id', booking_id);
 
-    if (updateError) {
-      console.error('❌ Erreur mise à jour booking:', updateError);
-    }
-
     if (transferResult.code === 'OPERATION_SUCCES') {
-      console.log('✅ Transfer successful');
+      console.log(`[${timestamp}] [transfer-to-owner] Transfer successful`);
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: 'Transfert effectué avec succès',
-          transfer_id: transferData.transaction_id,
-          amount: transferAmount
+          message: 'Transfert initié avec succès',
+          transfer_id: client_transaction_id,
+          amount: owner_amount
         }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else {
-      console.error('❌ Transfer failed:', transferResult.message);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: `Échec transfert: ${transferResult.message}`,
-          transfer_response: transferResult
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      throw new Error(`Échec transfert: ${transferResult.message}`);
     }
 
   } catch (error) {
-    console.error('❌ Erreur générale:', error);
+    console.error(`[${timestamp}] [transfer-to-owner] Error:`, error);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        message: `Erreur système: ${error.message}` 
+        message: error.message,
+        timestamp 
       }),
       { 
         status: 500, 
