@@ -61,11 +61,13 @@ serve(async (req) => {
 
     console.log(`[${timestamp}] [create-cinetpay-payment] Payment data:`, paymentData);
 
-    // Calculate fees (1.5% user + estimated 2.5% CinetPay)
-    const platform_fee_user = Math.round(price * 0.015); // 1.5% payé par utilisateur
-    const platform_fee_owner = Math.round(price * 0.035); // 3.5% déduit du propriétaire
-    const cinetpay_checkout_fee = Math.round(price * 0.025); // Estimation frais CinetPay checkout
-    const amount_checkout = price + platform_fee_user + cinetpay_checkout_fee;
+    // Calculate fees (3% user + estimated 3% CinetPay)
+    const USER_FEE_PCT = 0.03; // 3% payé par utilisateur
+    const OWNER_FEE_PCT = 0.05; // 5% déduit du propriétaire (enregistré pour le transfer)
+    const platform_fee_user = Math.round(price * USER_FEE_PCT);
+    const platform_fee_owner = Math.round(price * OWNER_FEE_PCT);
+    const cinetpay_checkout_fee = Math.round(price * 0.03); // Frais CinetPay checkout 3%
+    const amount_checkout = Math.round(price * 1.03); // T × 1.03
 
     console.log(`[${timestamp}] [create-cinetpay-payment] Fee calculation:`, {
       field_price: price,

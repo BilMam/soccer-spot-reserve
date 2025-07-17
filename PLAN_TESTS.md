@@ -19,12 +19,12 @@
 }
 ```
 
-**Calculs attendus**:
+**Calculs attendus** (modèle 3%/5%):
 - Prix terrain: 10,000 XOF
-- Commission utilisateur (1,5%): 150 XOF
-- Frais CinetPay estimés (2,5%): 250 XOF
-- **Total checkout**: 10,400 XOF
-- Commission propriétaire (3,5%): 350 XOF
+- Commission utilisateur (3%): 300 XOF
+- Frais CinetPay checkout (3%): 300 XOF
+- **Total checkout**: 10,300 XOF (T × 1.03)
+- Commission propriétaire (5%): 500 XOF
 
 **Vérifications**:
 - [ ] Booking créé avec tous les champs de frais
@@ -45,9 +45,10 @@
 }
 ```
 
-**Calculs attendus**:
-- Montant brut: 10,000 - 350 = 9,650 XOF
-- **Montant arrondi**: 9,650 XOF (déjà multiple de 5)
+**Calculs attendus** (modèle 5% propriétaire):
+- Montant brut: 10,000 × 0.95 = 9,500 XOF
+- **Montant arrondi**: 9,500 XOF (déjà multiple de 5)
+- Frais CinetPay Transfer (~1%): ~100 XOF
 
 **Vérifications**:
 - [ ] Authentification CinetPay réussie
@@ -122,17 +123,18 @@
 
 ### Scénarios de Prix
 
-| Prix Terrain | Comm. User (1,5%) | Comm. Owner (3,5%) | Frais CinetPay (2,5%) | Total Checkout | Montant Owner (arrondi) |
-|--------------|-------------------|--------------------|-----------------------|----------------|------------------------|
-| 5,000 XOF    | 75 XOF           | 175 XOF            | 125 XOF               | 5,200 XOF      | 4,825 XOF → 4,825      |
-| 10,000 XOF   | 150 XOF          | 350 XOF            | 250 XOF               | 10,400 XOF     | 9,650 XOF → 9,650      |
-| 15,000 XOF   | 225 XOF          | 525 XOF            | 375 XOF               | 15,600 XOF     | 14,475 XOF → 14,475    |
-| 7,500 XOF    | 112 XOF          | 262 XOF            | 187 XOF               | 7,799 XOF      | 7,238 XOF → 7,235      |
+| Prix Terrain | Comm. User (3%) | Comm. Owner (5%) | Frais CinetPay (3%) | Total Checkout | Montant Owner (arrondi) | Commission Brute |
+|--------------|-----------------|------------------|---------------------|----------------|------------------------|-------------------|
+| 5,000 XOF    | 150 XOF        | 250 XOF          | 150 XOF             | 5,150 XOF      | 4,750 XOF → 4,750      | 400 XOF (8%)     |
+| 10,000 XOF   | 300 XOF        | 500 XOF          | 300 XOF             | 10,300 XOF     | 9,500 XOF → 9,500      | 800 XOF (8%)     |
+| 15,000 XOF   | 450 XOF        | 750 XOF          | 450 XOF             | 15,450 XOF     | 14,250 XOF → 14,250    | 1,200 XOF (8%)   |
+| 7,777 XOF    | 233 XOF        | 389 XOF          | 233 XOF             | 8,010 XOF      | 7,388 XOF → 7,385      | 622 XOF (8%)     |
 
-**Tests d'arrondi**:
-- [ ] 7,238 XOF → 7,235 XOF (multiple de 5 inférieur)
-- [ ] 12,347 XOF → 12,345 XOF
-- [ ] 9,650 XOF → 9,650 XOF (déjà multiple)
+**Tests d'arrondi** (T × 0.95):
+- [ ] 7,388 XOF → 7,385 XOF (multiple de 5 inférieur)
+- [ ] 12,997 XOF → 12,995 XOF  
+- [ ] 9,500 XOF → 9,500 XOF (déjà multiple)
+- [ ] Commission brute = 8% dans tous les cas
 
 ## 🔒 Tests de Sécurité
 

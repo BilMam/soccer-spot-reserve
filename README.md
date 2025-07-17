@@ -22,27 +22,40 @@ MySport est une plateforme moderne de réservation de terrains de sport construi
 
 ## 💰 Système de Paiement CinetPay
 
-### Structure des Commissions
-- **Commission totale plateforme**: 5% du prix du terrain
+### Structure des Commissions (8% bruts)
+- **Commission totale plateforme**: 8% du prix du terrain
 - **Répartition**:
-  - 1,5% payé par le joueur au moment du checkout
-  - 3,5% déduit du payout vers le propriétaire
+  - 3% payé par le joueur au moment du checkout (T × 1.03)
+  - 5% déduit du payout vers le propriétaire (T × 0.95)
+- **Frais CinetPay**: ~4% (3% Pay-In + 1% Transfer)
+- **Marge nette plateforme**: ~4% (8% - 4%)
 
-### Flux de Paiement
+### Flux de Paiement (Payout Direct)
+
+```mermaid
+graph TD
+    A[Joueur réserve] --> B[create-cinetpay-payment]
+    B --> C[Paiement T × 1.03]
+    C --> D[Confirmation]
+    D --> E[transfer-to-owner]
+    E --> F[Transfert T × 0.95]
+    F --> G[check-cinetpay-transfers]
+    G --> H[Statut final]
+```
 
 1. **Checkout** (`create-cinetpay-payment`)
-   - Calcul automatique des frais
-   - Intégration CinetPay Checkout v2
-   - Création de la réservation
+   - Commission utilisateur: +3% (T × 1.03)
+   - Frais CinetPay checkout: ~3%
+   - Création réservation avec commissions
 
 2. **Transfert Propriétaire** (`transfer-to-owner`)
-   - Vérification statut réservation
-   - Calcul montant propriétaire (arrondi multiple de 5)
-   - Transfert CinetPay vers contact propriétaire
+   - Commission propriétaire: -5% (T × 0.95)
+   - Arrondi multiple de 5
+   - Transfert CinetPay direct
 
-3. **Webhooks & Monitoring**
-   - Webhook transfert (`cinetpay-transfer-webhook`)
-   - Vérification automatique toutes les 15min (`check-cinetpay-transfers`)
+3. **Monitoring Automatique**
+   - Webhook (`cinetpay-transfer-webhook`)
+   - Cron job toutes les 15min (`check-cinetpay-transfers`)
 
 ## 🎯 Fonctionnalités
 
@@ -78,6 +91,18 @@ npm install
 
 # Lancer le serveur de développement
 npm run dev
+```
+
+## 🚀 Déploiement Edge Functions
+
+```bash
+# Déployer toutes les fonctions
+supabase functions deploy
+
+# Déployer une fonction spécifique
+supabase functions deploy create-cinetpay-payment
+supabase functions deploy transfer-to-owner
+supabase functions deploy check-cinetpay-transfers
 ```
 
 ## 🔧 Edge Functions Actives

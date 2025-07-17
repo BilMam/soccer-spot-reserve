@@ -77,8 +77,9 @@ serve(async (req) => {
       );
     }
 
-    // Calculate owner amount (field_price - platform_fee_owner) rounded to multiple of 5
-    const owner_amount_raw = (booking.field_price || 0) - (booking.platform_fee_owner || 0);
+    // Calculate owner amount: T × 0.95 rounded to multiple of 5
+    const OWNER_FEE_PCT = 0.05; // 5% commission propriétaire
+    const owner_amount_raw = (booking.field_price || 0) * (1 - OWNER_FEE_PCT);
     const owner_amount = Math.floor(owner_amount_raw / 5) * 5; // Round down to multiple of 5
 
     if (owner_amount <= 0) {
