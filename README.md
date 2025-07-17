@@ -80,6 +80,23 @@ npm install
 npm run dev
 ```
 
+## 🔧 Edge Functions Actives
+
+### Paiements CinetPay
+- **create-cinetpay-payment** : Création de paiement CinetPay avec calcul des commissions
+- **transfer-to-owner** : Transfert automatique vers le propriétaire après réservation confirmée
+- **cinetpay-transfer-webhook** : Webhook pour les notifications de transfert
+- **check-cinetpay-transfers** : Vérification automatique des transferts (toutes les 15min)
+
+### Gestion des réservations
+- **approve-booking** : Approbation d'une réservation par le propriétaire
+- **confirm-booking-owner** : Confirmation finale par le propriétaire
+- **cinetpay-webhook** : Webhook principal pour les notifications de paiement
+
+### Services auxiliaires
+- **create-owner-contact** : Ajout du contact propriétaire dans CinetPay
+- **send-sms-notification** : Envoi de notifications SMS
+
 ## Technologies utilisées
 
 - **Frontend** : React, TypeScript, Tailwind CSS, Shadcn UI, Vite
