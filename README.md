@@ -45,7 +45,6 @@ graph TD
 
 1. **Checkout** (`create-cinetpay-payment`)
    - Commission utilisateur: +3% (T × 1.03)
-   - Frais CinetPay checkout: ~3%
    - Création réservation avec commissions
 
 2. **Transfert Propriétaire** (`transfer-to-owner`)

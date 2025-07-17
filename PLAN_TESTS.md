@@ -22,7 +22,6 @@
 **Calculs attendus** (modèle 3%/5%):
 - Prix terrain: 10,000 XOF
 - Commission utilisateur (3%): 300 XOF
-- Frais CinetPay checkout (3%): 300 XOF
 - **Total checkout**: 10,300 XOF (T × 1.03)
 - Commission propriétaire (5%): 500 XOF
 
