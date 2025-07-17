@@ -312,16 +312,16 @@ const Checkout = () => {
                 {/* Calcul prix */}
                 <div className="space-y-3 py-4">
                   <div className="flex justify-between text-sm">
-                    <span>{field.price_per_hour.toLocaleString()} XOF × {calculateDurationHours()}h</span>
-                    <span>{checkoutData.totalPrice.toLocaleString()} XOF</span>
+                    <span>Prix : {field.price_per_hour.toLocaleString()} XOF/heure</span>
+                    <span>{(field.price_per_hour * calculateDurationHours()).toLocaleString()} XOF</span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-600">
-                    <span>Commission plateforme (5%)</span>
-                    <span>{Math.round(checkoutData.totalPrice * 0.05).toLocaleString()} XOF</span>
+                    <span>Frais de service (3%)</span>
+                    <span>{Math.round(field.price_per_hour * calculateDurationHours() * 0.03).toLocaleString()} XOF</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold pt-2 border-t">
                     <span>Total</span>
-                    <span className="text-green-600">{checkoutData.totalPrice.toLocaleString()} XOF</span>
+                    <span className="text-green-600">{Math.floor(field.price_per_hour * calculateDurationHours() * 1.03).toLocaleString()} XOF</span>
                   </div>
                 </div>
 

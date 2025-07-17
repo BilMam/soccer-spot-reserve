@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Euro, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { calculateDuration } from '@/utils/timeUtils';
 
 interface BookingSummaryProps {
@@ -38,13 +38,12 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Prix :</span>
             <span className="text-sm text-gray-500">
-              {fieldPrice.toLocaleString()} XOF/heure • {(fieldPrice / 2).toLocaleString()} XOF/30min
+              {fieldPrice.toLocaleString()} XOF/heure
             </span>
           </div>
           <div className="flex justify-between items-center border-t pt-2">
             <span className="text-sm text-gray-600">Prix total :</span>
-            <span className="text-lg font-bold text-green-600 flex items-center">
-              <Euro className="w-4 h-4 mr-1" />
+            <span className="text-lg font-bold text-green-600">
               {totalPrice.toLocaleString()} XOF
             </span>
           </div>
