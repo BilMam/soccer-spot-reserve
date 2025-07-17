@@ -938,6 +938,16 @@ export type Database = {
           user_email: string
         }[]
       }
+      get_field_bookings: {
+        Args: { p_field_id: string; p_start_date: string; p_end_date: string }
+        Returns: {
+          booking_date: string
+          start_time: string
+          end_time: string
+          status: string
+          payment_status: string
+        }[]
+      }
       get_owner_recent_bookings: {
         Args: { owner_uuid: string }
         Returns: {

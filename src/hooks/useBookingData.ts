@@ -81,60 +81,22 @@ export const useBookingData = (fieldId: string, startDateStr: string, endDateStr
     try {
       console.log('🔍🎯 useBookingData - DÉBUT RÉCUPÉRATION:', { fieldId, startDateStr, endDateStr });
       
-      // Utiliser un appel RPC ou une fonction publique pour récupérer toutes les réservations
-      // peu importe l'utilisateur connecté
+      // Utiliser la nouvelle fonction publique pour récupérer les réservations
       const { data: bookings, error } = await supabase
-        .rpc('check_slot_booking_status', {
+        .rpc('get_field_bookings', {
           p_field_id: fieldId,
-          p_date: startDateStr,
-          p_start_time: '00:00:00',
-          p_end_time: '23:59:59'
+          p_start_date: startDateStr,
+          p_end_date: endDateStr
         });
 
       if (error) {
-        console.error('❌ Erreur RPC, utilisation de la méthode alternative:', error);
-        
-        // Méthode alternative : récupérer directement sans tenir compte des RLS
-        const { data: alternativeBookings, error: altError } = await supabase
-          .from('bookings')
-          .select('booking_date, start_time, end_time, status, payment_status')
-          .eq('field_id', fieldId)
-          .gte('booking_date', startDateStr)
-          .lte('booking_date', endDateStr)
-          .in('status', ['pending', 'confirmed', 'owner_confirmed']);
-
-        if (altError) {
-          console.error('❌ Erreur lors de la récupération alternative des réservations:', altError);
-          return;
-        }
-        
-        console.log('🔍🎯 useBookingData - RÉSERVATIONS ALTERNATIVES:', alternativeBookings);
-        
-        const { bookedByDate, bookingsByDateMap } = processBookings(alternativeBookings || []);
-        setBookedSlotsByDate(bookedByDate);
-        setBookingsByDate(bookingsByDateMap);
+        console.error('❌ Erreur lors de la récupération des réservations:', error);
         return;
       }
 
-      console.log('🔍🎯 useBookingData - RÉSERVATIONS RPC:', bookings);
+      console.log('🔍🎯 useBookingData - RÉSERVATIONS BRUTES:', bookings);
 
-      // Si l'appel RPC ne retourne que des booléens, utiliser la méthode classique
-      const { data: fallbackBookings, error: fallbackError } = await supabase
-        .from('bookings')
-        .select('booking_date, start_time, end_time, status, payment_status')
-        .eq('field_id', fieldId)
-        .gte('booking_date', startDateStr)
-        .lte('booking_date', endDateStr)
-        .in('status', ['pending', 'confirmed', 'owner_confirmed']);
-
-      if (fallbackError) {
-        console.error('❌ Erreur lors de la récupération des réservations fallback:', fallbackError);
-        return;
-      }
-
-      console.log('🔍🎯 useBookingData - RÉSERVATIONS FALLBACK:', fallbackBookings);
-
-      const { bookedByDate, bookingsByDateMap } = processBookings(fallbackBookings || []);
+      const { bookedByDate, bookingsByDateMap } = processBookings(bookings || []);
 
       setBookedSlotsByDate(bookedByDate);
       setBookingsByDate(bookingsByDateMap);
