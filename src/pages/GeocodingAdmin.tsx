@@ -31,7 +31,7 @@ const GeocodingAdmin: React.FC = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dashboard">
+        <TabsContent value="dashboard"> 
           <GeocodingDashboard />
         </TabsContent>
 

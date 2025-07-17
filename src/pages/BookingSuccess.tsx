@@ -19,7 +19,7 @@ const BookingSuccess = () => {
     queryKey: ['booking-success', sessionId],
     queryFn: async () => {
       if (!sessionId) throw new Error('ID de session manquant');
-
+ 
       // Récupérer la réservation via l'ID de session
       const bookingId = sessionId.replace('booking_', '');
       

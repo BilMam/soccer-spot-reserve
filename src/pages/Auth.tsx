@@ -17,7 +17,7 @@ const Auth = () => {
     email: '',
     password: '',
     fullName: '',
-    confirmPassword: ''
+    confirmPassword: '' 
   });
   
   const { signIn, signUp, user } = useAuth();

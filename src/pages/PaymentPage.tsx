@@ -35,7 +35,7 @@ const PaymentPage = () => {
   const { toast } = useToast();
   const [booking, setBooking] = useState<BookingDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); 
   const [linkExpired, setLinkExpired] = useState(false);
 
   useEffect(() => {

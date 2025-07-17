@@ -30,7 +30,7 @@ const Search = () => {
     }
   }, [isMobile, viewMode]);
 
-  const location = searchParams.get('location') || '';
+  const location = searchParams.get('location') || ''; 
   const date = searchParams.get('date') || '';
   const timeSlot = searchParams.get('timeSlot') || '';
   const players = searchParams.get('players') || '';

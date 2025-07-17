@@ -13,7 +13,7 @@ import FieldAddressCorrection from '@/components/admin/FieldAddressCorrection';
 const AdminDashboard = () => {
   const { user, hasAdminPermissions } = useAdminPermissions();
 
-  if (!user) {
+  if (!user) { 
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />

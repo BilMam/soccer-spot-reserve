@@ -22,7 +22,7 @@ import {
 
 interface CheckoutState {
   selectedDate: Date;
-  selectedStartTime: string;
+  selectedStartTime: string; 
   selectedEndTime: string;
   totalPrice: number;
 }

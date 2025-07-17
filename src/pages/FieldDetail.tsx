@@ -27,7 +27,7 @@ interface Field {
   amenities: string[];
   capacity: number;
   field_type: string;
-  availability_start: string;
+  availability_start: string; 
   availability_end: string;
   owner_id: string;
 }

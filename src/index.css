@@ -2,93 +2,109 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
+/* Soccer Spot Reserve Design System */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Core Brand Colors - Soccer themed */
+    --grass-green: 120 60% 25%;
+    --field-green: 120 50% 30%;
+    --soccer-white: 0 0% 100%;
+    --charcoal: 210 15% 15%;
+    --referee-black: 0 0% 8%;
+    
+    /* Semantic Colors */
+    --success-green: 120 60% 40%;
+    --warning-yellow: 45 100% 55%;
+    --error-red: 0 70% 50%;
+    --info-blue: 220 90% 56%;
+    
+    /* Light Theme */
+    --background: var(--soccer-white);
+    --foreground: var(--charcoal);
+    
+    --card: var(--soccer-white);
+    --card-foreground: var(--charcoal);
+    
+    --popover: var(--soccer-white);
+    --popover-foreground: var(--charcoal);
+    
+    --primary: var(--grass-green);
+    --primary-foreground: var(--soccer-white);
+    
+    --secondary: 120 15% 95%;
+    --secondary-foreground: var(--charcoal);
+    
+    --muted: 120 10% 96%;
+    --muted-foreground: 210 10% 50%;
+    
+    --accent: var(--field-green);
+    --accent-foreground: var(--soccer-white);
+    
+    --destructive: var(--error-red);
+    --destructive-foreground: var(--soccer-white);
+    
+    --success: var(--success-green);
+    --success-foreground: var(--soccer-white);
+    
+    --warning: var(--warning-yellow);
+    --warning-foreground: var(--referee-black);
+    
+    --border: 120 20% 88%;
+    --input: 120 20% 94%;
+    --ring: var(--grass-green);
+    
+    /* Layout & Spacing */
+    --radius: 0.75rem;
+    --radius-sm: 0.5rem;
+    --radius-lg: 1rem;
+    
+    /* Sidebar */
+    --sidebar-background: 120 20% 97%;
+    --sidebar-foreground: var(--charcoal);
+    --sidebar-primary: var(--grass-green);
+    --sidebar-primary-foreground: var(--soccer-white);
+    --sidebar-accent: 120 15% 93%;
+    --sidebar-accent-foreground: var(--charcoal);
+    --sidebar-border: 120 20% 88%;
+    --sidebar-ring: var(--grass-green);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Dark Theme - Night match vibes */
+    --background: var(--referee-black);
+    --foreground: 120 20% 95%;
+    
+    --card: 210 15% 12%;
+    --card-foreground: 120 20% 95%;
+    
+    --popover: 210 15% 12%;
+    --popover-foreground: 120 20% 95%;
+    
+    --primary: var(--field-green);
+    --primary-foreground: var(--soccer-white);
+    
+    --secondary: 210 15% 18%;
+    --secondary-foreground: 120 20% 90%;
+    
+    --muted: 210 15% 15%;
+    --muted-foreground: 120 10% 65%;
+    
+    --accent: var(--grass-green);
+    --accent-foreground: var(--soccer-white);
+    
+    --border: 210 15% 20%;
+    --input: 210 15% 18%;
+    --ring: var(--field-green);
+    
+    --sidebar-background: 210 15% 10%;
+    --sidebar-foreground: 120 15% 85%;
+    --sidebar-primary: var(--field-green);
+    --sidebar-primary-foreground: var(--soccer-white);
+    --sidebar-accent: 210 15% 15%;
+    --sidebar-accent-foreground: 120 15% 85%;
+    --sidebar-border: 210 15% 18%;
+    --sidebar-ring: var(--field-green);
   }
 }
 
@@ -98,6 +114,106 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Focus styles for accessibility */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+  
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Custom scrollbar for webkit browsers */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+@layer components {
+  /* Soccer-themed utility classes */
+  .field-gradient {
+    background: linear-gradient(135deg, hsl(var(--grass-green)), hsl(var(--field-green)));
+  }
+  
+  .grass-pattern {
+    background-image: 
+      repeating-linear-gradient(
+        90deg,
+        hsl(var(--grass-green)) 0px,
+        hsl(var(--field-green)) 2px,
+        hsl(var(--grass-green)) 4px
+      );
+  }
+  
+  .soccer-card {
+    @apply bg-card text-card-foreground rounded-lg border shadow-sm p-6 transition-all duration-200 hover:shadow-lg;
+  }
+  
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-md font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring;
+  }
+  
+  .status-available {
+    @apply bg-success/10 text-success border-success/20 px-2 py-1 rounded-md text-xs font-medium;
+  }
+  
+  .status-reserved {
+    @apply bg-warning/10 text-warning border-warning/20 px-2 py-1 rounded-md text-xs font-medium;
+  }
+  
+  .status-unavailable {
+    @apply bg-destructive/10 text-destructive border-destructive/20 px-2 py-1 rounded-md text-xs font-medium;
+  }
+  
+  /* Loading animation */
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  @keyframes pulse-subtle {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+  
+  /* Glass morphism effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 }

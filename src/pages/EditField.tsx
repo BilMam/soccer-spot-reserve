@@ -27,7 +27,7 @@ const EditField = () => {
   if (!id) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+        <Navbar /> 
         <div className="container mx-auto px-4 py-8 text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Terrain introuvable</h1>
           <p className="text-gray-600">L'identifiant du terrain est manquant.</p>
