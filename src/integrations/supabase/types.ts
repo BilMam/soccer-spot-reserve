@@ -441,21 +441,57 @@ export type Database = {
       }
       payment_accounts: {
         Row: {
+          account_type: string | null
+          cinetpay_contact_added: boolean | null
+          cinetpay_contact_response: Json | null
+          cinetpay_contact_status: Json | null
+          country_prefix: string | null
           created_at: string
+          email: string | null
+          external_account_id: string | null
           id: string
+          merchant_id: string | null
           owner_id: string
+          owner_name: string | null
+          owner_surname: string | null
+          payment_provider: string | null
+          phone: string | null
           updated_at: string
         }
         Insert: {
+          account_type?: string | null
+          cinetpay_contact_added?: boolean | null
+          cinetpay_contact_response?: Json | null
+          cinetpay_contact_status?: Json | null
+          country_prefix?: string | null
           created_at?: string
+          email?: string | null
+          external_account_id?: string | null
           id?: string
+          merchant_id?: string | null
           owner_id: string
+          owner_name?: string | null
+          owner_surname?: string | null
+          payment_provider?: string | null
+          phone?: string | null
           updated_at?: string
         }
         Update: {
+          account_type?: string | null
+          cinetpay_contact_added?: boolean | null
+          cinetpay_contact_response?: Json | null
+          cinetpay_contact_status?: Json | null
+          country_prefix?: string | null
           created_at?: string
+          email?: string | null
+          external_account_id?: string | null
           id?: string
+          merchant_id?: string | null
           owner_id?: string
+          owner_name?: string | null
+          owner_surname?: string | null
+          payment_provider?: string | null
+          phone?: string | null
           updated_at?: string
         }
         Relationships: []

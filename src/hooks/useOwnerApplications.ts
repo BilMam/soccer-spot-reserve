@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { createOwnerContactOnApproval } from '@/hooks/useOwnerContactCreation';
 import type { OwnerApplication } from '@/types/admin';
 
 export const useOwnerApplications = (hasAdminPermissions: boolean) => {
@@ -60,6 +61,26 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
   const approveApplicationMutation = useMutation({
     mutationFn: async (applicationId: string) => {
       console.log('Attempting to approve application:', applicationId);
+      
+      // Récupérer les détails de l'application avant approbation
+      const { data: applicationData, error: fetchError } = await supabase
+        .from('owner_applications')
+        .select('*')
+        .eq('id', applicationId)
+        .single();
+
+      if (fetchError || !applicationData) {
+        throw new Error('Impossible de récupérer les détails de l\'application');
+      }
+
+      // Récupérer le profil utilisateur
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('full_name, email, phone')
+        .eq('id', applicationData.user_id)
+        .single();
+
+      // Approuver l'application
       const { data, error } = await supabase.rpc('approve_owner_application', {
         application_id: applicationId
       });
@@ -68,12 +89,21 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
         console.error('RPC Error details:', error);
         throw error;
       }
+
+      // Créer automatiquement le contact CinetPay après approbation
+      if (userProfile) {
+        await createOwnerContactOnApproval(
+          applicationData.user_id,
+          userProfile
+        );
+      }
+
       return data;
     },
     onSuccess: () => {
       toast({
         title: "Demande approuvée",
-        description: "L'utilisateur est maintenant propriétaire.",
+        description: "L'utilisateur est maintenant propriétaire et son compte CinetPay a été configuré.",
       });
       queryClient.invalidateQueries({ queryKey: ['owner-applications-admin'] });
     },
