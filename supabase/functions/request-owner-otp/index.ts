@@ -42,19 +42,34 @@ serve(async (req) => {
     // Format for Ivory Coast if needed
     const formattedPhone = cleanPhone.startsWith('225') ? cleanPhone : `225${cleanPhone}`
 
-    // Generate OTP via Supabase Auth
-    const { data, error } = await supabaseAdmin.auth.admin.generateOtp({
-      type: 'sms',
-      phone: `+${formattedPhone}`,
-      options: {
-        channel: 'sms'
-      }
-    })
+    // Generate a 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString()
+    
+    // Store OTP in database with expiration (5 minutes)
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes from now
+    
+    const { error: otpError } = await supabaseAdmin
+      .from('owner_otp_verifications')
+      .upsert({
+        user_id: user.id,
+        phone: formattedPhone,
+        otp_code: otp,
+        expires_at: expiresAt.toISOString(),
+        verified: false
+      }, {
+        onConflict: 'user_id,phone'
+      })
 
-    if (error) {
-      console.error('OTP generation error:', error)
-      throw new Error('Erreur lors de l\'envoi de l\'OTP')
+    if (otpError) {
+      console.error('OTP storage error:', otpError)
+      throw new Error('Erreur lors de la génération de l\'OTP')
     }
+
+    // TODO: In production, send SMS via a service like Twilio
+    // For now, log the OTP for development
+    console.log(`OTP for ${formattedPhone}: ${otp}`)
+    
+    // In development, we'll just simulate sending SMS
 
     // Store the phone number temporarily in the application
     const { error: updateError } = await supabaseAdmin
