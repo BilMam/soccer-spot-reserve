@@ -42,15 +42,15 @@ serve(async (req) => {
     // Format for Ivory Coast if needed
     const formattedPhone = cleanPhone.startsWith('225') ? cleanPhone : `225${cleanPhone}`
 
-    // Generate SMS OTP via Supabase Auth
-    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'sms',
-      phone: `+${formattedPhone}`
+    // Vérifie / crée l'utilisateur puis envoie l'OTP
+    const { error: otpError } = await supabaseAdmin.auth.signInWithOtp({
+      phone: `+${formattedPhone}`,
+      options: { shouldCreateUser: true }   // crée le user si absent
     })
 
-    if (error) {
-      console.error('SMS OTP generation error:', error)
-      throw new Error('Erreur lors de l\'envoi de l\'OTP')
+    if (otpError) {
+      console.error('SMS OTP error:', otpError)
+      throw new Error('Impossible d\'envoyer le code OTP')
     }
 
     // Store the phone number temporarily in the application
