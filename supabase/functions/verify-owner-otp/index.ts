@@ -36,7 +36,7 @@ serve(async (req) => {
       throw new Error('Utilisateur non authentifié')
     }
 
-    // Verify OTP
+    // Verify OTP via Supabase Auth
     const { data, error } = await supabaseAdmin.auth.verifyOtp({
       phone: `+${phone}`,
       token,
