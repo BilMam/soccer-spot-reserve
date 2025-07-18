@@ -16,6 +16,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/integrations/supabase/client"
 import { Loader2 } from "lucide-react"
+import { formatCI } from "@/utils/phone"
 
 interface OtpDialogProps {
   open: boolean
@@ -112,12 +113,6 @@ export function OtpDialog({ open, onOpenChange, phone, onVerified }: OtpDialogPr
     }
   }
 
-  const formatPhone = (phone: string) => {
-    if (phone.startsWith('225')) {
-      return `+225 ${phone.slice(3, 5)} ${phone.slice(5, 7)} ${phone.slice(7, 9)} ${phone.slice(9)}`
-    }
-    return phone
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -126,7 +121,7 @@ export function OtpDialog({ open, onOpenChange, phone, onVerified }: OtpDialogPr
           <DialogTitle>Vérification du numéro</DialogTitle>
           <DialogDescription>
             Nous avons envoyé un code de vérification à 6 chiffres au numéro{" "}
-            <span className="font-medium">{formatPhone(phone)}</span>
+            <span className="font-medium">{formatCI(phone)}</span>
           </DialogDescription>
         </DialogHeader>
         

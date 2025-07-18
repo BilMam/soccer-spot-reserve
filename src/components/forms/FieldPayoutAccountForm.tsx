@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery } from "@tanstack/react-query"
 import { supabase } from "@/integrations/supabase/client"
 import { Loader2, CreditCard } from "lucide-react"
+import { formatCI } from "@/utils/phone"
 
 interface PayoutAccount {
   id: string
@@ -34,12 +35,6 @@ export default function FieldPayoutAccountForm({
     }
   })
 
-  const formatPhone = (phone: string) => {
-    if (phone.startsWith('225')) {
-      return `+225 ${phone.slice(3, 5)} ${phone.slice(5, 7)} ${phone.slice(7, 9)} ${phone.slice(9)}`
-    }
-    return phone
-  }
 
   if (isLoading) {
     return (
@@ -78,7 +73,7 @@ export default function FieldPayoutAccountForm({
               <div className="flex flex-col">
                 <span>{account.label}</span>
                 <span className="text-xs text-muted-foreground">
-                  {formatPhone(account.phone)}
+                  {formatCI(account.phone)}
                 </span>
               </div>
             </SelectItem>

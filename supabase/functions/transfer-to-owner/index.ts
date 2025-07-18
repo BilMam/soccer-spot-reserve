@@ -145,20 +145,15 @@ serve(async (req) => {
     const client_transaction_id = `transfer_${booking_id}_${Date.now()}`;
     const notifyUrl = `${supabaseUrl}/functions/v1/cinetpay-transfer-webhook`;
     
-    // Map operator to CinetPay payment method
-    const paymentMethodMap = {
-      'orange': 'ORANGE_MONEY',
-      'mtn': 'MTN_MONEY',
-      'moov': 'MOOV_MONEY'
-    };
-
+    // Use WAVE_MONEY as default - works for all CI operators
+    // TODO: Add support for other countries/payment methods in the future
     const transferData = [{
       prefix: '225',
       phone: payoutAccount.phone.replace('225', ''),
       amount: owner_amount,
       notify_url: notifyUrl,
       client_transaction_id,
-      payment_method: paymentMethodMap[payoutAccount.operator as keyof typeof paymentMethodMap] || 'ORANGE_MONEY'
+      payment_method: 'WAVE_MONEY'
     }];
 
     console.log(`[${timestamp}] [transfer-to-owner] Transfer data:`, transferData);

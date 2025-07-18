@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus, CreditCard } from "lucide-react"
+import { PhoneInputCI } from "@/components/ui/PhoneInputCI"
 import { PayoutAccountCard } from "./PayoutAccountCard"
 import { OtpDialog } from "./OtpDialog"
 import { supabase } from "@/integrations/supabase/client"
@@ -212,18 +213,12 @@ export function PayoutAccountsManager() {
                       onChange={(e) => setFormData(prev => ({ ...prev, label: e.target.value }))}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="phone">Numéro Mobile Money</Label>
-                    <Input
-                      id="phone"
-                      placeholder="ex: 22507123456"
-                      value={formData.phone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    />
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Compatible avec Orange Money, MTN Money, Moov Money
-                    </p>
-                  </div>
+                  <PhoneInputCI
+                    id="phone"
+                    label="Numéro Mobile Money"
+                    value={formData.phone}
+                    onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
+                  />
                   <Button 
                     onClick={handleSubmitForm} 
                     className="w-full"

@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Smartphone, Trash2 } from "lucide-react"
+import { formatCI } from "@/utils/phone"
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 
@@ -83,12 +84,6 @@ export function PayoutAccountCard({ account, isDefault, onUpdate }: PayoutAccoun
     }
   }
 
-  const formatPhone = (phone: string) => {
-    if (phone.startsWith('225')) {
-      return `+225 ${phone.slice(3, 5)} ${phone.slice(5, 7)} ${phone.slice(7, 9)} ${phone.slice(9)}`
-    }
-    return phone
-  }
 
   return (
     <Card className="relative">
@@ -105,7 +100,7 @@ export function PayoutAccountCard({ account, isDefault, onUpdate }: PayoutAccoun
             </CardTitle>
             <CardDescription className="flex items-center gap-2 mt-1">
               <Smartphone className="h-4 w-4" />
-              {formatPhone(account.phone)}
+              {formatCI(account.phone)}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">

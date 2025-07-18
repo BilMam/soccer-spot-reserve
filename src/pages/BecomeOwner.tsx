@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { OtpDialog } from '@/components/owner/OtpDialog';
 import { CheckCircle, MapPin, Users, Calendar, Euro } from 'lucide-react';
+import { PhoneInputCI } from '@/components/ui/PhoneInputCI';
 
 const BecomeOwner = () => {
   const { user } = useAuth();
@@ -398,32 +399,24 @@ const BecomeOwner = () => {
                     />
                   </div>
 
-                   <div>
-                     <Label htmlFor="phone">Téléphone *</Label>
-                     <Input
-                       id="phone"
-                       type="tel"
-                       value={formData.phone}
-                       onChange={(e) => handleInputChange('phone', e.target.value)}
-                       placeholder="Votre numéro de téléphone"
-                       required
-                     />
-                   </div>
+                   <PhoneInputCI
+                     id="phone"
+                     label="Téléphone"
+                     value={formData.phone}
+                     onChange={(value) => handleInputChange('phone', value)}
+                     required
+                   />
 
-                   <div>
-                     <Label htmlFor="phone_payout">Téléphone Mobile Money *</Label>
-                     <Input
-                       id="phone_payout"
-                       type="tel"
-                       value={formData.phone_payout}
-                       onChange={(e) => handleInputChange('phone_payout', e.target.value)}
-                       placeholder="07XXXXXXXX (Orange Money, MTN, Moov)"
-                       required
-                     />
-                     <p className="text-sm text-muted-foreground mt-1">
-                       Numéro pour recevoir vos paiements (sera vérifié par SMS)
-                     </p>
-                   </div>
+                   <PhoneInputCI
+                     id="phone_payout"
+                     label="Téléphone Mobile Money"
+                     value={formData.phone_payout}
+                     onChange={(value) => handleInputChange('phone_payout', value)}
+                     required
+                   />
+                   <p className="text-sm text-muted-foreground -mt-1">
+                     Numéro pour recevoir vos paiements (sera vérifié par SMS)
+                   </p>
 
                   <div>
                     <Label htmlFor="experience">Expérience dans la gestion de terrains</Label>
