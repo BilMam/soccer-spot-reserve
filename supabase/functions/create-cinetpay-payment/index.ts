@@ -8,13 +8,11 @@ const corsHeaders = {
 };
 
 interface PaymentData {
-  field_id: string;
-  slot: {
-    date: string;
-    start_time: string;
-    end_time: string;
-  };
-  price: number;
+  booking_id: string;
+  amount: number;
+  field_name: string;
+  date: string;
+  time: string;
 }
 
 interface PaymentResponse {
@@ -57,9 +55,30 @@ serve(async (req) => {
 
     // Parse request data
     const paymentData: PaymentData = await req.json();
-    const { field_id, slot, price } = paymentData;
+    const { booking_id, amount, field_name, date, time } = paymentData;
 
     console.log(`[${timestamp}] [create-cinetpay-payment] Payment data:`, paymentData);
+
+    // Parse time range (format: "13:00 - 14:00")
+    const [start_time, end_time] = time.split(' - ');
+    
+    // Get booking from database to get field_id and user verification
+    const { data: existingBooking, error: bookingFetchError } = await supabaseClient
+      .from('bookings')
+      .select('field_id, user_id, field_price')
+      .eq('id', booking_id)
+      .single();
+
+    if (bookingFetchError || !existingBooking) {
+      throw new Error('Réservation introuvable');
+    }
+
+    // Verify user owns this booking
+    if (existingBooking.user_id !== userData.user.id) {
+      throw new Error('Accès non autorisé à cette réservation');
+    }
+
+    const price = existingBooking.field_price || amount;
 
     // Calculate fees (3% user + estimated 3% CinetPay)
     const USER_FEE_PCT = 0.03; // 3% payé par utilisateur
@@ -77,36 +96,30 @@ serve(async (req) => {
       amount_checkout
     });
 
-    // Create booking
+    // Update existing booking with payment info
     const { data: booking, error: bookingError } = await supabaseClient
       .from('bookings')
-      .insert({
-        field_id,
-        user_id: userData.user.id,
-        booking_date: slot.date,
-        start_time: slot.start_time,
-        end_time: slot.end_time,
-        field_price: price,
+      .update({
         platform_fee_user,
         platform_fee_owner,
         cinetpay_checkout_fee,
         total_price: amount_checkout,
-        status: 'pending',
         payment_status: 'pending'
       })
+      .eq('id', booking_id)
       .select()
       .single();
 
     if (bookingError || !booking) {
-      console.error(`[${timestamp}] [create-cinetpay-payment] Booking creation failed:`, bookingError);
-      throw new Error('Création réservation échouée');
+      console.error(`[${timestamp}] [create-cinetpay-payment] Booking update failed:`, bookingError);
+      throw new Error('Mise à jour réservation échouée');
     }
 
     // Get field info
     const { data: field } = await supabaseClient
       .from('fields')
       .select('name')
-      .eq('id', field_id)
+      .eq('id', existingBooking.field_id)
       .single();
 
     // CinetPay Checkout v2
@@ -121,7 +134,7 @@ serve(async (req) => {
       transaction_id: transactionId,
       amount: amount_checkout,
       currency: 'XOF',
-      description: `Réservation ${field?.name || 'terrain'} - ${slot.date}`,
+      description: `Réservation ${field?.name || field_name} - ${date}`,
       return_url: returnUrl,
       notify_url: notifyUrl,
       customer_name: userData.user.user_metadata?.full_name || 'Client',
