@@ -10,7 +10,6 @@ interface PayoutAccount {
   id: string
   label: string
   phone: string
-  operator: 'orange' | 'mtn' | 'moov'
   is_active: boolean
   cinetpay_contact_id: string | null
 }
@@ -21,17 +20,6 @@ interface PayoutAccountCardProps {
   onUpdate: () => void
 }
 
-const operatorColors = {
-  orange: "bg-orange-500",
-  mtn: "bg-yellow-500", 
-  moov: "bg-blue-500"
-}
-
-const operatorNames = {
-  orange: "Orange Money",
-  mtn: "MTN Mobile Money",
-  moov: "Moov Money"
-}
 
 export function PayoutAccountCard({ account, isDefault, onUpdate }: PayoutAccountCardProps) {
   const { toast } = useToast()
@@ -116,8 +104,8 @@ export function PayoutAccountCard({ account, isDefault, onUpdate }: PayoutAccoun
               )}
             </CardTitle>
             <CardDescription className="flex items-center gap-2 mt-1">
-              <div className={`w-3 h-3 rounded-full ${operatorColors[account.operator]}`} />
-              {operatorNames[account.operator]}
+              <Smartphone className="h-4 w-4" />
+              {formatPhone(account.phone)}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -140,12 +128,7 @@ export function PayoutAccountCard({ account, isDefault, onUpdate }: PayoutAccoun
         </div>
       </CardHeader>
       
-      <CardContent>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Smartphone className="h-4 w-4" />
-          {formatPhone(account.phone)}
-        </div>
-        
+      <CardContent>        
         {account.cinetpay_contact_id && (
           <div className="mt-2">
             <Badge variant="outline" className="text-xs">

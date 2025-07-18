@@ -563,7 +563,6 @@ export type Database = {
           id: string
           is_active: boolean
           label: string
-          operator: string
           owner_id: string
           phone: string
           updated_at: string
@@ -574,7 +573,6 @@ export type Database = {
           id?: string
           is_active?: boolean
           label: string
-          operator: string
           owner_id: string
           phone: string
           updated_at?: string
@@ -585,7 +583,6 @@ export type Database = {
           id?: string
           is_active?: boolean
           label?: string
-          operator?: string
           owner_id?: string
           phone?: string
           updated_at?: string
@@ -1102,10 +1099,6 @@ export type Database = {
           p_template_id?: string
         }
         Returns: number
-      }
-      detect_operator: {
-        Args: { phone_number: string }
-        Returns: string
       }
       generate_unique_confirmation_code: {
         Args: Record<PropertyKey, never>

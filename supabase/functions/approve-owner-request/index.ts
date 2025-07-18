@@ -104,17 +104,12 @@ serve(async (req) => {
       }
 
       // 3. Create payout account
-      const operator = await supabaseAdmin.rpc('detect_operator', { 
-        phone_number: application.phone_payout 
-      })
-
       const { data: payoutAccount, error: payoutError } = await supabaseAdmin
         .from('payout_accounts')
         .insert({
           owner_id: owner.id,
           label: 'Compte principal',
           phone: application.phone_payout,
-          operator: operator.data || 'orange',
           cinetpay_contact_id: cinetpayResult.contact_id,
           is_active: true
         })

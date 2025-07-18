@@ -7,6 +7,7 @@ import FieldBasicInfoForm from '@/components/forms/FieldBasicInfoForm';
 import FieldScheduleForm from '@/components/forms/FieldScheduleForm';
 import FieldAmenitiesForm from '@/components/forms/FieldAmenitiesForm';
 import FieldImageForm from '@/components/forms/FieldImageForm';
+import FieldPayoutAccountForm from '@/components/forms/FieldPayoutAccountForm';
 import FieldFormActions from '@/components/forms/FieldFormActions';
 import { useGeocodingService } from '@/hooks/useGeocodingService';
 import { toast } from 'sonner';
@@ -26,6 +27,7 @@ interface FieldFormData {
   images: string[];
   latitude?: number;
   longitude?: number;
+  payout_account_id?: string;
 }
 
 interface FieldFormProps {
@@ -48,7 +50,8 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     amenities: [] as string[],
     images: [] as string[],
     latitude: null as number | null,
-    longitude: null as number | null
+    longitude: null as number | null,
+    payout_account_id: ''
   });
 
   const [locationSource, setLocationSource] = useState<'geocoding' | 'geolocation' | null>(null);
@@ -173,6 +176,10 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     setFormData(prev => ({ ...prev, images }));
   };
 
+  const handlePayoutAccountChange = (accountId: string) => {
+    setFormData(prev => ({ ...prev, payout_account_id: accountId }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -196,6 +203,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
       images: formData.images,
       latitude: formData.latitude,
       longitude: formData.longitude,
+      payout_account_id: formData.payout_account_id || undefined,
     };
 
     await onSubmit(fieldData);
@@ -311,6 +319,11 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
           <FieldImageForm
             images={formData.images}
             onImagesChange={handleImagesChange}
+          />
+
+          <FieldPayoutAccountForm
+            payoutAccountId={formData.payout_account_id}
+            onPayoutAccountChange={handlePayoutAccountChange}
           />
 
           <FieldFormActions isLoading={isLoading || isLocationLoading} />

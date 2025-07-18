@@ -11,6 +11,7 @@ import OwnerFields from '@/components/OwnerFields';
 import OwnerBookings from '@/components/OwnerBookings';
 import CinetPayOnboarding from '@/components/CinetPayOnboarding';
 import AvailabilityManagement from '@/components/availability/AvailabilityManagement';
+import { PayoutAccountsManager } from '@/components/owner/PayoutAccountsManager';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useOwnerStats } from '@/hooks/useOwnerStats';
 import { useOwnerFields } from '@/hooks/useOwnerFields';
@@ -140,10 +141,10 @@ const OwnerDashboard = () => {
 
           <TabsContent value="payments">
             <div className="space-y-6">
-              <CinetPayOnboarding />
+              <PayoutAccountsManager />
               
               <div className="bg-white rounded-lg border p-6">
-                <h3 className="text-lg font-medium mb-4">Informations sur les revenus CinetPay</h3>
+                <h3 className="text-lg font-medium mb-4">Informations sur les revenus</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div className="space-y-2">
                     <h4 className="font-medium">Comment ça fonctionne :</h4>
@@ -158,7 +159,7 @@ const OwnerDashboard = () => {
                   <div className="space-y-2">
                     <h4 className="font-medium">Moyens de paiement :</h4>
                     <ul className="space-y-1 text-gray-600">
-                      <li>• Orange Money, MTN Money, Moov Money</li>
+                      <li>• Wave, Orange Money, MTN Money, Moov Money</li>
                       <li>• Cartes Visa, Mastercard</li>
                       <li>• Virements bancaires locaux</li>
                       <li>• Commission CinetPay : ~2.5%</li>
