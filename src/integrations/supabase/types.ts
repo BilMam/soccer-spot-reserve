@@ -289,6 +289,7 @@ export type Database = {
           longitude: number | null
           name: string
           owner_id: string
+          payout_account_id: string | null
           price_per_hour: number
           rating: number | null
           total_reviews: number | null
@@ -313,6 +314,7 @@ export type Database = {
           longitude?: number | null
           name: string
           owner_id: string
+          payout_account_id?: string | null
           price_per_hour: number
           rating?: number | null
           total_reviews?: number | null
@@ -337,6 +339,7 @@ export type Database = {
           longitude?: number | null
           name?: string
           owner_id?: string
+          payout_account_id?: string | null
           price_per_hour?: number
           rating?: number | null
           total_reviews?: number | null
@@ -350,6 +353,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fields_payout_account_id_fkey"
+            columns: ["payout_account_id"]
+            isOneToOne: false
+            referencedRelation: "payout_accounts"
+            referencedColumns: ["id"]
+          },
         ]
       }
       owner_applications: {
@@ -361,6 +371,8 @@ export type Database = {
           id: string
           motivation: string | null
           phone: string
+          phone_payout: string | null
+          phone_verified_at: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
@@ -375,6 +387,8 @@ export type Database = {
           id?: string
           motivation?: string | null
           phone: string
+          phone_payout?: string | null
+          phone_verified_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
@@ -389,6 +403,8 @@ export type Database = {
           id?: string
           motivation?: string | null
           phone?: string
+          phone_payout?: string | null
+          phone_verified_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
@@ -451,6 +467,38 @@ export type Database = {
           },
         ]
       }
+      owners: {
+        Row: {
+          created_at: string
+          default_payout_account_id: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_payout_account_id?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_payout_account_id?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_owners_default_payout_account"
+            columns: ["default_payout_account_id"]
+            isOneToOne: false
+            referencedRelation: "payout_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_accounts: {
         Row: {
           account_type: string | null
@@ -507,6 +555,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      payout_accounts: {
+        Row: {
+          cinetpay_contact_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          operator: string
+          owner_id: string
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          cinetpay_contact_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          operator: string
+          owner_id: string
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          cinetpay_contact_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          operator?: string
+          owner_id?: string
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_accounts_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payouts: {
         Row: {
@@ -1010,6 +1102,10 @@ export type Database = {
           p_template_id?: string
         }
         Returns: number
+      }
+      detect_operator: {
+        Args: { phone_number: string }
+        Returns: string
       }
       generate_unique_confirmation_code: {
         Args: Record<PropertyKey, never>

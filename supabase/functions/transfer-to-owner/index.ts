@@ -49,7 +49,8 @@ serve(async (req) => {
         *,
         fields (
           owner_id,
-          name
+          name,
+          payout_account_id
         )
       `)
       .eq('id', booking_id)
@@ -93,16 +94,33 @@ serve(async (req) => {
       owner_amount
     });
 
-    // Get owner payment account
-    const { data: paymentAccount, error: accountError } = await supabase
-      .from('payment_accounts')
+    // Get payout account (from field setting or owner default)
+    let payoutAccountId = booking.fields.payout_account_id;
+    
+    if (!payoutAccountId) {
+      // Fallback to owner's default payout account
+      const { data: ownerData } = await supabase
+        .from('owners')
+        .select('default_payout_account_id')
+        .eq('user_id', booking.fields.owner_id)
+        .single();
+      
+      payoutAccountId = ownerData?.default_payout_account_id;
+    }
+
+    if (!payoutAccountId) {
+      throw new Error('Aucun compte de paiement configuré pour ce propriétaire');
+    }
+
+    const { data: payoutAccount, error: accountError } = await supabase
+      .from('payout_accounts')
       .select('*')
-      .eq('owner_id', booking.fields.owner_id)
-      .eq('payment_provider', 'cinetpay')
+      .eq('id', payoutAccountId)
+      .eq('is_active', true)
       .single();
 
-    if (accountError || !paymentAccount || !paymentAccount.cinetpay_contact_added) {
-      throw new Error('Contact propriétaire non configuré dans CinetPay');
+    if (accountError || !payoutAccount || !payoutAccount.cinetpay_contact_id) {
+      throw new Error('Compte de paiement non configuré ou inactif');
     }
 
     // Step 1: Authenticate with CinetPay Transfer API
@@ -127,13 +145,20 @@ serve(async (req) => {
     const client_transaction_id = `transfer_${booking_id}_${Date.now()}`;
     const notifyUrl = `${supabaseUrl}/functions/v1/cinetpay-transfer-webhook`;
     
+    // Map operator to CinetPay payment method
+    const paymentMethodMap = {
+      'orange': 'ORANGE_MONEY',
+      'mtn': 'MTN_MONEY',
+      'moov': 'MOOV_MONEY'
+    };
+
     const transferData = [{
-      prefix: paymentAccount.country_prefix || '225',
-      phone: paymentAccount.phone,
+      prefix: '225',
+      phone: payoutAccount.phone.replace('225', ''),
       amount: owner_amount,
       notify_url: notifyUrl,
       client_transaction_id,
-      payment_method: 'ORANGE_MONEY' // Default payment method
+      payment_method: paymentMethodMap[payoutAccount.operator as keyof typeof paymentMethodMap] || 'ORANGE_MONEY'
     }];
 
     console.log(`[${timestamp}] [transfer-to-owner] Transfer data:`, transferData);

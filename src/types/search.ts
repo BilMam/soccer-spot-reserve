@@ -14,17 +14,17 @@ export interface Field {
   amenities: string[];
   capacity: number;
   field_type: string;
-  latitude: number | null; // Made required but nullable to match Supabase schema
-  longitude: number | null; // Made required but nullable to match Supabase schema
-  // Adding missing Supabase fields with correct required/optional status
+  latitude: number | null;
+  longitude: number | null;
   owner_id: string;
-  description: string; // Made required to match Supabase schema
-  availability_start: string;
-  availability_end: string;
+  description: string | null;
+  availability_start: string | null;
+  availability_end: string | null;
   is_active: boolean;
   created_at: string;
-  updated_at: string;
+  updated_at: string | null;
   currency: string;
+  payout_account_id: string | null;
 }
 
 export interface SearchFilters {

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { OtpDialog } from '@/components/owner/OtpDialog';
 import { CheckCircle, MapPin, Users, Calendar, Euro } from 'lucide-react';
 
 const BecomeOwner = () => {
@@ -20,9 +21,12 @@ const BecomeOwner = () => {
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
+    phone_payout: '',
     experience: '',
     motivation: ''
   });
+  const [showOtpDialog, setShowOtpDialog] = useState(false);
+  const [otpPhone, setOtpPhone] = useState('');
 
   // Vérifier si l'utilisateur a déjà une demande ou est déjà propriétaire
   const { data: existingApplication, isLoading: checkingApplication } = useQuery({
@@ -81,10 +85,11 @@ const BecomeOwner = () => {
     },
     onSuccess: () => {
       toast({
-        title: "Demande envoyée !",
-        description: "Votre demande a été soumise avec succès. Nous l'examinerons dans les plus brefs délais.",
+        title: "Demande créée !",
+        description: "Veuillez maintenant vérifier votre numéro Mobile Money.",
       });
-      navigate('/profile');
+      // Trigger OTP verification
+      handleRequestOtp();
     },
     onError: (error: any) => {
       console.error('Error creating application:', error);
@@ -96,9 +101,59 @@ const BecomeOwner = () => {
     }
   });
 
+  const requestOtpMutation = useMutation({
+    mutationFn: async (phone_payout: string) => {
+      const { data, error } = await supabase.functions.invoke('request-owner-otp', {
+        body: { phone_payout }
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      setOtpPhone(data.phone);
+      setShowOtpDialog(true);
+      toast({
+        title: "Code envoyé",
+        description: "Un code de vérification a été envoyé par SMS",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible d'envoyer le code OTP",
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.phone_payout) {
+      toast({
+        title: "Numéro Mobile Money requis",
+        description: "Veuillez saisir votre numéro Mobile Money",
+        variant: "destructive",
+      });
+      return;
+    }
+
     createApplicationMutation.mutate(formData);
+  };
+
+  const handleRequestOtp = () => {
+    if (formData.phone_payout) {
+      requestOtpMutation.mutate(formData.phone_payout);
+    }
+  };
+
+  const handleOtpVerified = () => {
+    toast({
+      title: "Demande envoyée !",
+      description: "Votre demande a été soumise avec succès. Nous l'examinerons dans les plus brefs délais.",
+    });
+    navigate('/profile');
   };
 
   const handleInputChange = (field: keyof typeof formData, value: string) => {
@@ -343,17 +398,32 @@ const BecomeOwner = () => {
                     />
                   </div>
 
-                  <div>
-                    <Label htmlFor="phone">Téléphone *</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      placeholder="Votre numéro de téléphone"
-                      required
-                    />
-                  </div>
+                   <div>
+                     <Label htmlFor="phone">Téléphone *</Label>
+                     <Input
+                       id="phone"
+                       type="tel"
+                       value={formData.phone}
+                       onChange={(e) => handleInputChange('phone', e.target.value)}
+                       placeholder="Votre numéro de téléphone"
+                       required
+                     />
+                   </div>
+
+                   <div>
+                     <Label htmlFor="phone_payout">Téléphone Mobile Money *</Label>
+                     <Input
+                       id="phone_payout"
+                       type="tel"
+                       value={formData.phone_payout}
+                       onChange={(e) => handleInputChange('phone_payout', e.target.value)}
+                       placeholder="07XXXXXXXX (Orange Money, MTN, Moov)"
+                       required
+                     />
+                     <p className="text-sm text-muted-foreground mt-1">
+                       Numéro pour recevoir vos paiements (sera vérifié par SMS)
+                     </p>
+                   </div>
 
                   <div>
                     <Label htmlFor="experience">Expérience dans la gestion de terrains</Label>
@@ -377,13 +447,14 @@ const BecomeOwner = () => {
                     />
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-green-600 hover:bg-green-700"
-                    disabled={createApplicationMutation.isPending}
-                  >
-                    {createApplicationMutation.isPending ? "Envoi en cours..." : "Soumettre ma demande"}
-                  </Button>
+                   <Button 
+                     type="submit" 
+                     className="w-full bg-green-600 hover:bg-green-700"
+                     disabled={createApplicationMutation.isPending || requestOtpMutation.isPending}
+                   >
+                     {createApplicationMutation.isPending ? "Création en cours..." : 
+                      requestOtpMutation.isPending ? "Envoi du code..." : "Soumettre ma demande"}
+                   </Button>
 
                   <p className="text-sm text-gray-500 text-center">
                     En soumettant cette demande, vous acceptez nos conditions d'utilisation 
@@ -396,6 +467,13 @@ const BecomeOwner = () => {
           </div>
         </div>
       </div>
+
+      <OtpDialog
+        open={showOtpDialog}
+        onOpenChange={setShowOtpDialog}
+        phone={otpPhone}
+        onVerified={handleOtpVerified}
+      />
     </div>
   );
 };
