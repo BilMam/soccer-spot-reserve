@@ -7,11 +7,15 @@ export const formatCI = (raw: string): string => {
   // Remove the +225 prefix if present and any non-digits
   const digits = raw
     .replace(/^(\+?225)?/, '')
-    .replace(/[^0-9]/g, '')
-    .padStart(10, '0'); // Ensure 10 digits
+    .replace(/[^0-9]/g, '');
 
-  // Format as +225 XX XX XX XX XX
-  return digits.replace(/(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '+225 $1 $2 $3 $4 $5');
+  // Format as +225 XX XX XX XX XX only if we have exactly 10 digits
+  if (digits.length === 10) {
+    return digits.replace(/(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '+225 $1 $2 $3 $4 $5');
+  }
+  
+  // For partial numbers, return formatted but without +225 prefix
+  return digits.replace(/(\d{2})(?=(\d{2})+(?!\d))/g, '$1 ').trim();
 };
 
 /**
@@ -23,8 +27,8 @@ export const normalizeCI = (input: string): string => {
   // Remove any non-digits and ensure we start with the local number
   const digits = input.replace(/^(\+?225)?/, '').replace(/[^0-9]/g, '');
   
-  // Pad to 10 digits and add country code
-  return `225${digits.padStart(10, '0').slice(0, 10)}`;
+  // Add country code without padding
+  return digits ? `225${digits}` : '';
 };
 
 /**

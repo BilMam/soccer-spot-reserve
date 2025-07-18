@@ -31,17 +31,11 @@ export function PhoneInputCI({
     // Remove any non-digits and the 225 prefix
     const digits = rawValue.replace(/^(\+?225)?/, '').replace(/[^0-9]/g, '');
     
-    // Format as XX XX XX XX XX for display
+    // Format as XX XX XX XX XX for display (no padding)
     return digits
       .slice(0, 10)
-      .replace(/(\d{2})(\d{2})?(\d{2})?(\d{2})?(\d{2})?/, (match, p1, p2, p3, p4, p5) => {
-        let formatted = p1;
-        if (p2) formatted += ` ${p2}`;
-        if (p3) formatted += ` ${p3}`;
-        if (p4) formatted += ` ${p4}`;
-        if (p5) formatted += ` ${p5}`;
-        return formatted;
-      });
+      .replace(/(\d{2})(?=(\d{2})+(?!\d))/g, '$1 ')
+      .trim();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,8 +45,8 @@ export function PhoneInputCI({
     
     // Limit to 10 digits
     if (digits.length <= 10) {
-      // Return the normalized value with 225 prefix for storage
-      const normalizedValue = digits.length > 0 ? `225${digits.padStart(10, '0').slice(0, 10)}` : '';
+      // Return the normalized value with 225 prefix for storage (no padding)
+      const normalizedValue = digits ? `225${digits}` : '';
       onChange(normalizedValue);
     }
   };
