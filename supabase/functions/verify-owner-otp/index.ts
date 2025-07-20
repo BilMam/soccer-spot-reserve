@@ -49,17 +49,28 @@ serve(async (req) => {
       throw new Error('Code OTP invalide ou expiré')
     }
 
-    console.log('🔄 OTP vérifié avec succès, début création propriétaire...')
+    console.log('🔄 OTP vérifié avec succès, vérification propriétaire...')
 
-    // 1) Créer l'owner s'il n'existe pas
+    // 1) Vérifier si l'owner existe déjà
     const { data: existingOwner, error: ownerCheckError } = await supabaseAdmin
       .from('owners')
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle()
 
+    if (ownerCheckError && ownerCheckError.code !== 'PGRST116') {
+      console.error('Erreur vérification propriétaire:', ownerCheckError)
+      throw new Error('Impossible de vérifier le compte propriétaire')
+    }
+
     let ownerId: string
-    if (!existingOwner) {
+    let ownerAlreadyExists = false
+
+    if (existingOwner) {
+      ownerId = existingOwner.id
+      ownerAlreadyExists = true
+      console.log('✅ Owner already exists – skipping insert:', ownerId)
+    } else {
       console.log('📝 Création nouveau propriétaire...')
       const { data: newOwner, error: createOwnerError } = await supabaseAdmin
         .from('owners')
@@ -72,10 +83,7 @@ serve(async (req) => {
         throw new Error('Impossible de créer le compte propriétaire')
       }
       ownerId = newOwner.id
-      console.log('✅ Propriétaire créé:', ownerId)
-    } else {
-      ownerId = existingOwner.id
-      console.log('ℹ️ Propriétaire existant:', ownerId)
+      console.log('✅ Owner created:', ownerId)
     }
 
     // Récupérer les infos utilisateur pour create-owner-contact
@@ -184,9 +192,10 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: 'Numéro vérifié et compte propriétaire créé avec succès',
+        message: ownerAlreadyExists ? 'Compte de paiement ajouté avec succès' : 'Numéro vérifié et compte propriétaire créé avec succès',
         owner_id: ownerId,
-        payout_account: payoutAccount
+        payout_account: payoutAccount,
+        ownerAlreadyExists
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
