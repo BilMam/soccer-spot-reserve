@@ -58,18 +58,17 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .maybeSingle()
 
-    if (ownerCheckError && ownerCheckError.code !== 'PGRST116') {
+    if (ownerCheckError) {
       console.error('Erreur vérification propriétaire:', ownerCheckError)
       throw new Error('Impossible de vérifier le compte propriétaire')
     }
 
     let ownerId: string
-    let ownerAlreadyExists = false
+    let ownerCreated = false
 
     if (existingOwner) {
       ownerId = existingOwner.id
-      ownerAlreadyExists = true
-      console.log('✅ Owner already exists – skipping insert:', ownerId)
+      console.log('👤 Owner already exists, skipping creation:', ownerId)
     } else {
       console.log('📝 Création nouveau propriétaire...')
       const { data: newOwner, error: createOwnerError } = await supabaseAdmin
@@ -83,6 +82,7 @@ serve(async (req) => {
         throw new Error('Impossible de créer le compte propriétaire')
       }
       ownerId = newOwner.id
+      ownerCreated = true
       console.log('✅ Owner created:', ownerId)
     }
 
@@ -192,10 +192,10 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: ownerAlreadyExists ? 'Compte de paiement ajouté avec succès' : 'Numéro vérifié et compte propriétaire créé avec succès',
+        message: ownerCreated ? 'Numéro vérifié et compte propriétaire créé avec succès' : 'Compte de paiement ajouté avec succès',
         owner_id: ownerId,
-        payout_account: payoutAccount,
-        ownerAlreadyExists
+        owner_created: ownerCreated,
+        payout_account: payoutAccount
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
