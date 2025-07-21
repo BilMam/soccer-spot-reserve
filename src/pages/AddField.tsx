@@ -91,6 +91,9 @@ const AddField = () => {
         console.error('Role assignment error:', roleError);
       }
 
+      // Nettoyer payout_account_id avant envoi
+      const cleanPayoutAccountId = fieldData.payout_account_id && fieldData.payout_account_id !== '' ? fieldData.payout_account_id : undefined;
+
       // Utiliser l'edge function pour créer le terrain
       const { data, error } = await supabase.functions.invoke('create-field', {
         body: {
@@ -108,7 +111,7 @@ const AddField = () => {
           availability_end: fieldData.availability_end,
           latitude: fieldData.latitude,
           longitude: fieldData.longitude,
-          payout_account_id: fieldData.payout_account_id
+          payout_account_id: cleanPayoutAccountId
         }
       });
 

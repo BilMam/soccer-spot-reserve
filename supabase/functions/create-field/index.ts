@@ -87,8 +87,8 @@ serve(async (req) => {
     // Déterminer le payout_account_id à utiliser
     let payoutAccountId = body.payout_account_id
 
-    if (!payoutAccountId) {
-      // Aucun ID passé → utiliser le compte par défaut
+    // Si vide ('') ou null/undefined → utiliser le compte par défaut
+    if (!payoutAccountId || payoutAccountId === '' || payoutAccountId === 'default') {
       payoutAccountId = owner.default_payout_account_id
     }
 
