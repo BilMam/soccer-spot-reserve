@@ -67,6 +67,30 @@ export type Database = {
           },
         ]
       }
+      booking_cron_stats: {
+        Row: {
+          cleaned_count: number
+          created_at: string | null
+          duration_ms: number
+          id: string
+          run_at: string | null
+        }
+        Insert: {
+          cleaned_count?: number
+          created_at?: string | null
+          duration_ms?: number
+          id?: string
+          run_at?: string | null
+        }
+        Update: {
+          cleaned_count?: number
+          created_at?: string | null
+          duration_ms?: number
+          id?: string
+          run_at?: string | null
+        }
+        Relationships: []
+      }
       booking_notifications: {
         Row: {
           booking_id: string

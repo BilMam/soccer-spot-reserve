@@ -52,7 +52,7 @@ serve(async (req) => {
       bookingStatus = 'confirmed'
       paymentStatus = 'paid'
       console.log('🔥 PAIEMENT CONFIRMÉ - Créneau maintenant bloqué définitivement')
-    } else if (cmp_trans_status === 'REFUSED') {
+    } else if (cpm_trans_status === 'REFUSED') {
       // ❌ PAIEMENT ÉCHOUÉ - le créneau reste libre
       bookingStatus = 'failed'
       paymentStatus = 'failed'
