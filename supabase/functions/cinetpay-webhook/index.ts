@@ -68,16 +68,27 @@ serve(async (req) => {
         updated_at: new Date().toISOString()
       })
       .eq('payment_intent_id', cpm_trans_id)
-      .eq('status', 'initiated')  // Seules les réservations encore "initiated" peuvent être confirmées
+      .in('status', ['provisional', 'cancelled'])  // Seules les réservations provisoires ou déjà annulées
       .eq('payment_status', 'pending')  // Et encore "pending"
       .select('id')  // pour récupérer count
       .single()
 
+    console.log(`[WEBHOOK] Updated rows:`, count)
+    
     // Vérifier si le paiement a bien mis à jour une réservation
     if (bookingStatus === 'confirmed' && (!booking || count === 0)) {
       console.error('🎯 Paiement reçu mais créneau déjà confirmé, lancer refund automatique')
       console.error('Transaction ID:', cpm_trans_id)
-      // TODO: appel API CinetPay refund ou mise en file d'attente
+      
+      // Enregistrer l'anomalie pour monitoring
+      await supabaseClient.from('payment_anomalies').insert({
+        payment_intent_id: cpm_trans_id,
+        amount: parseInt(cpm_amount),
+        error_type: 'double_payment',
+        error_message: 'Payment received but slot already confirmed - refund needed',
+        webhook_data: { cmp_trans_id, cpm_amount, cpm_result, cpm_trans_status }
+      })
+      
       throw new Error('Payment received but slot already confirmed - refund needed')
     }
 

@@ -125,7 +125,7 @@ serve(async (req) => {
     // CinetPay Checkout v2
     const transactionId = `checkout_${booking.id}_${Date.now()}`;
     const baseUrl = supabaseUrl?.replace('.supabase.co', '.lovableproject.com');
-    const returnUrl = `${baseUrl}/booking-success?session_id=booking_${booking.id}`;
+    const returnUrl = `${baseUrl}/mes-reservations?ref=${transactionId}`;
     const notifyUrl = `${supabaseUrl}/functions/v1/cinetpay-webhook`;
 
     const cinetpayData = {
