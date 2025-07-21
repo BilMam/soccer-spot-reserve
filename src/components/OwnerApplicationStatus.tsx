@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ interface OwnerApplication {
 const OwnerApplicationStatus = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { isOwner } = usePermissions();
 
   const { data: application, isLoading } = useQuery({
     queryKey: ['owner-application', user?.id],
@@ -47,38 +49,6 @@ const OwnerApplicationStatus = () => {
     enabled: !!user
   });
 
-  // Vérifier le statut dans le profil et les rôles
-  const { data: userStatus } = useQuery({
-    queryKey: ['user-status', user?.id],
-    queryFn: async () => {
-      if (!user) return null;
-      
-      // Récupérer le profil
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_type')
-        .eq('id', user.id)
-        .single();
-      
-      if (profileError) throw profileError;
-      
-      // Récupérer les rôles
-      const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('is_active', true);
-      
-      if (rolesError) throw rolesError;
-      
-      return {
-        user_type: profile.user_type,
-        roles: roles.map(r => r.role)
-      };
-    },
-    enabled: !!user
-  });
-
   if (isLoading) {
     return (
       <Card>
@@ -88,9 +58,6 @@ const OwnerApplicationStatus = () => {
       </Card>
     );
   }
-
-  // Si l'utilisateur est déjà propriétaire (approuvé) ou a le rôle owner
-  const isOwner = userStatus?.user_type === 'owner' || userStatus?.roles?.includes('owner');
   
   if (isOwner) {
     return (

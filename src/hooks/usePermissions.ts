@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
+type UserRole = 'super_admin' | 'admin_general' | 'admin_fields' | 'admin_users' | 'moderator' | 'owner' | 'player';
+
 export const usePermissions = () => {
   const { user } = useAuth();
 
@@ -21,13 +23,36 @@ export const usePermissions = () => {
     enabled: !!user
   });
 
-  const isSuperAdmin = userRoles?.some(role => role.role === 'super_admin');
-  const isOwner = userRoles?.some(role => role.role === 'owner');
+  const roles = userRoles?.map(r => r.role as UserRole) || [];
+
+  // Fonction pour vérifier si l'utilisateur a un rôle spécifique
+  const hasRole = (role: UserRole) => roles.includes(role);
+
+  // Fonction pour vérifier si l'utilisateur a au moins un des rôles spécifiés
+  const hasAnyRole = (targetRoles: UserRole[]) => targetRoles.some(role => roles.includes(role));
+
+  // Obtenir le rôle principal (le plus élevé dans la hiérarchie)
+  const primaryRole = (): UserRole => {
+    const hierarchy: UserRole[] = ['super_admin', 'admin_general', 'admin_fields', 'admin_users', 'moderator', 'owner', 'player'];
+    return hierarchy.find(role => roles.includes(role)) || 'player';
+  };
+
+  // Raccourcis pour les vérifications courantes
+  const isSuperAdmin = hasRole('super_admin');
+  const isOwner = hasRole('owner');
+  const isAdmin = hasAnyRole(['super_admin', 'admin_general', 'admin_fields', 'admin_users']);
+  const hasAdminPermissions = hasAnyRole(['super_admin', 'admin_general', 'admin_fields', 'admin_users']);
 
   return {
     userRoles,
+    roles,
+    hasRole,
+    hasAnyRole,
+    primaryRole: primaryRole(),
     isSuperAdmin,
     isOwner,
+    isAdmin,
+    hasAdminPermissions,
     loading
   };
 };

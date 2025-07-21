@@ -76,8 +76,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({
           <div className="space-y-2">
             <Label>Utilisateur</Label>
             <p className="text-sm text-gray-600">{user.full_name} ({user.email})</p>
-            <p className="text-xs text-gray-500">Type actuel: {user.user_type}</p>
-            <p className="text-xs text-gray-500">Rôles: {user.roles.join(', ') || 'Aucun'}</p>
+            <p className="text-xs text-gray-500">Rôles actuels: {user.roles.join(', ') || 'Aucun'}</p>
           </div>
 
           <div className="space-y-2">

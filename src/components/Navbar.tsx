@@ -3,8 +3,7 @@ import { Search, User, MapPin, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { usePendingReviews } from '@/hooks/usePendingReviews';
 import AdminNavigation from '@/components/AdminNavigation';
@@ -22,29 +21,12 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { hasAdminPermissions } = useAdminPermissions();
   const { pendingCount, refreshPendingReviews } = usePendingReviews();
-
-  // Vérifier le type d'utilisateur (owner, etc.)
-  const { data: profile } = useQuery({
-    queryKey: ['profile', user?.id],
-    queryFn: async () => {
-      if (!user) return null;
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('user_type')
-        .eq('id', user.id)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user
-  });
+  const { isOwner } = usePermissions();
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
   };
-
-  const isOwner = profile?.user_type === 'owner';
 
   return (
     <nav className="bg-white shadow-sm border-b sticky top-0 z-50">

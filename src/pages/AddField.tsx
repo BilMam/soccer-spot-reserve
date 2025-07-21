@@ -64,24 +64,30 @@ const AddField = () => {
           .insert({
             id: user.id,
             email: user.email,
-            full_name: user.user_metadata?.full_name || 'Propriétaire',
-            user_type: 'owner'
+            full_name: user.user_metadata?.full_name || 'Propriétaire'
           });
 
         if (createProfileError) {
           console.error('Create profile error:', createProfileError);
           throw new Error('Impossible de créer le profil utilisateur');
         }
-      } else if (profile.user_type !== 'owner') {
-        // Mettre à jour le type d'utilisateur en propriétaire
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ user_type: 'owner' })
-          .eq('id', user.id);
+      }
+      
+      // S'assurer que l'utilisateur a le rôle owner
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: user.id,
+          role: 'owner',
+          granted_by: user.id,
+          notes: 'Auto-assigned when adding first field'
+        })
+        .select()
+        .single();
 
-        if (updateError) {
-          console.error('Update user type error:', updateError);
-        }
+      // Ignorer l'erreur de conflit (l'utilisateur a déjà le rôle)
+      if (roleError && !roleError.message?.includes('duplicate key')) {
+        console.error('Role assignment error:', roleError);
       }
 
       // Créer le terrain avec les coordonnées GPS

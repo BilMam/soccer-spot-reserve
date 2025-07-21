@@ -31,13 +31,13 @@ export const UserCard: React.FC<UserCardProps> = ({ user, onEdit }) => {
           </p>
         </div>
         <div className="flex flex-col items-end space-y-2">
-          <Badge variant="outline" className="mb-2">
-            Type: {user.user_type}
-          </Badge>
           <div className="flex flex-wrap gap-1">
             {user.roles.map((role) => (
               <RoleBadge key={role} role={role} />
             ))}
+            {user.roles.length === 0 && (
+              <Badge variant="outline">Aucun rôle</Badge>
+            )}
           </div>
         </div>
       </div>

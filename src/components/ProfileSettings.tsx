@@ -160,9 +160,10 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ user }) => {
               <Input
                 id="user_type"
                 type="text"
-                value={profile?.user_type === 'owner' ? 'Propriétaire' : 'Joueur'}
+                value="Déterminé par les rôles"
                 disabled
                 className="bg-gray-100"
+                placeholder="Géré via le système de rôles"
               />
             </div>
           </div>

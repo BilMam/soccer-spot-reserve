@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -187,8 +188,10 @@ const BecomeOwner = () => {
     );
   }
 
-  // Si l'utilisateur est déjà propriétaire
-  if (userProfile?.user_type === 'owner') {
+  // Si l'utilisateur est déjà propriétaire - utiliser le hook usePermissions
+  const { isOwner } = usePermissions();
+  
+  if (isOwner) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
