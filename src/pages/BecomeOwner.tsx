@@ -206,7 +206,7 @@ const BecomeOwner = () => {
 
                 <div className="pt-4">
                   <Button 
-                    onClick={() => navigate('/owner/dashboard')}
+                    onClick={() => navigate('/owner-dashboard')}
                     className="bg-green-600 hover:bg-green-700"
                   >
                     Accéder au dashboard propriétaire

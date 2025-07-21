@@ -118,7 +118,7 @@ const OwnerApplicationStatus = () => {
           )}
           <div className="flex space-x-2">
             <Button 
-              onClick={() => navigate('/owner/dashboard')}
+              onClick={() => navigate('/owner-dashboard')}
               className="bg-green-600 hover:bg-green-700"
             >
               Accéder au dashboard
@@ -234,7 +234,7 @@ const OwnerApplicationStatus = () => {
         <div className="flex space-x-2">
           {application.status === 'approved' && (
             <Button 
-              onClick={() => navigate('/owner/dashboard')}
+              onClick={() => navigate('/owner-dashboard')}
               className="bg-green-600 hover:bg-green-700"
             >
               Accéder au dashboard
