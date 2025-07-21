@@ -4,6 +4,7 @@ export interface OwnerApplication {
   user_id: string;
   full_name: string;
   phone: string;
+  phone_payout?: string;
   experience?: string;
   motivation?: string;
   status: string;

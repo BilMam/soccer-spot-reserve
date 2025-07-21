@@ -16,7 +16,7 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
         // Récupérer les demandes d'abord
         const { data: applicationsData, error: applicationsError } = await supabase
           .from('owner_applications')
-          .select('*')
+          .select('*, phone_payout')
           .order('created_at', { ascending: false });
           
         if (applicationsError) {

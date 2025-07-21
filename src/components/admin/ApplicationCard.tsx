@@ -36,10 +36,15 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
         <div>
-          <strong>Téléphone :</strong> {application.phone}
+          <strong>Téléphone contact :</strong> {application.phone}
         </div>
-        {application.experience && (
+        {application.phone_payout && (
           <div>
+            <strong>Numéro de paiement :</strong> {application.phone_payout}
+          </div>
+        )}
+        {application.experience && (
+          <div className={application.phone_payout ? "" : "md:col-start-2"}>
             <strong>Expérience :</strong> {application.experience}
           </div>
         )}
