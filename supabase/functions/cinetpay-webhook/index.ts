@@ -43,20 +43,20 @@ serve(async (req) => {
       throw new Error(`Erreur vérification transaction: ${verification.message}`)
     }
 
-    // Mettre à jour la réservation selon le statut - NOUVEAU WORKFLOW
-    let bookingStatus = 'initiated'  // Par défaut, garder initiated
-    let paymentStatus = 'pending'
+    // Workflow simplifié - plus de statut initiated/pending
+    let bookingStatus = 'cancelled'  // Par défaut, annuler la tentative
+    let paymentStatus = 'failed'
 
     if (cpm_result === '00' && cpm_trans_status === 'ACCEPTED') {
-      // ✅ PAIEMENT RÉUSSI - maintenant on bloque réellement le créneau
+      // ✅ PAIEMENT RÉUSSI - créneau bloqué définitivement
       bookingStatus = 'confirmed'
       paymentStatus = 'paid'
-      console.log('🔥 PAIEMENT CONFIRMÉ - Créneau maintenant bloqué définitivement')
-    } else if (cpm_trans_status === 'REFUSED') {
-      // ❌ PAIEMENT ÉCHOUÉ - le créneau reste libre
-      bookingStatus = 'failed'
+      console.log('🔥 PAIEMENT CONFIRMÉ - Créneau bloqué définitivement')
+    } else {
+      // ❌ PAIEMENT ÉCHOUÉ/REFUSÉ - créneau immédiatement libre
+      bookingStatus = 'cancelled'
       paymentStatus = 'failed'
-      console.log('💥 PAIEMENT ÉCHOUÉ - Créneau reste libre pour autres joueurs')
+      console.log('💥 PAIEMENT ÉCHOUÉ - Créneau immédiatement libre pour autres joueurs')
     }
 
     // Mettre à jour la réservation avec protection contre les double-paiements
