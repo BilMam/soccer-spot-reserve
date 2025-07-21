@@ -60,7 +60,7 @@ export default function FieldPayoutAccountForm({
           <SelectValue placeholder="Utiliser le compte par défaut" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">
+          <SelectItem value="default">
             <div className="flex flex-col">
               <span>Compte par défaut</span>
               <span className="text-xs text-muted-foreground">
