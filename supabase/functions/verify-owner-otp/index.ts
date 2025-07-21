@@ -19,9 +19,16 @@ serve(async (req) => {
       throw new Error('Téléphone et code OTP requis')
     }
 
+    // Client admin pour les opérations serveur (bypasse RLS)
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    // Client séparé pour vérifier l'authentification utilisateur
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     )
 
     // Verify user is authenticated
@@ -31,7 +38,7 @@ serve(async (req) => {
     }
 
     const authToken = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(authToken)
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(authToken)
     
     if (userError || !user) {
       throw new Error('Utilisateur non authentifié')
