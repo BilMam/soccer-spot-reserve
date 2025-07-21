@@ -61,12 +61,12 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
       return;
     }
     
-    const totalPrice = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
-    onTimeSlotSelect(selectedDate, selectedStartTime, selectedEndTime, totalPrice);
+    const priceCalculation = priceCalculator.calculateTotalPriceWithFees(selectedStartTime, selectedEndTime);
+    onTimeSlotSelect(selectedDate, selectedStartTime, selectedEndTime, priceCalculation.total);
   };
 
   const rangeIsAvailable = validator.isRangeAvailable(selectedStartTime, selectedEndTime);
-  const totalPrice = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
+  const priceCalculation = priceCalculator.calculateTotalPriceWithFees(selectedStartTime, selectedEndTime);
 
   return (
     <Button
@@ -75,7 +75,7 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
       className="w-full bg-green-600 hover:bg-green-700"
       size="lg"
     >
-      Réserver {selectedStartTime && selectedEndTime && `(${totalPrice.toLocaleString()} XOF)`}
+      Réserver {selectedStartTime && selectedEndTime && `(${priceCalculation.total.toLocaleString()} XOF)`}
     </Button>
   );
 };

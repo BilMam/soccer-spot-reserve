@@ -7,20 +7,24 @@ import { calculateDuration } from '@/utils/timeUtils';
 interface BookingSummaryProps {
   selectedStartTime: string;
   selectedEndTime: string;
-  totalPrice: number;
+  subtotal: number;
+  serviceFee: number;
+  total: number;
   fieldPrice: number;
   rangeIsAvailable: boolean;
+  durationDisplay: string;
 }
 
 const BookingSummary: React.FC<BookingSummaryProps> = ({
   selectedStartTime,
   selectedEndTime,
-  totalPrice,
+  subtotal,
+  serviceFee,
+  total,
   fieldPrice,
-  rangeIsAvailable
+  rangeIsAvailable,
+  durationDisplay
 }) => {
-  const duration = calculateDuration(selectedStartTime, selectedEndTime);
-
   if (!selectedStartTime || !selectedEndTime) return null;
 
   return (
@@ -29,7 +33,7 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Durée :</span>
-            <span className="font-medium">{duration.display}</span>
+            <span className="font-medium">{durationDisplay}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Créneau :</span>
@@ -41,10 +45,22 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
               {fieldPrice.toLocaleString()} XOF/heure
             </span>
           </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-600">Sous-total :</span>
+            <span className="text-sm">
+              {subtotal.toLocaleString()} XOF
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-600">Frais de service (3%) :</span>
+            <span className="text-sm text-gray-600">
+              {serviceFee.toLocaleString()} XOF
+            </span>
+          </div>
           <div className="flex justify-between items-center border-t pt-2">
             <span className="text-sm text-gray-600">Prix total :</span>
             <span className="text-lg font-bold text-green-600">
-              {totalPrice.toLocaleString()} XOF
+              {total.toLocaleString()} XOF
             </span>
           </div>
         </div>

@@ -22,7 +22,7 @@ export class SlotPriceCalculator {
     this.fieldPrice = fieldPrice;
   }
 
-  // Calculer le prix total pour une plage horaire
+  // Calculer le prix total pour une plage horaire avec frais de service
   calculateTotalPrice(startTime: string, endTime: string): number {
     if (!startTime || !endTime) return 0;
     const startMinutes = timeToMinutes(startTime);
@@ -54,5 +54,44 @@ export class SlotPriceCalculator {
     
     console.log('🔍 Prix total calculé:', totalPrice);
     return totalPrice;
+  }
+
+  // Calculer le prix total avec frais de service
+  calculateTotalPriceWithFees(startTime: string, endTime: string, serviceFeeRate: number = 0.03): {
+    subtotal: number;
+    serviceFee: number;
+    total: number;
+    durationMinutes: number;
+    durationHoursFloat: number;
+  } {
+    if (!startTime || !endTime) {
+      return { subtotal: 0, serviceFee: 0, total: 0, durationMinutes: 0, durationHoursFloat: 0 };
+    }
+
+    const startMinutes = timeToMinutes(startTime);
+    const endMinutes = timeToMinutes(endTime);
+    const durationMinutes = endMinutes - startMinutes;
+    const durationHoursFloat = durationMinutes / 60;
+    
+    // Calcul basé sur le prix par heure et la durée exacte
+    const subtotal = this.fieldPrice * durationHoursFloat;
+    const serviceFee = Math.ceil(subtotal * serviceFeeRate); // Arrondi à l'XOF supérieur
+    const total = subtotal + serviceFee;
+
+    console.log('🔍 Calcul détaillé:', {
+      durationMinutes,
+      durationHoursFloat,
+      subtotal,
+      serviceFee,
+      total
+    });
+
+    return {
+      subtotal,
+      serviceFee,
+      total,
+      durationMinutes,
+      durationHoursFloat
+    };
   }
 }

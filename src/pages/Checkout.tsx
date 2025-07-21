@@ -180,11 +180,17 @@ const Checkout = () => {
     });
   };
 
-  const calculateDurationHours = () => {
-    if (!checkoutData) return 0;
-    const startHour = parseInt(checkoutData.selectedStartTime.split(':')[0]);
-    const endHour = parseInt(checkoutData.selectedEndTime.split(':')[0]);
-    return endHour - startHour;
+  const calculateDuration = () => {
+    if (!checkoutData) return { hours: 0, minutes: 0, hoursFloat: 0 };
+    const [startHour, startMin] = checkoutData.selectedStartTime.split(':').map(Number);
+    const [endHour, endMin] = checkoutData.selectedEndTime.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    const totalMinutes = endMinutes - startMinutes;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const hoursFloat = totalMinutes / 60;
+    return { hours, minutes, hoursFloat };
   };
 
   const getFieldTypeLabel = (type: string) => {
@@ -299,31 +305,48 @@ const Checkout = () => {
                   <div className="flex items-center space-x-3">
                     <Clock className="w-5 h-5 text-gray-500" />
                     <div>
-                      <p className="font-medium">
-                        {checkoutData.selectedStartTime} - {checkoutData.selectedEndTime}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {calculateDurationHours()} heure{calculateDurationHours() > 1 ? 's' : ''}
-                      </p>
+                       <p className="font-medium">
+                         {checkoutData.selectedStartTime} - {checkoutData.selectedEndTime}
+                       </p>
+                       <p className="text-sm text-gray-500">
+                         {(() => {
+                           const duration = calculateDuration();
+                           let display = '';
+                           if (duration.hours > 0) display += `${duration.hours}h`;
+                           if (duration.minutes > 0) display += `${duration.minutes}min`;
+                           return display || '0h';
+                         })()}
+                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Calcul prix */}
-                <div className="space-y-3 py-4">
-                  <div className="flex justify-between text-sm">
-                    <span>Prix : {field.price_per_hour.toLocaleString()} XOF/heure</span>
-                    <span>{(field.price_per_hour * calculateDurationHours()).toLocaleString()} XOF</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>Frais de service (3%)</span>
-                    <span>{Math.round(field.price_per_hour * calculateDurationHours() * 0.03).toLocaleString()} XOF</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                    <span>Total</span>
-                    <span className="text-green-600">{Math.floor(field.price_per_hour * calculateDurationHours() * 1.03).toLocaleString()} XOF</span>
-                  </div>
-                </div>
+                 {/* Calcul prix */}
+                 <div className="space-y-3 py-4">
+                   {(() => {
+                     const duration = calculateDuration();
+                     const subtotal = field.price_per_hour * duration.hoursFloat;
+                     const serviceFee = Math.ceil(subtotal * 0.03);
+                     const total = subtotal + serviceFee;
+                     
+                     return (
+                       <>
+                         <div className="flex justify-between text-sm">
+                           <span>Prix : {field.price_per_hour.toLocaleString()} XOF/heure</span>
+                           <span>{subtotal.toLocaleString()} XOF</span>
+                         </div>
+                         <div className="flex justify-between text-sm text-gray-600">
+                           <span>Frais de service (3%)</span>
+                           <span>{serviceFee.toLocaleString()} XOF</span>
+                         </div>
+                         <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                           <span>Total</span>
+                           <span className="text-green-600">{total.toLocaleString()} XOF</span>
+                         </div>
+                       </>
+                     );
+                   })()}
+                 </div>
 
                 {/* Bouton paiement */}
                 <Button

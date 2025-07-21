@@ -87,7 +87,19 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   const priceCalculator = new SlotPriceCalculator(availableSlots, fieldPrice);
 
   const rangeIsAvailable = validator.isRangeAvailable(selectedStartTime, selectedEndTime);
-  const totalPrice = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
+  const priceCalculation = priceCalculator.calculateTotalPriceWithFees(selectedStartTime, selectedEndTime);
+  
+  // Calculer l'affichage de la durée
+  const durationDisplay = selectedStartTime && selectedEndTime 
+    ? (() => {
+        const hours = Math.floor(priceCalculation.durationHoursFloat);
+        const minutes = priceCalculation.durationMinutes % 60;
+        let display = '';
+        if (hours > 0) display += `${hours}h`;
+        if (minutes > 0) display += `${minutes}min`;
+        return display || '0h';
+      })()
+    : '0h';
 
   // Vérifier si aucun créneau n'a été créé pour ce jour
   const hasNoSlots = availableSlots.length === 0;
@@ -139,9 +151,12 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
             <BookingSummary
               selectedStartTime={selectedStartTime}
               selectedEndTime={selectedEndTime}
-              totalPrice={totalPrice}
+              subtotal={priceCalculation.subtotal}
+              serviceFee={priceCalculation.serviceFee}
+              total={priceCalculation.total}
               fieldPrice={fieldPrice}
               rangeIsAvailable={rangeIsAvailable}
+              durationDisplay={durationDisplay}
             />
 
             <SlotBookingActions
