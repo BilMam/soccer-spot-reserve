@@ -60,8 +60,8 @@ serve(async (req) => {
       console.log('💥 PAIEMENT ÉCHOUÉ - Créneau reste libre pour autres joueurs')
     }
 
-    // Mettre à jour la réservation
-    const { data: booking, error: updateError } = await supabaseClient
+    // Mettre à jour la réservation avec protection contre les double-paiements
+    const { data: booking, error: updateError, count } = await supabaseClient
       .from('bookings')
       .update({
         status: bookingStatus,
@@ -69,12 +69,22 @@ serve(async (req) => {
         updated_at: new Date().toISOString()
       })
       .eq('payment_intent_id', cpm_trans_id)
+      .eq('status', 'initiated')  // Seules les réservations encore "initiated" peuvent être confirmées
+      .eq('payment_status', 'pending')  // Et encore "pending"
       .select(`
         *,
         profiles!inner(email, full_name),
         fields!inner(name, location)
       `)
       .single()
+
+    // Vérifier si le paiement a bien mis à jour une réservation
+    if (bookingStatus === 'confirmed' && (!booking || count === 0)) {
+      console.error('🎯 Paiement reçu mais créneau déjà confirmé, lancer refund automatique')
+      console.error('Transaction ID:', cpm_trans_id)
+      // TODO: appel API CinetPay refund ou mise en file d'attente
+      throw new Error('Payment received but slot already confirmed - refund needed')
+    }
 
     if (updateError) {
       console.error('Erreur mise à jour réservation:', updateError)
