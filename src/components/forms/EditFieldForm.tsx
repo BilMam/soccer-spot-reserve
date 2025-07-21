@@ -12,6 +12,7 @@ import ImageUpload from '@/components/ImageUpload';
 import FieldBasicInfoForm from './FieldBasicInfoForm';
 import FieldScheduleForm from './FieldScheduleForm';
 import FieldAmenitiesForm from './FieldAmenitiesForm';
+import FieldPayoutAccountForm from './FieldPayoutAccountForm';
 import ErrorAlert from '@/components/ErrorAlert';
 import { useGeocodingService } from '@/hooks/useGeocodingService';
 import { toast } from 'sonner';
@@ -39,7 +40,8 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
     amenities: [] as string[],
     images: [] as string[],
     latitude: null as number | null,
-    longitude: null as number | null
+    longitude: null as number | null,
+    payout_account_id: '' as string
   });
   
   const [isLoading, setIsLoading] = useState(true);
@@ -114,7 +116,8 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
           amenities: data.amenities || [],
           images: data.images || [],
           latitude: data.latitude || null,
-          longitude: data.longitude || null
+          longitude: data.longitude || null,
+          payout_account_id: data.payout_account_id || ''
         });
 
         // Définir la source de localisation si les coordonnées existent
@@ -215,6 +218,10 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
     setFormData(prev => ({ ...prev, images }));
   };
 
+  const handlePayoutAccountChange = (accountId: string) => {
+    setFormData(prev => ({ ...prev, payout_account_id: accountId }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !fieldId) {
@@ -251,6 +258,7 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
         images: formData.images,
         latitude: formData.latitude,
         longitude: formData.longitude,
+        payout_account_id: formData.payout_account_id || null,
         updated_at: new Date().toISOString()
       };
 
@@ -398,6 +406,11 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
           <FieldAmenitiesForm 
             amenities={formData.amenities} 
             onAmenityChange={handleAmenityChange} 
+          />
+
+          <FieldPayoutAccountForm 
+            payoutAccountId={formData.payout_account_id}
+            onPayoutAccountChange={handlePayoutAccountChange}
           />
 
           <div className="space-y-4">

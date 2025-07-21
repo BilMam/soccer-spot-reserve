@@ -26,6 +26,7 @@ interface FieldFormData {
   images: string[];
   latitude?: number;
   longitude?: number;
+  payout_account_id?: string;
 }
 
 const AddField = () => {
@@ -90,11 +91,9 @@ const AddField = () => {
         console.error('Role assignment error:', roleError);
       }
 
-      // Créer le terrain avec les coordonnées GPS
-      const { data, error } = await supabase
-        .from('fields')
-        .insert({
-          owner_id: user.id,
+      // Utiliser l'edge function pour créer le terrain
+      const { data, error } = await supabase.functions.invoke('create-field', {
+        body: {
           name: fieldData.name,
           description: fieldData.description,
           location: fieldData.location,
@@ -109,12 +108,9 @@ const AddField = () => {
           availability_end: fieldData.availability_end,
           latitude: fieldData.latitude,
           longitude: fieldData.longitude,
-          is_active: false, // Terrain en attente d'approbation
-          rating: 0,
-          total_reviews: 0
-        })
-        .select()
-        .single();
+          payout_account_id: fieldData.payout_account_id
+        }
+      });
 
       if (error) {
         console.error('Field creation error:', error);
@@ -122,7 +118,7 @@ const AddField = () => {
       }
 
       console.log('Field created successfully with GPS coordinates:', data);
-      return data;
+      return data.field;
     },
     onSuccess: (data) => {
       console.log('Field created successfully:', data);
