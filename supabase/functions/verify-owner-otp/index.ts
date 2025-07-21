@@ -22,7 +22,8 @@ serve(async (req) => {
     // Client admin pour les opérations serveur (bypasse RLS)
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } }
     )
 
     // Client séparé pour vérifier l'authentification utilisateur
