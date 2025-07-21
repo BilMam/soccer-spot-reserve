@@ -173,6 +173,22 @@ const BookingForm: React.FC<BookingFormProps> = ({
           booking_id: booking.id,
           amount: totalPrice
         });
+
+        // Lier le payment_intent_id à la réservation
+        if (paymentData.transaction_id) {
+          console.log('🔗 Liaison payment_intent_id à la réservation...');
+          const { error: linkError } = await supabase
+            .from('bookings')
+            .update({ payment_intent_id: paymentData.transaction_id })
+            .eq('id', booking.id);
+          
+          if (linkError) {
+            console.error('❌ Erreur liaison payment_intent_id:', linkError);
+            // Continue malgré l'erreur de liaison
+          } else {
+            console.log('✅ payment_intent_id lié avec succès');
+          }
+        }
         
         console.log('🔄 Redirection vers CinetPay...');
         

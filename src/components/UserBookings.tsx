@@ -100,6 +100,10 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
 
   const getStatusBadge = (status: string, windowType?: string) => {
     switch (status) {
+      case 'initiated':
+        return { badge: <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Paiement en cours</Badge>, icon: Clock4 };
+      case 'pending':
+        return { badge: <Badge variant="secondary">En attente de paiement</Badge>, icon: Clock4 };
       case 'pending_approval':
         return { badge: <Badge variant="outline" className="text-orange-600">En attente d'approbation</Badge>, icon: Clock4 };
       case 'approved':
@@ -115,10 +119,14 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
         return { badge: <Badge variant="secondary" className="text-gray-600">Terminée</Badge>, icon: CheckCircle };
       case 'cancelled':
         return { badge: <Badge variant="destructive">Annulée</Badge>, icon: X };
+      case 'failed':
+        return { badge: <Badge variant="destructive">Paiement échoué</Badge>, icon: X };
+      case 'expired':
+        return { badge: <Badge variant="destructive" className="bg-gray-500">Session expirée</Badge>, icon: X };
       case 'refunded':
         return { badge: <Badge variant="destructive">Remboursée</Badge>, icon: X };
       default:
-        return { badge: <Badge variant="outline">En attente</Badge>, icon: Clock4 };
+        return { badge: <Badge variant="outline">Statut inconnu</Badge>, icon: Clock4 };
     }
   };
 
@@ -174,6 +182,10 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
 
   const getStatusMessage = (status: string, windowType?: string, autoAction?: string) => {
     switch (status) {
+      case 'initiated':
+        return "Votre paiement est en cours de traitement. Veuillez patienter ou compléter le paiement.";
+      case 'pending':
+        return "En attente de paiement. Vérifiez vos emails pour le lien de paiement.";
       case 'pending_approval':
         return "Le propriétaire examine votre demande. Vous recevrez un email dès qu'elle sera approuvée.";
       case 'approved':
@@ -190,6 +202,10 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
         return "Le propriétaire a confirmé votre réservation. Amusez-vous bien !";
       case 'cancelled':
         return "Cette réservation a été annulée.";
+      case 'failed':
+        return "Le paiement a échoué. Vous pouvez tenter une nouvelle réservation.";
+      case 'expired':
+        return "Cette session de réservation a expiré. Le créneau est de nouveau disponible.";
       case 'completed':
         return "Cette réservation est terminée. Vous pouvez laisser un avis.";
       default:

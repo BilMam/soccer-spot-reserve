@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -53,7 +52,7 @@ serve(async (req) => {
       bookingStatus = 'confirmed'
       paymentStatus = 'paid'
       console.log('🔥 PAIEMENT CONFIRMÉ - Créneau maintenant bloqué définitivement')
-    } else if (cpm_trans_status === 'REFUSED') {
+    } else if (cmp_trans_status === 'REFUSED') {
       // ❌ PAIEMENT ÉCHOUÉ - le créneau reste libre
       bookingStatus = 'failed'
       paymentStatus = 'failed'
@@ -71,11 +70,7 @@ serve(async (req) => {
       .eq('payment_intent_id', cpm_trans_id)
       .eq('status', 'initiated')  // Seules les réservations encore "initiated" peuvent être confirmées
       .eq('payment_status', 'pending')  // Et encore "pending"
-      .select(`
-        *,
-        profiles!inner(email, full_name),
-        fields!inner(name, location)
-      `)
+      .select('id')  // pour récupérer count
       .single()
 
     // Vérifier si le paiement a bien mis à jour une réservation
@@ -86,6 +81,8 @@ serve(async (req) => {
       throw new Error('Payment received but slot already confirmed - refund needed')
     }
 
+    console.log(`✅ Réservation mise à jour: ${booking?.id} → ${bookingStatus}/${paymentStatus}`)
+
     if (updateError) {
       console.error('Erreur mise à jour réservation:', updateError)
       throw updateError
@@ -93,16 +90,22 @@ serve(async (req) => {
 
     // Envoyer l'email de confirmation si paiement réussi
     if (paymentStatus === 'paid' && booking) {
-      await supabaseClient.functions.invoke('send-booking-email', {
-        body: {
-          booking_id: booking.id,
-          notification_type: 'payment_confirmation'
-        }
-      })
+      console.log(`📧 Envoi email de confirmation pour booking ${booking.id}`)
+      try {
+        await supabaseClient.functions.invoke('send-booking-email', {
+          body: {
+            booking_id: booking.id,
+            notification_type: 'payment_confirmation'
+          }
+        })
+      } catch (emailError) {
+        console.error('Erreur envoi email:', emailError)
+        // Ne pas faire échouer le webhook pour un problème d'email
+      }
     }
 
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, booking_id: booking?.id, status: bookingStatus }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
