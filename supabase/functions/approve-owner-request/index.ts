@@ -39,15 +39,23 @@ serve(async (req) => {
       throw new Error('Utilisateur non authentifié')
     }
 
-    // Check admin role
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('user_type')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || profile.user_type !== 'admin') {
+    // Check admin role using the new role system
+    if (!await hasRole(user.id, 'super_admin') && 
+        !await hasRole(user.id, 'admin_general') && 
+        !await hasRole(user.id, 'admin_fields')) {
       throw new Error('Permissions administrateur requises')
+    }
+
+    // Helper function to check user roles
+    async function hasRole(userId: string, role: string): Promise<boolean> {
+      const { data } = await supabaseAdmin
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('role', role)
+        .eq('is_active', true)
+        .maybeSingle()
+      return !!data
     }
 
     // Get the application
@@ -149,17 +157,18 @@ serve(async (req) => {
         throw new Error('Erreur lors de la mise à jour de la demande')
       }
 
-      // 6. Update user profile
-      const { error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .update({
-          user_type: 'owner',
-          updated_at: new Date().toISOString()
+      // 6. Grant owner role to user
+      const { error: roleError } = await supabaseAdmin
+        .from('user_roles')
+        .insert({
+          user_id: application.user_id,
+          role: 'owner',
+          granted_by: user.id,
+          notes: 'Approved owner application via edge function'
         })
-        .eq('id', application.user_id)
-
-      if (profileError) {
-        throw new Error('Erreur lors de la mise à jour du profil utilisateur')
+      
+      if (roleError && !roleError.message?.includes('duplicate key')) {
+        throw new Error('Erreur lors de l\'attribution du rôle propriétaire')
       }
 
       return new Response(

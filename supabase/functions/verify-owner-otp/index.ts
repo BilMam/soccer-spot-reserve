@@ -184,15 +184,6 @@ serve(async (req) => {
       throw new Error('Erreur lors de la mise à jour de la demande')
     }
 
-    // 6) Mettre à jour le type d'utilisateur dans profiles
-    const { error: profileUpdateError } = await supabaseAdmin
-      .from('profiles')
-      .update({ user_type: 'owner' })
-      .eq('id', user.id)
-
-    if (profileUpdateError) {
-      console.error('Erreur mise à jour profil:', profileUpdateError)
-    }
 
     console.log('🎉 Processus complet terminé avec succès!')
 
