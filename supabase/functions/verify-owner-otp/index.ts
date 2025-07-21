@@ -22,11 +22,10 @@ serve(async (req) => {
     // Client admin pour les opérations serveur (bypasse RLS)
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { persistSession: false } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Client séparé pour vérifier l'authentification utilisateur
+    // Client séparé pour vérifier l'authentification utilisateur et OTP
     const supabaseAuth = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -45,8 +44,8 @@ serve(async (req) => {
       throw new Error('Utilisateur non authentifié')
     }
 
-    // Verify OTP via Supabase Auth
-    const { data, error } = await supabaseAdmin.auth.verifyOtp({
+    // Verify OTP via Supabase Auth (utilise le client anon pour ne pas contaminer l'admin)
+    const { data, error } = await supabaseAuth.auth.verifyOtp({
       phone: `+${phone}`,
       token,
       type: 'sms'
