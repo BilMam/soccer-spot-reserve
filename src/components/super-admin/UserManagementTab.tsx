@@ -25,13 +25,11 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({ isSuperAdm
   const {
     selectedUser,
     setSelectedUser,
-    newUserType,
-    setNewUserType,
     newRole,
     setNewRole,
     reason,
     setReason,
-    changeUserTypeMutation,
+    grantRoleMutation,
     resetForm
   } = useUserManagement();
 
@@ -54,11 +52,10 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({ isSuperAdm
   };
 
   const handleSave = () => {
-    if (selectedUser && newUserType && reason) {
-      changeUserTypeMutation.mutate({
+    if (selectedUser && newRole && reason) {
+      grantRoleMutation.mutate({
         userId: selectedUser.user_id,
-        userType: newUserType,
-        role: newRole || undefined,
+        role: newRole,
         reason: reason
       });
       setDialogOpen(false);
@@ -101,15 +98,13 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({ isSuperAdm
         user={selectedUser}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        newUserType={newUserType}
-        setNewUserType={setNewUserType}
         newRole={newRole}
         setNewRole={setNewRole}
         reason={reason}
         setReason={setReason}
         onSave={handleSave}
         onCancel={handleCancel}
-        isLoading={changeUserTypeMutation.isPending}
+        isLoading={grantRoleMutation.isPending}
       />
     </>
   );

@@ -22,8 +22,6 @@ interface UserEditDialogProps {
   user: UserWithRoles | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  newUserType: string;
-  setNewUserType: (type: string) => void;
   newRole: UserRoleType | '';
   setNewRole: (role: UserRoleType | '') => void;
   reason: string;
@@ -33,28 +31,16 @@ interface UserEditDialogProps {
   isLoading: boolean;
 }
 
-const userTypes = [
-  { value: 'player', label: 'Joueur' },
-  { value: 'owner', label: 'Propriétaire' },
-  { value: 'admin', label: 'Admin' }
-];
-
 const roleTypes: { value: UserRoleType; label: string }[] = [
   { value: 'super_admin', label: 'Super Admin' },
-  { value: 'admin_general', label: 'Admin Général' },
-  { value: 'admin_fields', label: 'Admin Terrains' },
-  { value: 'admin_users', label: 'Admin Utilisateurs' },
-  { value: 'moderator', label: 'Modérateur' },
-  { value: 'owner', label: 'Propriétaire' },
-  { value: 'player', label: 'Joueur' }
+  { value: 'admin_general', label: 'Admin' },
+  { value: 'owner', label: 'Propriétaire' }
 ];
 
 export const UserEditDialog: React.FC<UserEditDialogProps> = ({
   user,
   open,
   onOpenChange,
-  newUserType,
-  setNewUserType,
   newRole,
   setNewRole,
   reason,
@@ -80,23 +66,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="userType">Nouveau type d'utilisateur</Label>
-            <Select value={newUserType || undefined} onValueChange={setNewUserType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un type" />
-              </SelectTrigger>
-              <SelectContent>
-                {userTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="role">Nouveau rôle (optionnel)</Label>
+            <Label htmlFor="role">Nouveau rôle</Label>
             <Select value={newRole || undefined} onValueChange={(value) => setNewRole(value as UserRoleType)}>
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionner un rôle" />
@@ -129,7 +99,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({
           </Button>
           <Button 
             onClick={onSave} 
-            disabled={isLoading || !newUserType || !reason.trim()}
+            disabled={isLoading || !newRole || !reason.trim()}
           >
             {isLoading ? 'Modification...' : 'Modifier'}
           </Button>
