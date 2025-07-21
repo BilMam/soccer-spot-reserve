@@ -140,7 +140,7 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
     const now = new Date();
     const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
     
-    return (booking.status === 'pending_approval' || booking.status === 'approved' || booking.status === 'confirmed') && hoursUntilBooking > 24;
+    return (booking.status === 'pending' || booking.status === 'confirmed' || booking.status === 'owner_confirmed') && hoursUntilBooking > 24;
   };
 
   const canReview = (booking: Booking) => {

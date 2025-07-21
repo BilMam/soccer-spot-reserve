@@ -1087,6 +1087,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      cleanup_expired_bookings: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       create_availability_for_period: {
         Args: {
           p_field_id: string

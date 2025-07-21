@@ -121,7 +121,8 @@ const checkSlotsAvailability = async (
       .select('start_time, end_time')
       .eq('field_id', field.id)
       .eq('booking_date', date)
-      .in('status', ['pending', 'confirmed', 'owner_confirmed'])
+      .in('status', ['confirmed', 'owner_confirmed', 'completed'])
+      .eq('payment_status', 'paid') // NOUVEAU: Ne considérer que les paiements confirmés
       .or(
         `and(start_time.lt.${parsedTimeSlot.endTime},end_time.gt.${parsedTimeSlot.startTime})`
       );
