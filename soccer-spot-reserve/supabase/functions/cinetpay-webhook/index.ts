@@ -13,15 +13,22 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    
+    if (!supabaseUrl || !serviceRoleKey) {
+      throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+    }
 
-    const { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status } = await req.json()
+    const supabaseClient = createClient(supabaseUrl, serviceRoleKey)
+
+    const requestBody = await req.json()
+    console.log('📋 Full webhook body:', JSON.stringify(requestBody))
+    
+    const { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status } = requestBody
 
     console.log('🔍 Webhook CinetPay reçu - cpm_trans_id:', cpm_trans_id)
-    console.log('Webhook CinetPay reçu:', { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status })
+    console.log('Webhook CinetPay reçu:', { cpm_trans_id, cpm_amount, cpm_result, cmp_trans_status })
 
     // Vérifier la signature du webhook si nécessaire
     const cinetpayApiKey = Deno.env.get('CINETPAY_API_KEY')
@@ -89,9 +96,27 @@ serve(async (req) => {
       throw updateError
     }
 
-    // Si aucune ligne mise à jour, logger l'anomalie
+    // Si aucune ligne mise à jour, investiguer
     if (count === 0) {
       console.error('❌ ANOMALIE: Aucune réservation trouvée pour payment_intent_id:', cpm_trans_id)
+      
+      // Chercher toute réservation avec ce payment_intent_id
+      const { data: allWithId } = await supabaseClient
+        .from('bookings')
+        .select('id, status, payment_status, payment_intent_id')
+        .eq('payment_intent_id', cpm_trans_id);
+      
+      console.log('🔍 All bookings with this payment_intent_id:', allWithId)
+      
+      // Chercher les réservations récentes qui pourraient correspondre
+      const { data: recentBookings } = await supabaseClient
+        .from('bookings')
+        .select('id, status, payment_status, payment_intent_id, created_at')
+        .gte('created_at', new Date(Date.now() - 30 * 60 * 1000).toISOString()) // 30 min
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      console.log('📋 Recent bookings (last 30min):', recentBookings)
       
       await supabaseClient
         .from('payment_anomalies')
@@ -100,7 +125,7 @@ serve(async (req) => {
           amount: cpm_amount,
           error_type: 'no_row_matched',
           error_message: 'Aucune réservation trouvée avec ce payment_intent_id',
-          webhook_data: { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status }
+          webhook_data: requestBody
         })
 
       throw new Error('Aucune réservation trouvée')

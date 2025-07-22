@@ -111,9 +111,15 @@ serve(async (req) => {
     const transactionId = `checkout_${booking.id}_${Date.now()}`;
     console.log('🔍 Generated transaction_id:', transactionId);
     
-    const frontendBaseUrl = Deno.env.get('FRONTEND_BASE_URL') || supabaseUrl?.replace('.supabase.co', '.lovableproject.com');
-    const returnUrl = `${frontendBaseUrl}/mes-reservations?payment=success&booking=${booking.id}`;
+    const frontendBaseUrl = Deno.env.get('FRONTEND_BASE_URL')
+    if (!frontendBaseUrl) {
+      throw new Error('Missing FRONTEND_BASE_URL environment variable')
+    }
+    
+    const returnUrl = `${frontendBaseUrl}/mes-reservations?payment=${transactionId}`;
     const notifyUrl = `${supabaseUrl}/functions/v1/cinetpay-webhook`;
+    
+    console.log('🔗 Return URL:', returnUrl);
 
     const cinetpayData = {
       apikey: cinetpayApiKey,
