@@ -37,6 +37,12 @@ verify_jwt = false
 [functions.create-field]
 verify_jwt = true
 
+[functions.test-webhook]
+verify_jwt = false
+
+[functions.cinetpay-webhook]
+verify_jwt = false
+
 [realtime]
 enabled = true
 port = 54325

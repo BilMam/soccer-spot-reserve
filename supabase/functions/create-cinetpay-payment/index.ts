@@ -141,6 +141,7 @@ serve(async (req) => {
       customer_email: userData.user.email
     };
 
+    console.log(`[${timestamp}] [create-cinetpay-payment] WEBHOOK URL:`, notifyUrl);
     console.log(`[${timestamp}] [create-cinetpay-payment] CinetPay request:`, cinetpayData);
 
     const cinetpayResponse = await fetch('https://api-checkout.cinetpay.com/v2/payment', {

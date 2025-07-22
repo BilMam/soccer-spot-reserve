@@ -19,7 +19,14 @@ serve(async (req) => {
 
     const { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status } = await req.json()
 
-    console.log('Webhook CinetPay reçu:', { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status })
+    console.log('🎯 WEBHOOK CINETPAY APPELÉ!', {
+      timestamp: new Date().toISOString(),
+      trans_id: cpm_trans_id,
+      amount: cpm_amount,
+      result: cpm_result,
+      status: cpm_trans_status,
+      user_agent: req.headers.get('user-agent')
+    })
 
     // Vérifier la signature du webhook si nécessaire
     const cinetpayApiKey = Deno.env.get('CINETPAY_API_KEY')
@@ -68,7 +75,7 @@ serve(async (req) => {
         updated_at: new Date().toISOString()
       })
       .eq('payment_intent_id', cpm_trans_id)
-      .in('status', ['provisional', 'pending'])  // Support transition cache navigateur
+      .eq('status', 'provisional')  // UNIQUEMENT PROVISIONAL - PAS DE PENDING
       .eq('payment_status', 'pending')
       .select('id', { count: 'exact' })  // pour récupérer count
       .maybeSingle()
