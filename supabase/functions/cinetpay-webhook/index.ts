@@ -113,12 +113,13 @@ serve(async (req) => {
         updated_at: new Date().toISOString()
       })
       .eq('payment_intent_id', cpm_trans_id)
-      .eq('status', 'provisional')  // UNIQUEMENT PROVISIONAL - PAS DE PENDING
-      .eq('payment_status', 'pending')
-      .select('id', { count: 'exact' })  // pour récupérer count
+      .in('status', ['provisional', 'pending'])  // ACCEPTER LES DEUX STATUTS
+      .in('payment_status', ['pending', 'processing'])
+      .select('id', { count: 'exact' })
       .maybeSingle()
 
     console.log(`[WEBHOOK] Updated rows:`, count)
+    console.log(`[WEBHOOK] Booking found:`, booking)
     
     // Vérifier si le paiement a bien mis à jour une réservation
     if (bookingStatus === 'confirmed' && (!booking || count === 0)) {
