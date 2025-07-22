@@ -580,6 +580,39 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_anomalies: {
+        Row: {
+          amount: number
+          created_at: string
+          error_message: string
+          error_type: string
+          id: string
+          payment_intent_id: string
+          resolved_at: string | null
+          webhook_data: Json | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          error_message: string
+          error_type: string
+          id?: string
+          payment_intent_id: string
+          resolved_at?: string | null
+          webhook_data?: Json | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          error_message?: string
+          error_type?: string
+          id?: string
+          payment_intent_id?: string
+          resolved_at?: string | null
+          webhook_data?: Json | null
+        }
+        Relationships: []
+      }
       payout_accounts: {
         Row: {
           cinetpay_contact_id: string | null
