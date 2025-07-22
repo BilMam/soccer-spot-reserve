@@ -30,26 +30,35 @@ serve(async (req) => {
     console.log('🔍 Webhook CinetPay reçu - cpm_trans_id:', cpm_trans_id)
     console.log('Webhook CinetPay reçu:', { cpm_trans_id, cpm_amount, cpm_result, cmp_trans_status })
 
-    // Vérifier la signature du webhook si nécessaire
-    const cinetpayApiKey = Deno.env.get('CINETPAY_API_KEY')
-    
-    // Vérifier le statut de la transaction via l'API CinetPay
-    const verificationResponse = await fetch('https://api-checkout.cinetpay.com/v2/payment/check', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        apikey: cinetpayApiKey,
-        site_id: Deno.env.get('CINETPAY_SITE_ID'),
-        transaction_id: cpm_trans_id
+    // -----------------------------------------------------------------------------
+    // ⚡ Skip CinetPay API when testing locally
+    //    (mettre SKIP_CINETPAY_VERIFY=true dans .env.local)
+    // -----------------------------------------------------------------------------
+    const SKIP_CINETPAY_VERIFY = Deno.env.get('SKIP_CINETPAY_VERIFY') === 'true';
+
+    if (!SKIP_CINETPAY_VERIFY) {
+      // ==== Vérification réelle (inchangée) ==========================
+      const cinetpayApiKey = Deno.env.get('CINETPAY_API_KEY')
+      
+      const verificationResponse = await fetch('https://api-checkout.cinetpay.com/v2/payment/check', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apikey: cinetpayApiKey,
+          site_id: Deno.env.get('CINETPAY_SITE_ID'),
+          transaction_id: cmp_trans_id
+        })
       })
-    })
 
-    const verification = await verificationResponse.json()
+      const verification = await verificationResponse.json()
 
-    if (verification.code !== '00') {
-      throw new Error(`Erreur vérification transaction: ${verification.message}`)
+      if (verification.code !== '00') {
+        throw new Error(`Erreur vérification transaction: ${verification.message}`)
+      }
+    } else {
+      console.log('[LOCAL] Skip CinetPay verification ✅');
     }
 
     // Debug: vérifier les lignes existantes AVANT update
