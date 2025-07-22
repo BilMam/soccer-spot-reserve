@@ -68,8 +68,8 @@ serve(async (req) => {
         updated_at: new Date().toISOString()
       })
       .eq('payment_intent_id', cpm_trans_id)
-      .in('status', ['provisional', 'cancelled', 'pending'])  // Support ancien ET nouveau workflow
-      .eq('payment_status', 'pending')  // Et encore "pending"
+      .eq('status', 'provisional')  // NOUVEAU WORKFLOW UNIQUEMENT
+      .eq('payment_status', 'pending')
       .select('id', { count: 'exact' })  // pour récupérer count
       .maybeSingle()
 
