@@ -27,7 +27,34 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    const requestBody = await req.json()
+    console.log('📊 CONTENT TYPE:', req.headers.get('content-type'))
+    
+    // CinetPay envoie les données en form-data, pas en JSON
+    let requestBody
+    const contentType = req.headers.get('content-type') || ''
+    
+    if (contentType.includes('application/x-www-form-urlencoded')) {
+      const formData = await req.formData()
+      requestBody = {}
+      for (const [key, value] of formData.entries()) {
+        requestBody[key] = value
+      }
+      console.log('📋 FORM DATA PARSED:', requestBody)
+    } else if (contentType.includes('application/json')) {
+      requestBody = await req.json()
+      console.log('📋 JSON DATA:', requestBody)  
+    } else {
+      // Essayer les deux formats
+      try {
+        requestBody = await req.json()
+      } catch {
+        const text = await req.text()
+        console.log('📋 RAW TEXT:', text)
+        // Parser en form-data manuel si nécessaire
+        const params = new URLSearchParams(text)
+        requestBody = Object.fromEntries(params)
+      }
+    }
     const { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status } = requestBody
 
     console.log('🎯 WEBHOOK CINETPAY DONNÉES REÇUES!', {
