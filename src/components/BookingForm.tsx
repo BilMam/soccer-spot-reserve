@@ -67,8 +67,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
         ownerAmount
       });
 
-      // Créer la réservation
-      console.log('📝 Création réservation...');
+      // Créer la réservation AVEC STATUT PROVISIONAL (JAMAIS PENDING)
+      console.log('📝 Création réservation AVEC STATUS PROVISIONAL (WORKFLOW 2025)...');
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert({
@@ -82,8 +82,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
           platform_fee: platformFee,
           owner_amount: ownerAmount,
           special_requests: specialRequests || null,
-          status: 'provisional', // NOUVEAU WORKFLOW OBLIGATOIRE: ne bloque que quand payé
-          payment_status: 'pending',
+          status: 'provisional' as const, // WORKFLOW 2025: TOUJOURS PROVISIONAL
+          payment_status: 'pending' as const,
           currency: 'XOF'
         })
         .select()
