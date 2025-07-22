@@ -67,8 +67,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
         ownerAmount
       });
 
-      // Créer la réservation AVEC STATUT PROVISIONAL (JAMAIS PENDING)
-      console.log('📝 Création réservation AVEC STATUS PROVISIONAL (WORKFLOW 2025)...');
+      // Créer la réservation AVEC STATUT PROVISIONAL V3-2025072215
+      console.log('📝 V3-2025072215: Création réservation PROVISIONAL (JAMAIS PENDING)...');
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert({
@@ -82,7 +82,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
           platform_fee: platformFee,
           owner_amount: ownerAmount,
           special_requests: specialRequests || null,
-          status: 'provisional' as const, // WORKFLOW 2025 v2.0: JAMAIS PENDING!
+          status: 'provisional' as const, // V3-2025072215: PROVISIONAL SEULEMENT
           payment_status: 'pending' as const,
           currency: 'XOF'
         })
@@ -192,9 +192,10 @@ const BookingForm: React.FC<BookingFormProps> = ({
         
         console.log('🔄 Redirection vers CinetPay...');
         
+        // V3-2025072215: Redirection immédiate + vérification backup
         setTimeout(() => {
           window.location.href = paymentData.url;
-        }, 1500);
+        }, 1000);
 
         return {
           booking,
