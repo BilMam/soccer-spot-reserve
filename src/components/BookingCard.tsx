@@ -73,13 +73,13 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
           showDetails={true}
         />
 
-        {/* Message informatif pour le workflow legacy */}
-        {booking.status === 'pending' && (
+        {/* Message informatif pour les paiements en cours */}
+        {booking.status === 'provisional' && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <div className="flex items-center space-x-2">
               <Clock className="w-4 h-4 text-yellow-600" />
               <span className="text-sm text-yellow-800">
-                En attente de paiement
+                Paiement en cours de validation
               </span>
             </div>
           </div>

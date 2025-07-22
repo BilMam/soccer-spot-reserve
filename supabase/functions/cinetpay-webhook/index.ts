@@ -104,7 +104,7 @@ serve(async (req) => {
       console.log('💥 PAIEMENT ÉCHOUÉ - Créneau immédiatement libre pour autres joueurs')
     }
 
-    // Mettre à jour la réservation avec protection contre les double-paiements
+    // Mettre à jour la réservation - SEULEMENT statut provisional/pending
     const { data: booking, error: updateError, count } = await supabaseClient
       .from('bookings')
       .update({
@@ -113,8 +113,8 @@ serve(async (req) => {
         updated_at: new Date().toISOString()
       })
       .eq('payment_intent_id', cpm_trans_id)
-      .in('status', ['provisional', 'pending'])  // ACCEPTER LES DEUX STATUTS
-      .in('payment_status', ['pending', 'processing'])
+      .eq('status', 'provisional')
+      .eq('payment_status', 'pending')
       .select('id', { count: 'exact' })
       .maybeSingle()
 
@@ -122,20 +122,21 @@ serve(async (req) => {
     console.log(`[WEBHOOK] Booking found:`, booking)
     
     // Vérifier si le paiement a bien mis à jour une réservation
-    if (bookingStatus === 'confirmed' && (!booking || count === 0)) {
-      console.error('🎯 Paiement reçu mais créneau déjà confirmé, lancer refund automatique')
+    if (count === 0) {
+      console.error('🚨 AUCUNE RÉSERVATION PROVISOIRE TROUVÉE POUR CE PAIEMENT!')
       console.error('Transaction ID:', cpm_trans_id)
+      console.error('Possible causes: réservation expirée, déjà confirmée, ou transaction frauduleuse')
       
       // Enregistrer l'anomalie pour monitoring
       await supabaseClient.from('payment_anomalies').insert({
         payment_intent_id: cpm_trans_id,
         amount: parseInt(cpm_amount),
-        error_type: 'double_payment',
-        error_message: 'Payment received but slot already confirmed - refund needed',
+        error_type: 'no_row_matched',
+        error_message: 'No provisional booking found for this payment - possible expired or fraudulent transaction',
         webhook_data: { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status }
       })
       
-      throw new Error('Payment received but slot already confirmed - refund needed')
+      throw new Error('No provisional booking found for this payment')
     }
 
     console.log(`✅ Réservation mise à jour: ${booking?.id} → ${bookingStatus}/${paymentStatus}`)

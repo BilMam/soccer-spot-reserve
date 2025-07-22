@@ -66,7 +66,7 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
           )
         `)
         .eq('user_id', userId)
-        .in('status', ['confirmed', 'completed', 'cancelled'])
+        .in('status', ['provisional', 'confirmed', 'completed', 'cancelled'])
         .order('booking_date', { ascending: false });
 
       if (error) throw error;
@@ -101,6 +101,8 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
 
   const getStatusBadge = (status: string, windowType?: string) => {
     switch (status) {
+      case 'provisional':
+        return { badge: <Badge className="bg-yellow-500 text-white">Paiement en cours</Badge>, icon: Clock4 };
       case 'confirmed':
         if (windowType === 'auto') {
           return { badge: <Badge className="bg-green-600">Confirmée automatiquement</Badge>, icon: Zap };
@@ -169,6 +171,8 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
 
   const getStatusMessage = (status: string, windowType?: string, autoAction?: string) => {
     switch (status) {
+      case 'provisional':
+        return "Paiement en cours de validation. Le créneau sera bloqué dès la confirmation du paiement.";
       case 'confirmed':
         if (windowType === 'auto') {
           return "Votre réservation a été confirmée automatiquement car le créneau était proche. Amusez-vous bien !";
