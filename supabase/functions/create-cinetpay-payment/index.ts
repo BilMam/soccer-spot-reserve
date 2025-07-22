@@ -104,7 +104,7 @@ serve(async (req) => {
         platform_fee_owner,
         cinetpay_checkout_fee,
         total_price: amount_checkout,
-        payment_status: 'pending'
+        payment_status: 'pending'  // Sera changé en 'paid' par le webhook
       })
       .eq('id', booking_id)
       .select()
@@ -126,7 +126,7 @@ serve(async (req) => {
     const transactionId = `checkout_${booking.id}_${Date.now()}`;
     const baseUrl = supabaseUrl?.replace('.supabase.co', '.lovableproject.com');
     const returnUrl = `${baseUrl}/?tab=reservations&success=true&ref=${transactionId}`;
-    const notifyUrl = `${supabaseUrl}/functions/v1/cinetpay-webhook`;
+    const notifyUrl = `https://zldawmyoscicxoiqvfpu.supabase.co/functions/v1/cinetpay-webhook`;
 
     const cinetpayData = {
       apikey: cinetpayApiKey,

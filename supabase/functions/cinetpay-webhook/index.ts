@@ -7,7 +7,17 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  console.log('🎯 WEBHOOK CINETPAY DÉCLENCHÉ!', {
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    url: req.url,
+    user_agent: req.headers.get('user-agent'),
+    content_type: req.headers.get('content-type'),
+    origin: req.headers.get('origin'),
+  })
+
   if (req.method === 'OPTIONS') {
+    console.log('📋 OPTIONS request - CORS preflight')
     return new Response('ok', { headers: corsHeaders })
   }
 
@@ -17,15 +27,16 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    const { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status } = await req.json()
+    const requestBody = await req.json()
+    const { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status } = requestBody
 
-    console.log('🎯 WEBHOOK CINETPAY APPELÉ!', {
+    console.log('🎯 WEBHOOK CINETPAY DONNÉES REÇUES!', {
       timestamp: new Date().toISOString(),
       trans_id: cpm_trans_id,
       amount: cpm_amount,
       result: cpm_result,
       status: cpm_trans_status,
-      user_agent: req.headers.get('user-agent')
+      full_body: requestBody
     })
 
     // Vérifier la signature du webhook si nécessaire

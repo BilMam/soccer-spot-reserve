@@ -40,6 +40,9 @@ verify_jwt = true
 [functions.test-webhook]
 verify_jwt = false
 
+[functions.test-webhook-simple]
+verify_jwt = false
+
 [functions.cinetpay-webhook]
 verify_jwt = false
 

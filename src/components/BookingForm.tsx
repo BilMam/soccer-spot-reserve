@@ -82,8 +82,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
           platform_fee: platformFee,
           owner_amount: ownerAmount,
           special_requests: specialRequests || null,
-          status: 'provisional' as const, // V3-2025072215: PROVISIONAL SEULEMENT
-          payment_status: 'pending' as const,
+          status: 'provisional' as const, // UNIQUEMENT PROVISIONAL - JAMAIS PENDING
+          payment_status: 'pending' as const,  // Sera changé en 'paid' par webhook
           currency: 'XOF'
         })
         .select()
