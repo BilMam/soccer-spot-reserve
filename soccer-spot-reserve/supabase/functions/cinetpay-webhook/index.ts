@@ -48,11 +48,12 @@ serve(async (req) => {
         body: JSON.stringify({
           apikey: cinetpayApiKey,
           site_id: Deno.env.get('CINETPAY_SITE_ID'),
-          transaction_id: cmp_trans_id
+          transaction_id: cpm_trans_id
         })
       })
 
       const verification = await verificationResponse.json()
+      console.log('[DEBUG] Verification response', verification);
 
       if (verification.code !== '00') {
         throw new Error(`Erreur vérification transaction: ${verification.message}`)
