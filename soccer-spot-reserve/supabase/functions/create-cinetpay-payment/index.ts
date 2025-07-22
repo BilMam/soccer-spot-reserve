@@ -89,7 +89,7 @@ serve(async (req) => {
         platform_fee_owner,
         cinetpay_checkout_fee,
         total_price: amount_checkout,
-        status: 'pending',
+        status: 'provisional',
         payment_status: 'pending'
       })
       .select()
@@ -109,8 +109,10 @@ serve(async (req) => {
 
     // CinetPay Checkout v2
     const transactionId = `checkout_${booking.id}_${Date.now()}`;
-    const baseUrl = supabaseUrl?.replace('.supabase.co', '.lovableproject.com');
-    const returnUrl = `${baseUrl}/booking-success?session_id=booking_${booking.id}`;
+    console.log('🔍 Generated transaction_id:', transactionId);
+    
+    const frontendBaseUrl = Deno.env.get('FRONTEND_BASE_URL') || supabaseUrl?.replace('.supabase.co', '.lovableproject.com');
+    const returnUrl = `${frontendBaseUrl}/mes-reservations?payment=success&booking=${booking.id}`;
     const notifyUrl = `${supabaseUrl}/functions/v1/cinetpay-webhook`;
 
     const cinetpayData = {
@@ -161,6 +163,7 @@ serve(async (req) => {
     };
 
     console.log(`[${timestamp}] [create-cinetpay-payment] Success:`, responseData);
+    console.log('🚀 Returning transaction_id to frontend:', transactionId);
 
     return new Response(
       JSON.stringify(responseData),

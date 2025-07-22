@@ -20,6 +20,7 @@ serve(async (req) => {
 
     const { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status } = await req.json()
 
+    console.log('🔍 Webhook CinetPay reçu - cpm_trans_id:', cpm_trans_id)
     console.log('Webhook CinetPay reçu:', { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status })
 
     // Vérifier la signature du webhook si nécessaire
@@ -44,8 +45,15 @@ serve(async (req) => {
       throw new Error(`Erreur vérification transaction: ${verification.message}`)
     }
 
+    // Debug: vérifier les lignes existantes AVANT update
+    const { data: before } = await supabaseClient
+      .from('bookings')
+      .select('id, status, payment_status')
+      .eq('payment_intent_id', cpm_trans_id);
+    console.log('👉 Rows BEFORE update:', before);
+
     // Mettre à jour la réservation selon le statut
-    let bookingStatus = 'pending'
+    let bookingStatus = 'provisional'
     let paymentStatus = 'pending'
 
     if (cpm_result === '00' && cpm_trans_status === 'ACCEPTED') {
@@ -56,8 +64,8 @@ serve(async (req) => {
       paymentStatus = 'failed'
     }
 
-    // Mettre à jour la réservation
-    const { data: booking, error: updateError } = await supabaseClient
+    // TEMP: Filtre élargi pour debug
+    const { data: booking, error: updateError, count } = await supabaseClient
       .from('bookings')
       .update({
         status: bookingStatus,
@@ -65,6 +73,8 @@ serve(async (req) => {
         updated_at: new Date().toISOString()
       })
       .eq('payment_intent_id', cpm_trans_id)
+      .in('status', ['provisional', 'pending', 'cancelled'])
+      .in('payment_status', ['pending', 'processing', 'failed'])
       .select(`
         *,
         profiles!inner(email, full_name),
@@ -72,10 +82,31 @@ serve(async (req) => {
       `)
       .single()
 
+    console.log('💡 Updated rows count:', count)
+
     if (updateError) {
       console.error('Erreur mise à jour réservation:', updateError)
       throw updateError
     }
+
+    // Si aucune ligne mise à jour, logger l'anomalie
+    if (count === 0) {
+      console.error('❌ ANOMALIE: Aucune réservation trouvée pour payment_intent_id:', cpm_trans_id)
+      
+      await supabaseClient
+        .from('payment_anomalies')
+        .insert({
+          payment_intent_id: cpm_trans_id,
+          amount: cpm_amount,
+          error_type: 'no_row_matched',
+          error_message: 'Aucune réservation trouvée avec ce payment_intent_id',
+          webhook_data: { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status }
+        })
+
+      throw new Error('Aucune réservation trouvée')
+    }
+
+    console.log(`✅ Réservation mise à jour: ${booking.id} → ${bookingStatus}/${paymentStatus}`)
 
     // Envoyer l'email de confirmation si paiement réussi
     if (paymentStatus === 'paid' && booking) {
