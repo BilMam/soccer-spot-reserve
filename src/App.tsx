@@ -17,6 +17,7 @@ import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
 import GeocodingAdmin from '@/pages/GeocodingAdmin';
 import BookingSuccess from '@/pages/BookingSuccess';
 import PaymentPage from '@/pages/PaymentPage';
+import MesReservations from '@/pages/MesReservations';
 import NotFound from '@/pages/NotFound';
 import { AuthProvider } from '@/hooks/useAuth';
 
@@ -45,6 +46,7 @@ function App() {
               <Route path="/geocoding-admin" element={<GeocodingAdmin />} />
               <Route path="/booking-success" element={<BookingSuccess />} />
               <Route path="/payment/:token" element={<PaymentPage />} />
+              <Route path="/mes-reservations" element={<MesReservations />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
