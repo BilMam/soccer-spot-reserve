@@ -116,7 +116,7 @@ serve(async (req) => {
       throw new Error('Missing FRONTEND_BASE_URL environment variable')
     }
     
-    const returnUrl = `${frontendBaseUrl}/mes-reservations?payment=${transactionId}`;
+    const returnUrl = `${frontendBaseUrl}/mes-reservations?ref=${booking.id}`;
     const notifyUrl = `${supabaseUrl}/functions/v1/cinetpay-webhook`;
     
     console.log('🔗 Return URL:', returnUrl);

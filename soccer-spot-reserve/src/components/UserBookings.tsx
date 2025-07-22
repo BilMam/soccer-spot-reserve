@@ -66,6 +66,7 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
           )
         `)
         .eq('user_id', userId)
+        .in('status', ['provisional', 'confirmed', 'completed', 'cancelled'])
         .order('booking_date', { ascending: false });
 
       if (error) throw error;
@@ -100,6 +101,8 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
 
   const getStatusBadge = (status: string, windowType?: string) => {
     switch (status) {
+      case 'provisional':
+        return { badge: <Badge className="bg-yellow-500 text-white">Paiement en cours</Badge>, icon: Clock4 };
       case 'pending_approval':
         return { badge: <Badge variant="outline" className="text-orange-600">En attente d'approbation</Badge>, icon: Clock4 };
       case 'approved':
@@ -174,6 +177,8 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
 
   const getStatusMessage = (status: string, windowType?: string, autoAction?: string) => {
     switch (status) {
+      case 'provisional':
+        return "Votre paiement est en cours de traitement. Vous serez redirigé vers la page de paiement.";
       case 'pending_approval':
         return "Le propriétaire examine votre demande. Vous recevrez un email dès qu'elle sera approuvée.";
       case 'approved':
