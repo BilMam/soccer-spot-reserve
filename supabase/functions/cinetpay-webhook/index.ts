@@ -70,8 +70,8 @@ serve(async (req) => {
       .eq('payment_intent_id', cpm_trans_id)
       .in('status', ['provisional', 'cancelled'])  // Seules les réservations provisoires ou déjà annulées
       .eq('payment_status', 'pending')  // Et encore "pending"
-      .select('id')  // pour récupérer count
-      .single()
+      .select('id', { count: 'exact' })  // pour récupérer count
+      .maybeSingle()
 
     console.log(`[WEBHOOK] Updated rows:`, count)
     
@@ -86,7 +86,7 @@ serve(async (req) => {
         amount: parseInt(cpm_amount),
         error_type: 'double_payment',
         error_message: 'Payment received but slot already confirmed - refund needed',
-        webhook_data: { cmp_trans_id, cpm_amount, cpm_result, cpm_trans_status }
+        webhook_data: { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status }
       })
       
       throw new Error('Payment received but slot already confirmed - refund needed')
