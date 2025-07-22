@@ -82,7 +82,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
           platform_fee: platformFee,
           owner_amount: ownerAmount,
           special_requests: specialRequests || null,
-          status: 'provisional', // Nouveau workflow: n'est pas bloquant
+          status: 'provisional', // NOUVEAU WORKFLOW OBLIGATOIRE: ne bloque que quand payé
           payment_status: 'pending',
           currency: 'XOF'
         })
