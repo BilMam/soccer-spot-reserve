@@ -68,7 +68,7 @@ serve(async (req) => {
         updated_at: new Date().toISOString()
       })
       .eq('payment_intent_id', cpm_trans_id)
-      .eq('status', 'provisional')  // NOUVEAU WORKFLOW UNIQUEMENT
+      .in('status', ['provisional', 'pending'])  // Support transition cache navigateur
       .eq('payment_status', 'pending')
       .select('id', { count: 'exact' })  // pour récupérer count
       .maybeSingle()
