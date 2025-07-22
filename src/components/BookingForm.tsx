@@ -82,7 +82,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
           platform_fee: platformFee,
           owner_amount: ownerAmount,
           special_requests: specialRequests || null,
-          status: 'provisional' as const, // WORKFLOW 2025: TOUJOURS PROVISIONAL
+          status: 'provisional' as const, // WORKFLOW 2025 v2.0: JAMAIS PENDING!
           payment_status: 'pending' as const,
           currency: 'XOF'
         })
