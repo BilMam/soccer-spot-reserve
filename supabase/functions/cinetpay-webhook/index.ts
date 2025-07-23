@@ -55,14 +55,12 @@ serve(async (req) => {
         requestBody = Object.fromEntries(params)
       }
     }
-    const { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status } = requestBody
+    const { cpm_trans_id, cpm_amount } = requestBody
 
     console.log('🎯 WEBHOOK CINETPAY DONNÉES REÇUES!', {
       timestamp: new Date().toISOString(),
       trans_id: cpm_trans_id,
       amount: cpm_amount,
-      result: cpm_result,
-      status: cpm_trans_status,
       full_body: requestBody
     })
 
@@ -92,7 +90,8 @@ serve(async (req) => {
     let bookingStatus = 'cancelled'  // Par défaut, annuler la tentative
     let paymentStatus = 'failed'
 
-    if (cpm_result === '00' && cpm_trans_status === 'ACCEPTED') {
+    const paymentAccepted = verification.code === '00' && verification.data?.status === 'ACCEPTED'
+    if (paymentAccepted) {
       // ✅ PAIEMENT RÉUSSI - créneau bloqué définitivement
       bookingStatus = 'confirmed'
       paymentStatus = 'paid'
@@ -104,40 +103,45 @@ serve(async (req) => {
       console.log('💥 PAIEMENT ÉCHOUÉ - Créneau immédiatement libre pour autres joueurs')
     }
 
-    // Mettre à jour la réservation - SEULEMENT statut provisional/pending
-    const { data: booking, error: updateError, count } = await supabaseClient
+    // Chercher d'abord la réservation
+    const { data: bookingRow } = await supabaseClient
+      .from('bookings')
+      .select('id, status, payment_status')
+      .eq('payment_intent_id', cpm_trans_id)
+      .maybeSingle()
+
+    if (!bookingRow) {
+      console.error('🚨 AUCUNE RÉSERVATION TROUVÉE POUR CE PAIEMENT!')
+      console.error('Transaction ID:', cpm_trans_id)
+      
+      // Enregistrer l'anomalie pour monitoring
+      await supabaseClient.from('payment_anomalies').insert({
+        payment_intent_id: cpm_trans_id,
+        amount: parseInt(cpm_amount),
+        error_type: 'no_booking_found',
+        error_message: 'No booking found for this payment_intent_id',
+        webhook_data: { cpm_trans_id, cpm_amount }
+      })
+      
+      return new Response(
+        JSON.stringify({ success: false, error: 'Booking not found' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      )
+    }
+
+    console.log(`[WEBHOOK] Booking found:`, bookingRow)
+
+    // Mettre à jour la réservation (sans filtre de statut strict)
+    const { data: booking, error: updateError } = await supabaseClient
       .from('bookings')
       .update({
         status: bookingStatus,
         payment_status: paymentStatus,
         updated_at: new Date().toISOString()
       })
-      .eq('payment_intent_id', cpm_trans_id)
-      .eq('status', 'provisional')
-      .eq('payment_status', 'pending')
-      .select('id', { count: 'exact' })
-      .maybeSingle()
-
-    console.log(`[WEBHOOK] Updated rows:`, count)
-    console.log(`[WEBHOOK] Booking found:`, booking)
-    
-    // Vérifier si le paiement a bien mis à jour une réservation
-    if (count === 0) {
-      console.error('🚨 AUCUNE RÉSERVATION PROVISOIRE TROUVÉE POUR CE PAIEMENT!')
-      console.error('Transaction ID:', cpm_trans_id)
-      console.error('Possible causes: réservation expirée, déjà confirmée, ou transaction frauduleuse')
-      
-      // Enregistrer l'anomalie pour monitoring
-      await supabaseClient.from('payment_anomalies').insert({
-        payment_intent_id: cpm_trans_id,
-        amount: parseInt(cpm_amount),
-        error_type: 'no_row_matched',
-        error_message: 'No provisional booking found for this payment - possible expired or fraudulent transaction',
-        webhook_data: { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status }
-      })
-      
-      throw new Error('No provisional booking found for this payment')
-    }
+      .eq('id', bookingRow.id)
+      .select('id')
+      .single()
 
     console.log(`✅ Réservation mise à jour: ${booking?.id} → ${bookingStatus}/${paymentStatus}`)
 
