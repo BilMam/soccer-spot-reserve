@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -22,10 +21,23 @@ serve(async (req) => {
 
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey)
 
-    // Parse request data (CinetPay sends form-urlencoded)
-    const bodyText = await req.text()
-    const params = new URLSearchParams(bodyText)
-    console.log('📋 Full webhook body text:', bodyText)
+    // Parse request data dynamically (CinetPay sends JSON or form-urlencoded)
+    let params: URLSearchParams;
+    const contentType = req.headers.get('content-type') || '';
+    console.log('📋 Content-Type:', contentType);
+    
+    if (contentType.includes('application/json')) {
+      const jsonBody = await req.json();
+      console.log('📋 Received JSON body:', jsonBody);
+      params = new URLSearchParams();
+      Object.entries(jsonBody).forEach(([key, value]) => {
+        params.set(key, String(value));
+      });
+    } else {
+      const bodyText = await req.text();
+      console.log('📋 Received form-urlencoded body:', bodyText);
+      params = new URLSearchParams(bodyText);
+    }
     
     const cpm_trans_id = params.get('cpm_trans_id')
     const cpm_amount = params.get('cpm_amount')  
@@ -42,7 +54,7 @@ serve(async (req) => {
     const SKIP_CINETPAY_VERIFY = Deno.env.get('SKIP_CINETPAY_VERIFY') === 'true';
 
     if (!SKIP_CINETPAY_VERIFY) {
-      // ==== Vérification réelle (inchangée) ==========================
+      // ==== Vérification réelle (URL sans espaces) ==========================
       const cinetpayApiKey = Deno.env.get('CINETPAY_API_KEY')
       
       const verificationResponse = await fetch('https://api-checkout.cinetpay.com/v2/payment/check', {
@@ -86,19 +98,20 @@ serve(async (req) => {
       paymentStatus = 'failed'
     }
 
-    // TEMP: Filtre élargi pour debug
+    // Préparer les champs de mise à jour avec idempotence
+    const updateFields: any = {
+      status: bookingStatus,
+      payment_status: paymentStatus,
+      updated_at: new Date().toISOString()
+    };
+
+    // Mise à jour avec gestion d'idempotence (supprimer filtres restrictifs)
     const { data: booking, error: updateError, count } = await supabaseClient
       .from('bookings')
-      .update({
-        status: bookingStatus,
-        payment_status: paymentStatus,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateFields)
       .eq('payment_intent_id', cpm_trans_id)
-      .in('status', ['provisional', 'pending', 'cancelled'])
-      .in('payment_status', ['pending', 'processing', 'failed'])
       .select(`
-        *,
+        id, status, payment_status, updated_at,
         profiles!inner(email, full_name),
         fields!inner(name, location)
       `)
@@ -112,7 +125,7 @@ serve(async (req) => {
     }
 
     // Si aucune ligne mise à jour, investiguer
-    if (count === 0) {
+    if (!booking) {
       console.error('❌ ANOMALIE: Aucune réservation trouvée pour payment_intent_id:', cpm_trans_id)
       
       // Chercher toute réservation avec ce payment_intent_id
@@ -140,7 +153,7 @@ serve(async (req) => {
           amount: cpm_amount,
           error_type: 'no_row_matched',
           error_message: 'Aucune réservation trouvée avec ce payment_intent_id',
-          webhook_data: { body_text: bodyText, parsed_params: Object.fromEntries(params) }
+          webhook_data: { params: Object.fromEntries(params) }
         })
 
       throw new Error('Aucune réservation trouvée')
