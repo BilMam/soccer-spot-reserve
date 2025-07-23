@@ -53,6 +53,8 @@ serve(async (req) => {
     // -----------------------------------------------------------------------------
     const SKIP_CINETPAY_VERIFY = Deno.env.get('SKIP_CINETPAY_VERIFY') === 'true';
 
+    let verification: any = null;
+    
     if (!SKIP_CINETPAY_VERIFY) {
       // ==== Vérification réelle (URL sans espaces) ==========================
       const cinetpayApiKey = Deno.env.get('CINETPAY_API_KEY')
@@ -69,7 +71,7 @@ serve(async (req) => {
         })
       })
 
-      const verification = await verificationResponse.json()
+      verification = await verificationResponse.json()
       console.log('[DEBUG] Verification response', verification);
 
       if (verification.code !== '00') {
@@ -77,6 +79,11 @@ serve(async (req) => {
       }
     } else {
       console.log('[LOCAL] Skip CinetPay verification ✅');
+      // Mode test local - simuler une réponse valide
+      verification = {
+        code: '00',
+        data: { status: cpm_trans_status || 'ACCEPTED' }
+      };
     }
 
     // Debug: vérifier les lignes existantes AVANT update
@@ -86,16 +93,24 @@ serve(async (req) => {
       .eq('payment_intent_id', cpm_trans_id);
     console.log('👉 Rows BEFORE update:', before);
 
-    // Mettre à jour la réservation selon le statut
+    // Mettre à jour la réservation selon la vérification CinetPay
+    const paymentAccepted = verification?.code === '00' && verification?.data?.status === 'ACCEPTED';
+    
     let bookingStatus = 'provisional'
     let paymentStatus = 'pending'
 
-    if (cpm_result === '00' && cpm_trans_status === 'ACCEPTED') {
+    if (paymentAccepted) {
       bookingStatus = 'confirmed'
       paymentStatus = 'paid'
-    } else if (cpm_trans_status === 'REFUSED') {
+      console.log('✅ PAIEMENT CONFIRMÉ - Créneau bloqué définitivement')
+    } else if (verification?.data?.status === 'REFUSED') {
       bookingStatus = 'cancelled'
       paymentStatus = 'failed'
+      console.log('❌ PAIEMENT REFUSÉ - Créneau libre pour autres joueurs')
+    } else {
+      bookingStatus = 'cancelled'
+      paymentStatus = 'failed'
+      console.log('💥 PAIEMENT ÉCHOUÉ - Statut:', verification?.data?.status)
     }
 
     // Préparer les champs de mise à jour avec idempotence
@@ -104,6 +119,11 @@ serve(async (req) => {
       payment_status: paymentStatus,
       updated_at: new Date().toISOString()
     };
+    
+    // Renseigner paid_at si paiement validé
+    if (paymentStatus === 'paid') {
+      updateFields.paid_at = new Date().toISOString();
+    }
 
     // Mise à jour avec gestion d'idempotence (supprimer filtres restrictifs)
     const { data: booking, error: updateError, count } = await supabaseClient
@@ -111,7 +131,7 @@ serve(async (req) => {
       .update(updateFields)
       .eq('payment_intent_id', cpm_trans_id)
       .select(`
-        id, status, payment_status, updated_at,
+        id, status, payment_status, paid_at, updated_at,
         profiles!inner(email, full_name),
         fields!inner(name, location)
       `)
