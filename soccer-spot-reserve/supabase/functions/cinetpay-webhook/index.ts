@@ -22,10 +22,15 @@ serve(async (req) => {
 
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey)
 
-    const requestBody = await req.json()
-    console.log('📋 Full webhook body:', JSON.stringify(requestBody))
+    // Parse request data (CinetPay sends form-urlencoded)
+    const bodyText = await req.text()
+    const params = new URLSearchParams(bodyText)
+    console.log('📋 Full webhook body text:', bodyText)
     
-    const { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status } = requestBody
+    const cpm_trans_id = params.get('cpm_trans_id')
+    const cpm_amount = params.get('cpm_amount')  
+    const cpm_result = params.get('cpm_result')
+    const cpm_trans_status = params.get('cpm_trans_status')
 
     console.log('🔍 Webhook CinetPay reçu - cpm_trans_id:', cpm_trans_id)
     console.log('Webhook CinetPay reçu:', { cpm_trans_id, cpm_amount, cpm_result, cmp_trans_status })
@@ -135,7 +140,7 @@ serve(async (req) => {
           amount: cpm_amount,
           error_type: 'no_row_matched',
           error_message: 'Aucune réservation trouvée avec ce payment_intent_id',
-          webhook_data: requestBody
+          webhook_data: { body_text: bodyText, parsed_params: Object.fromEntries(params) }
         })
 
       throw new Error('Aucune réservation trouvée')
