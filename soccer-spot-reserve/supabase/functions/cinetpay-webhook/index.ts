@@ -33,7 +33,7 @@ serve(async (req) => {
     const cpm_trans_status = params.get('cpm_trans_status')
 
     console.log('🔍 Webhook CinetPay reçu - cpm_trans_id:', cpm_trans_id)
-    console.log('Webhook CinetPay reçu:', { cpm_trans_id, cpm_amount, cpm_result, cmp_trans_status })
+    console.log('Webhook CinetPay reçu:', { cpm_trans_id, cpm_amount, cpm_result, cpm_trans_status })
 
     // -----------------------------------------------------------------------------
     // ⚡ Skip CinetPay API when testing locally
