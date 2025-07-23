@@ -146,6 +146,27 @@ serve(async (req) => {
       throw updateError
     }
 
+    // Déclencher automatiquement le payout si le paiement est confirmé
+    let payoutTriggered = false;
+    if (paymentStatus === 'paid' && booking) {
+      console.log(`💰 Déclenchement payout automatique pour booking ${booking.id}`)
+      try {
+        const { data: payoutResult, error: payoutError } = await supabaseClient.functions.invoke('create-owner-payout', {
+          body: { booking_id: booking.id }
+        });
+
+        if (payoutError) {
+          console.error('❌ Erreur déclenchement payout:', payoutError);
+        } else {
+          console.log('✅ Payout déclenché avec succès:', payoutResult);
+          payoutTriggered = true;
+        }
+      } catch (payoutError) {
+        console.error('❌ Erreur payout:', payoutError);
+        // Ne pas faire échouer le webhook principal
+      }
+    }
+
     // Envoyer l'email de confirmation si paiement réussi
     if (paymentStatus === 'paid' && booking) {
       console.log(`📧 Envoi email de confirmation pour booking ${booking.id}`)
@@ -163,7 +184,12 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, booking_id: booking?.id, status: bookingStatus }),
+      JSON.stringify({ 
+        success: true, 
+        booking_id: booking?.id, 
+        status: bookingStatus,
+        payout_triggered: payoutTriggered
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

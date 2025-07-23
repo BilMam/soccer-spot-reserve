@@ -21,7 +21,8 @@ interface PaymentResponse {
   amount_checkout: number;
   field_price: number;
   platform_fee_user: number;
-  cinetpay_checkout_fee: number;
+  platform_fee_owner: number;
+  owner_amount: number;
   currency: string;
 }
 
@@ -80,31 +81,32 @@ serve(async (req) => {
 
     const price = existingBooking.field_price || amount;
 
-    // Calculate fees (3% user + estimated 3% CinetPay)
-    const USER_FEE_PCT = 0.03; // 3% payé par utilisateur
-    const OWNER_FEE_PCT = 0.05; // 5% déduit du propriétaire (enregistré pour le transfer)
-    const platform_fee_user = Math.round(price * USER_FEE_PCT);
-    const platform_fee_owner = Math.round(price * OWNER_FEE_PCT);
-    const cinetpay_checkout_fee = Math.round(price * 0.03); // Frais CinetPay checkout 3%
-    const amount_checkout = Math.round(price * 1.03); // T × 1.03
+    // Calculate fees - Modèle simplifié 100 → 103 (CinetPay ajoute ses frais automatiquement)
+    const fieldPrice = price;                            // T (prix terrain) 
+    const platformFeeUser = Math.round(price * 0.03);    // 3% frais utilisateur MySport
+    const platformFeeOwner = Math.round(price * 0.05);   // 5% commission plateforme
+    const ownerAmount = price - platformFeeOwner;        // 95% pour le propriétaire
+    const amountCheckout = price + platformFeeUser;      // Montant envoyé à CinetPay (103 XOF)
 
     console.log(`[${timestamp}] [create-cinetpay-payment] Fee calculation:`, {
-      field_price: price,
-      platform_fee_user,
-      platform_fee_owner,
-      cinetpay_checkout_fee,
-      amount_checkout
+      field_price: fieldPrice,
+      platform_fee_user: platformFeeUser,
+      platform_fee_owner: platformFeeOwner,
+      owner_amount: ownerAmount,
+      amount_checkout: amountCheckout
     });
 
     // Update existing booking with payment info
     const { data: booking, error: bookingError } = await supabaseClient
       .from('bookings')
       .update({
-        platform_fee_user,
-        platform_fee_owner,
-        cinetpay_checkout_fee,
-        total_price: amount_checkout,
-        payment_status: 'pending'  // Sera changé en 'paid' par le webhook
+        field_price: fieldPrice,
+        platform_fee_user: platformFeeUser,
+        platform_fee_owner: platformFeeOwner,
+        owner_amount: ownerAmount,
+        total_price: amountCheckout,
+        payment_status: 'pending',  // Sera changé en 'paid' par le webhook
+        payout_sent: false          // Initialiser le contrôle de payout
       })
       .eq('id', booking_id)
       .select()
@@ -132,7 +134,7 @@ serve(async (req) => {
       apikey: cinetpayApiKey,
       site_id: cinetpaySiteId,
       transaction_id: transactionId,
-      amount: amount_checkout,
+      amount: amountCheckout,
       currency: 'XOF',
       description: `Réservation ${field?.name || field_name} - ${date}`,
       return_url: returnUrl,
@@ -169,10 +171,11 @@ serve(async (req) => {
     const responseData: PaymentResponse = {
       url: cinetpayResult.data.payment_url,
       transaction_id: transactionId,
-      amount_checkout,
-      field_price: price,
-      platform_fee_user,
-      cinetpay_checkout_fee,
+      amount_checkout: amountCheckout,
+      field_price: fieldPrice,
+      platform_fee_user: platformFeeUser,
+      platform_fee_owner: platformFeeOwner,
+      owner_amount: ownerAmount,
       currency: 'XOF'
     };
 

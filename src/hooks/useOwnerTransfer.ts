@@ -17,52 +17,52 @@ interface TransferToOwnerResponse {
 export const useOwnerTransfer = () => {
   return useMutation({
     mutationFn: async (data: TransferToOwnerData): Promise<TransferToOwnerResponse> => {
-      console.log('🔄 Déclenchement transfert propriétaire:', data);
+      console.log('🔄 Déclenchement payout propriétaire:', data);
 
-      const { data: response, error } = await supabase.functions.invoke('transfer-to-owner', {
+      const { data: response, error } = await supabase.functions.invoke('create-owner-payout', {
         body: data
       });
 
       if (error) {
-        console.error('❌ Erreur Edge Function transfer:', error);
-        throw new Error(error.message || 'Erreur lors du transfert');
+        console.error('❌ Erreur Edge Function payout:', error);
+        throw new Error(error.message || 'Erreur lors du payout');
       }
 
-      console.log('✅ Réponse transfert:', response);
+      console.log('✅ Réponse payout:', response);
       return response;
     },
     onSuccess: (data) => {
       if (data.success) {
-        toast.success(`Transfert effectué avec succès - ${data.amount} XOF`);
+        toast.success(`Payout effectué avec succès - ${data.amount} XOF`);
       } else {
-        toast.error(`Échec transfert: ${data.message}`);
+        toast.error(`Échec payout: ${data.message}`);
       }
     },
     onError: (error: Error) => {
-      console.error('❌ Erreur transfert propriétaire:', error);
+      console.error('❌ Erreur payout propriétaire:', error);
       toast.error(`Erreur: ${error.message}`);
     }
   });
 };
 
-// Fonction utilitaire pour déclencher automatiquement le transfert
+// Fonction utilitaire pour déclencher automatiquement le transfert (nouvelle version optimisée)
 export const triggerOwnerTransferOnConfirmation = async (bookingId: string) => {
   try {
-    console.log('🔄 Déclenchement automatique transfert pour booking:', bookingId);
+    console.log('🔄 Déclenchement automatique payout pour booking:', bookingId);
     
-    const { data, error } = await supabase.functions.invoke('transfer-to-owner', {
+    const { data, error } = await supabase.functions.invoke('create-owner-payout', {
       body: { booking_id: bookingId }
     });
 
     if (error) {
-      console.error('❌ Erreur transfert automatique:', error);
+      console.error('❌ Erreur payout automatique:', error);
       return { success: false, error: error.message };
     }
 
-    console.log('✅ Transfert automatique réussi:', data);
+    console.log('✅ Payout automatique réussi:', data);
     return { success: true, data };
   } catch (error) {
-    console.error('❌ Erreur lors du transfert automatique:', error);
+    console.error('❌ Erreur lors du payout automatique:', error);
     return { success: false, error: error.message };
   }
 };

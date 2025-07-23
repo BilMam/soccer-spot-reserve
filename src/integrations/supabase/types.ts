@@ -137,7 +137,6 @@ export type Database = {
           booking_date: string
           cancellation_reason: string | null
           cancelled_at: string | null
-          cinetpay_checkout_fee: number | null
           cinetpay_transfer_id: string | null
           confirmation_code: string | null
           confirmation_email_sent: boolean | null
@@ -151,6 +150,7 @@ export type Database = {
           paid_at: string | null
           payment_intent_id: string | null
           payment_status: string | null
+          payout_sent: boolean | null
           platform_fee: number | null
           platform_fee_owner: number | null
           platform_fee_user: number | null
@@ -166,7 +166,6 @@ export type Database = {
           booking_date: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
-          cinetpay_checkout_fee?: number | null
           cinetpay_transfer_id?: string | null
           confirmation_code?: string | null
           confirmation_email_sent?: boolean | null
@@ -180,6 +179,7 @@ export type Database = {
           paid_at?: string | null
           payment_intent_id?: string | null
           payment_status?: string | null
+          payout_sent?: boolean | null
           platform_fee?: number | null
           platform_fee_owner?: number | null
           platform_fee_user?: number | null
@@ -195,7 +195,6 @@ export type Database = {
           booking_date?: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
-          cinetpay_checkout_fee?: number | null
           cinetpay_transfer_id?: string | null
           confirmation_code?: string | null
           confirmation_email_sent?: boolean | null
@@ -209,6 +208,7 @@ export type Database = {
           paid_at?: string | null
           payment_intent_id?: string | null
           payment_status?: string | null
+          payout_sent?: boolean | null
           platform_fee?: number | null
           platform_fee_owner?: number | null
           platform_fee_user?: number | null
@@ -660,36 +660,42 @@ export type Database = {
       payouts: {
         Row: {
           amount: number
+          amount_net: number | null
           booking_id: string
           cinetpay_transfer_id: string | null
           created_at: string
           id: string
           owner_id: string
           platform_fee_owner: number
+          sent_at: string | null
           status: string
           transfer_response: Json | null
           updated_at: string
         }
         Insert: {
           amount: number
+          amount_net?: number | null
           booking_id: string
           cinetpay_transfer_id?: string | null
           created_at?: string
           id?: string
           owner_id: string
           platform_fee_owner: number
+          sent_at?: string | null
           status?: string
           transfer_response?: Json | null
           updated_at?: string
         }
         Update: {
           amount?: number
+          amount_net?: number | null
           booking_id?: string
           cinetpay_transfer_id?: string | null
           created_at?: string
           id?: string
           owner_id?: string
           platform_fee_owner?: number
+          sent_at?: string | null
           status?: string
           transfer_response?: Json | null
           updated_at?: string
@@ -1302,6 +1308,10 @@ export type Database = {
           role_to_revoke: Database["public"]["Enums"]["user_role_type"]
           reason?: string
         }
+        Returns: undefined
+      }
+      schedule_owner_payout: {
+        Args: { p_booking_id: string }
         Returns: undefined
       }
       schedule_review_reminders: {

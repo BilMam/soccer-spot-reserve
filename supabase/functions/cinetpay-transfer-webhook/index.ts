@@ -58,6 +58,7 @@ serve(async (req) => {
       .update({
         status: newStatus,
         transfer_response: webhookData,
+        sent_at: newStatus === 'paid' ? new Date().toISOString() : null,
         updated_at: new Date().toISOString()
       })
       .eq('cinetpay_transfer_id', client_transaction_id)
