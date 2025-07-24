@@ -269,10 +269,14 @@ async function doTransfer(
         .eq('id', payout.owner_id)
         .single();
 
+      if (!ownerDataResult) {
+        throw new Error(`Owner row not found for owner_id ${payout.owner_id}`);
+      }
+
       const { data: accountData } = await supabase
         .from('payout_accounts')
         .select('id, phone, cinetpay_contact_id, is_active')
-        .eq('owner_id', payout.owner_id)
+        .eq('owner_id', ownerDataResult.id)
         .eq('is_active', true)
         .single();
 
