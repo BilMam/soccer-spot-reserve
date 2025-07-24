@@ -387,6 +387,13 @@ export type Database = {
             referencedRelation: "payout_accounts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_fields_owner"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       owner_applications: {
@@ -648,6 +655,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_pa_owner"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payout_accounts_owner_id_fkey"
             columns: ["owner_id"]
