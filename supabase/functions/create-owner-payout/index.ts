@@ -44,9 +44,9 @@ serve(async (req) => {
     // Idempotence: vérifier si un payout existe déjà
     const { data: existingPayout } = await supabase
       .from('payouts')
-      .select('id, status, amount_net')
+      .select('id, status, amount_net, booking_id, owner_id')
       .eq('booking_id', booking_id)
-      .single();
+      .maybeSingle();
 
     if (existingPayout) {
       console.log(`[${timestamp}] [create-owner-payout] Payout already exists:`, existingPayout);
@@ -69,12 +69,27 @@ serve(async (req) => {
       
       // 🔄 RETRY pour les statuts pending, waiting_funds, failed
       if (['pending', 'waiting_funds', 'failed'].includes(existingPayout.status)) {
-        console.log(`[${timestamp}] [create-owner-payout] Retrying payout with status: ${existingPayout.status}`);
-        // Continue avec le processus de transfert
+        console.log(`[${timestamp}] [create-owner-payout] Retrying transfer for existing payout: ${existingPayout.id}`);
+        
+        // Récupérer les données nécessaires pour le retry
+        const retryResult = await doTransfer(supabase, existingPayout, supabaseUrl, cinetpayTransferLogin, cinetpayTransferPwd, timestamp);
+        return new Response(
+          JSON.stringify({
+            success: retryResult.success,
+            message: retryResult.message,
+            payout_id: existingPayout.id,
+            amount: existingPayout.amount_net,
+            retry: true
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200 
+          }
+        );
       }
     }
 
-    // Étape 1 : Récupérer booking + field avec requête séparée
+    // Étape 1 : Récupérer booking + field (retirer le filtre payout_sent pour éviter les erreurs de retry)
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select(`
@@ -93,7 +108,6 @@ serve(async (req) => {
       `)
       .eq('id', booking_id)
       .eq('payment_status', 'paid')
-      .eq('payout_sent', false)
       .single();
 
     if (bookingError || !booking) {
@@ -143,9 +157,8 @@ serve(async (req) => {
       has_contact_id: !!payoutAccountData.cinetpay_contact_id
     });
 
-    // Créer ou utiliser le payout existant
-    let payout = existingPayout;
-    if (!payout) {
+    // Créer le payout s'il n'existe pas (cas nouveau)
+    if (!existingPayout) {
       const { data: newPayout, error: payoutError } = await supabase
         .from('payouts')
         .insert({
@@ -164,132 +177,47 @@ serve(async (req) => {
         throw new Error('Erreur lors de la création du payout');
       }
 
-      payout = newPayout;
-      console.log(`[${timestamp}] [create-owner-payout] Payout created:`, { id: payout.id });
-    }
-
-    // Fallback : créer un contact CinetPay s'il manque
-    let contactId = payoutAccountData.cinetpay_contact_id;
-    if (!contactId) {
-      console.log(`[${timestamp}] [create-owner-payout] Creating CinetPay contact for owner`);
+      console.log(`[${timestamp}] [create-owner-payout] Payout created:`, { id: newPayout.id });
       
-      // Appeler create-owner-contact
-      const { data: contactResponse, error: contactError } = await supabase.functions.invoke('create-owner-contact', {
-        body: {
-          owner_id: ownerData.user_id,
-          owner_name: 'Propriétaire',
-          phone: payoutAccountData.phone.replace(/^\+?225/, ''),
-          email: `owner-${ownerData.user_id}@example.com`,
-          country_prefix: '225'
+      // Exécuter le transfert avec le nouveau payout
+      const transferResult = await doTransfer(
+        supabase, 
+        { ...newPayout, booking_id, owner_id: ownerData.id }, 
+        supabaseUrl, 
+        cinetpayTransferLogin, 
+        cinetpayTransferPwd, 
+        timestamp,
+        {
+          payoutAccountData,
+          booking,
+          ownerData
         }
-      });
+      );
 
-      if (contactError || !contactResponse?.success) {
-        console.error(`[${timestamp}] [create-owner-payout] Failed to create contact:`, contactError);
-        throw new Error('Erreur lors de la création du contact CinetPay');
-      }
-
-      contactId = contactResponse.cinetpay_contact_id;
-      
-      // Mettre à jour le payout_account avec le contact_id
-      await supabase
-        .from('payout_accounts')
-        .update({ cinetpay_contact_id: contactId })
-        .eq('id', payoutAccountData.id);
+      return new Response(
+        JSON.stringify({
+          success: transferResult.success,
+          message: transferResult.message,
+          payout_id: newPayout.id,
+          amount: booking.owner_amount,
+          transfer_response: transferResult.transferResult
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
+      );
     }
-
-    // Authentification CinetPay Transfer API
-    const authResponse = await fetch('https://api-money-transfer.cinetpay.com/v2/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        login: cinetpayTransferLogin,
-        password: cinetpayTransferPwd
-      })
-    });
-
-    const authData = await authResponse.json();
-    if (!authData.success) {
-      console.error(`[${timestamp}] [create-owner-payout] CinetPay auth failed:`, authData);
-      throw new Error('Échec de l\'authentification CinetPay');
-    }
-
-    const accessToken = authData.access_token;
-    console.log(`[${timestamp}] [create-owner-payout] CinetPay authenticated successfully`);
-
-    // Effectuer le transfert
-    const transferData = {
-      amount: Math.round(booking.owner_amount),
-      client_transaction_id: payout.id,
-      contact_id: contactId,
-      currency: 'XOF',
-      description: `Payout MySport - ${booking.fields.name}`,
-      notify_url: `${supabaseUrl}/functions/v1/cinetpay-transfer-webhook`
-    };
-
-    console.log(`[${timestamp}] [create-owner-payout] Initiating transfer:`, transferData);
-
-    const transferResponse = await fetch('https://api-money-transfer.cinetpay.com/v2/transfer', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-      },
-      body: JSON.stringify(transferData)
-    });
-
-    const transferResult = await transferResponse.json();
-    console.log(`[${timestamp}] [create-owner-payout] Transfer API response:`, transferResult);
-
-    // Déterminer le statut basé sur la réponse
-    let newStatus = 'pending';
-    if (transferResult.code === '603') {
-      newStatus = 'waiting_funds'; // Solde insuffisant, retry plus tard
-    } else if (!transferResult.success) {
-      newStatus = 'failed';
-    }
-
-    // Mettre à jour le payout avec la réponse
-    const { error: updateError } = await supabase
-      .from('payouts')
-      .update({
-        status: newStatus,
-        transfer_response: transferResult,
-        cinetpay_transfer_id: transferResult.transaction_id || null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', payout.id);
-
-    if (updateError) {
-      console.error(`[${timestamp}] [create-owner-payout] Failed to update payout:`, updateError);
-    }
-
-    // Marquer le booking comme traité
-    await supabase
-      .from('bookings')
-      .update({ 
-        payout_sent: true,
-        cinetpay_transfer_id: transferResult.transaction_id || null
-      })
-      .eq('id', booking_id);
-
-    console.log(`[${timestamp}] [create-owner-payout] Payout process completed:`, {
-      payout_id: payout.id,
-      status: newStatus,
-      amount: booking.owner_amount
-    });
 
     return new Response(
       JSON.stringify({
-        success: transferResult.success || newStatus === 'waiting_funds',
-        message: transferResult.message || `Payout ${newStatus}`,
-        payout_id: payout.id,
-        amount: booking.owner_amount,
-        transfer_response: transferResult
+        success: false,
+        message: 'Cas inattendu - payout existe mais pas traité',
+        payout_id: existingPayout?.id
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+        status: 500 
       }
     );
 
@@ -308,3 +236,192 @@ serve(async (req) => {
     );
   }
 });
+
+// Fonction séparée pour effectuer le transfert
+async function doTransfer(
+  supabase: any, 
+  payout: any, 
+  supabaseUrl: string, 
+  cinetpayTransferLogin: string, 
+  cinetpayTransferPwd: string, 
+  timestamp: string,
+  contextData?: any
+) {
+  try {
+    console.log(`[${timestamp}] [doTransfer] Starting transfer for payout: ${payout.id}`);
+
+    let payoutAccountData, booking, ownerData;
+    
+    if (contextData) {
+      // Données déjà récupérées lors de la création
+      ({ payoutAccountData, booking, ownerData } = contextData);
+    } else {
+      // Récupérer les données pour un retry
+      const { data: bookingData } = await supabase
+        .from('bookings')
+        .select('id, owner_amount, fields(id, name, owner_id)')
+        .eq('id', payout.booking_id)
+        .single();
+      
+      const { data: ownerData } = await supabase
+        .from('owners')
+        .select('id, user_id')
+        .eq('id', payout.owner_id)
+        .single();
+
+      const { data: accountData } = await supabase
+        .from('payout_accounts')
+        .select('id, phone, cinetpay_contact_id, is_active')
+        .eq('owner_id', payout.owner_id)
+        .eq('is_active', true)
+        .single();
+
+      booking = bookingData;
+      payoutAccountData = accountData;
+    }
+
+    // Fallback : créer un contact CinetPay s'il manque
+    let contactId = payoutAccountData.cinetpay_contact_id;
+    if (!contactId) {
+      console.log(`[${timestamp}] [doTransfer] Creating CinetPay contact for owner`);
+      
+      const { data: contactResponse, error: contactError } = await supabase.functions.invoke('create-owner-contact', {
+        body: {
+          owner_id: ownerData.user_id,
+          owner_name: 'Propriétaire',
+          phone: payoutAccountData.phone.replace(/^\+?225/, ''),
+          email: `owner-${ownerData.user_id}@example.com`,
+          country_prefix: '225'
+        }
+      });
+
+      if (contactError || !contactResponse?.success) {
+        console.error(`[${timestamp}] [doTransfer] Failed to create contact:`, contactError);
+        throw new Error('Erreur lors de la création du contact CinetPay');
+      }
+
+      contactId = contactResponse.cinetpay_contact_id;
+      
+      await supabase
+        .from('payout_accounts')
+        .update({ cinetpay_contact_id: contactId })
+        .eq('id', payoutAccountData.id);
+    }
+
+    // Authentification CinetPay Transfer API
+    const authResponse = await fetch('https://api-money-transfer.cinetpay.com/v2/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        login: cinetpayTransferLogin,
+        password: cinetpayTransferPwd
+      })
+    });
+
+    const authData = await authResponse.json();
+    if (!authData.success) {
+      console.error(`[${timestamp}] [doTransfer] CinetPay auth failed:`, authData);
+      throw new Error('Échec de l\'authentification CinetPay');
+    }
+
+    const accessToken = authData.access_token;
+    console.log(`[${timestamp}] [doTransfer] CinetPay authenticated successfully`);
+
+    // Effectuer le transfert
+    const transferData = {
+      amount: Math.round(payout.amount_net || payout.amount),
+      client_transaction_id: payout.id,
+      contact_id: contactId,
+      currency: 'XOF',
+      description: `Payout MySport - ${booking.fields.name}`,
+      notify_url: `${supabaseUrl}/functions/v1/cinetpay-transfer-webhook`
+    };
+
+    console.log(`[${timestamp}] [doTransfer] Initiating transfer:`, transferData);
+
+    const transferResponse = await fetch('https://api-money-transfer.cinetpay.com/v2/transfer', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify(transferData)
+    });
+
+    const transferResult = await transferResponse.json();
+    console.log(`[${timestamp}] [doTransfer] Transfer API response:`, transferResult);
+
+    // Déterminer le statut basé sur la réponse
+    let newStatus = 'pending';
+    let shouldMarkBookingAsSent = false;
+
+    if (transferResult.code === '00' && transferResult.success) {
+      newStatus = 'completed';
+      shouldMarkBookingAsSent = true;
+      console.log(`[${timestamp}] [doTransfer] Transfer completed successfully!`);
+    } else if (transferResult.code === '603') {
+      newStatus = 'waiting_funds';
+    } else {
+      newStatus = 'failed';
+    }
+
+    // Mettre à jour le payout avec la réponse
+    const { error: updateError } = await supabase
+      .from('payouts')
+      .update({
+        status: newStatus,
+        transfer_response: transferResult,
+        cinetpay_transfer_id: transferResult.transaction_id || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', payout.id);
+
+    if (updateError) {
+      console.error(`[${timestamp}] [doTransfer] Failed to update payout:`, updateError);
+    }
+
+    // ✅ Marquer le booking comme traité SEULEMENT si le transfert est réussi
+    if (shouldMarkBookingAsSent) {
+      await supabase
+        .from('bookings')
+        .update({ 
+          payout_sent: true,
+          cinetpay_transfer_id: transferResult.transaction_id || null
+        })
+        .eq('id', payout.booking_id);
+      
+      console.log(`[${timestamp}] [doTransfer] Booking marked as payout_sent = true`);
+    }
+
+    console.log(`[${timestamp}] [doTransfer] Transfer process completed:`, {
+      payout_id: payout.id,
+      status: newStatus,
+      amount: payout.amount_net || payout.amount,
+      booking_marked: shouldMarkBookingAsSent
+    });
+
+    return {
+      success: transferResult.success || newStatus === 'waiting_funds',
+      message: transferResult.message || `Payout ${newStatus}`,
+      transferResult
+    };
+
+  } catch (error) {
+    console.error(`[${timestamp}] [doTransfer] Error:`, error);
+    
+    // Marquer comme failed en cas d'erreur
+    await supabase
+      .from('payouts')
+      .update({
+        status: 'failed',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', payout.id);
+
+    return {
+      success: false,
+      message: error.message,
+      transferResult: null
+    };
+  }
+}
