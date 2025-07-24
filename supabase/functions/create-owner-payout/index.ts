@@ -278,6 +278,28 @@ async function doTransfer(
 
       booking = bookingData;
       payoutAccountData = accountData;
+      ownerData = ownerData;
+    }
+
+    // Vérifier que le compte de payout existe
+    if (!payoutAccountData) {
+      console.error(`[${timestamp}] [doTransfer] No payout account found for owner: ${payout.owner_id}`);
+      
+      // Marquer le payout comme bloqué
+      await supabase
+        .from('payouts')
+        .update({
+          status: 'blocked',
+          payout_attempted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', payout.id);
+
+      return {
+        success: false,
+        message: 'Aucun compte de payout trouvé pour ce propriétaire',
+        error_code: 'NO_PAYOUT_ACCOUNT'
+      };
     }
 
     // Fallback : créer un contact CinetPay s'il manque
