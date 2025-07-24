@@ -263,7 +263,7 @@ async function doTransfer(
         .eq('id', payout.booking_id)
         .single();
       
-      const { data: ownerData } = await supabase
+      const { data: ownerDataResult } = await supabase
         .from('owners')
         .select('id, user_id')
         .eq('id', payout.owner_id)
@@ -278,7 +278,7 @@ async function doTransfer(
 
       booking = bookingData;
       payoutAccountData = accountData;
-      ownerData = ownerData;
+      ownerData = ownerDataResult;
     }
 
     // Vérifier que le compte de payout existe
