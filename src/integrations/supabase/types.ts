@@ -680,6 +680,7 @@ export type Database = {
           created_at: string
           id: string
           owner_id: string
+          payout_attempted_at: string | null
           platform_fee_owner: number
           sent_at: string | null
           status: string
@@ -694,6 +695,7 @@ export type Database = {
           created_at?: string
           id?: string
           owner_id: string
+          payout_attempted_at?: string | null
           platform_fee_owner: number
           sent_at?: string | null
           status?: string
@@ -708,6 +710,7 @@ export type Database = {
           created_at?: string
           id?: string
           owner_id?: string
+          payout_attempted_at?: string | null
           platform_fee_owner?: number
           sent_at?: string | null
           status?: string

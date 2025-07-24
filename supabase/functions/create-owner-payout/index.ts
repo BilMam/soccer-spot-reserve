@@ -365,13 +365,14 @@ async function doTransfer(
       newStatus = 'failed';
     }
 
-    // Mettre à jour le payout avec la réponse
+    // Mettre à jour le payout avec la réponse + timestamp de tentative
     const { error: updateError } = await supabase
       .from('payouts')
       .update({
         status: newStatus,
         transfer_response: transferResult,
         cinetpay_transfer_id: transferResult.transaction_id || null,
+        payout_attempted_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', payout.id);
@@ -409,11 +410,12 @@ async function doTransfer(
   } catch (error) {
     console.error(`[${timestamp}] [doTransfer] Error:`, error);
     
-    // Marquer comme failed en cas d'erreur
+    // Marquer comme failed en cas d'erreur + timestamp
     await supabase
       .from('payouts')
       .update({
         status: 'failed',
+        payout_attempted_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', payout.id);
