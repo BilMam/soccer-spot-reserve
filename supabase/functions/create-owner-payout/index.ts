@@ -384,48 +384,12 @@ async function doTransfer(
         if (contactError) {
           console.error(`[${timestamp}] [doTransfer] Contact creation invoke error:`, contactError);
           
-          // Fallback: vérifier si un contact existe déjà en base
-          const { data: existingAccount } = await supabase
-            .from('payment_accounts')
-            .select('cinetpay_contact_added')
-            .eq('owner_id', ownerData.id)
-            .eq('payment_provider', 'cinetpay')
-            .eq('account_type', 'contact')
-            .maybeSingle();
-          
-          if (existingAccount?.cinetpay_contact_added) {
-            console.warn(`[${timestamp}] [doTransfer] Contact already exists in DB, skipping creation`);
-            contactId = payoutAccountData.cinetpay_contact_id;
-          } else {
-            // Marquer le payout comme échoué
-            await supabase
-              .from('payouts')
-              .update({
-                status: 'failed',
-                error_message: 'CONTACT_CREATION_FAILED',
-                payout_attempted_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', payout.id);
-
-            return {
-              success: false,
-              message: contactError.message,
-              error_code: 'CONTACT_CREATION_FAILED'
-            };
-          }
-        }
-
-        // Traiter la réponse de création de contact
-        if (!contactResponse?.success) {
-          console.error(`[${timestamp}] [doTransfer] Failed to create contact:`, contactResponse);
-          
-          // Marquer le payout comme échoué
+          // Marquer le payout comme failed (pas blocked) pour permettre un retry
           await supabase
             .from('payouts')
             .update({
               status: 'failed',
-              error_message: contactResponse?.message || 'CONTACT_CREATION_FAILED',
+              error_message: 'Contact creation error: ' + contactError.message,
               payout_attempted_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
@@ -433,7 +397,32 @@ async function doTransfer(
 
           return {
             success: false,
-            message: contactResponse?.message || 'Erreur création contact',
+            message: contactError.message,
+            error_code: 'CONTACT_CREATION_FAILED'
+          };
+        }
+
+        // Traiter la réponse de création de contact
+        if (!contactResponse?.success) {
+          const errorMsg = contactResponse?.message || 'Unknown contact creation error';
+          console.error(`[${timestamp}] [doTransfer] Failed to create contact:`, contactResponse);
+          
+          // Si c'est une erreur de format (422), marquer blocked, sinon failed pour retry
+          const shouldBlock = contactResponse?.status === 422;
+          
+          await supabase
+            .from('payouts')
+            .update({
+              status: shouldBlock ? 'blocked' : 'failed',
+              error_message: errorMsg,
+              payout_attempted_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', payout.id);
+
+          return {
+            success: false,
+            message: errorMsg,
             error_code: 'CONTACT_CREATION_FAILED'
           };
         }
