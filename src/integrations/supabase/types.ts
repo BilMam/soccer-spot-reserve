@@ -678,6 +678,7 @@ export type Database = {
           booking_id: string
           cinetpay_transfer_id: string | null
           created_at: string
+          error_message: string | null
           id: string
           owner_id: string
           payout_attempted_at: string | null
@@ -693,6 +694,7 @@ export type Database = {
           booking_id: string
           cinetpay_transfer_id?: string | null
           created_at?: string
+          error_message?: string | null
           id?: string
           owner_id: string
           payout_attempted_at?: string | null
@@ -708,6 +710,7 @@ export type Database = {
           booking_id?: string
           cinetpay_transfer_id?: string | null
           created_at?: string
+          error_message?: string | null
           id?: string
           owner_id?: string
           payout_attempted_at?: string | null

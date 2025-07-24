@@ -290,6 +290,7 @@ async function doTransfer(
         .from('payouts')
         .update({
           status: 'blocked',
+          error_message: 'Aucun compte de payout trouvé pour ce propriétaire',
           payout_attempted_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
