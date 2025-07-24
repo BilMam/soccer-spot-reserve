@@ -71,9 +71,10 @@ serve(async (req) => {
 
     // Sanitiser le numéro de téléphone - retire +225 et le 0 initial
     const cleanedPhone = phone
-      .replace(/^\+?225/, '')   // retire +225 (sans espaces)
+      .replace(/^\+?225/, '')   // AUCUN espace - retire +225
       .replace(/^0+/, '');      // retire un ou plusieurs 0 initiaux
 
+    logStep("DEBUG", { originalPhone: phone, cleanedPhone });
     logStep("Données propriétaire reçues", { owner_id, owner_name, phone: cleanedPhone.substring(0, 3) + "***" });
 
     // Vérifier si le contact a déjà été créé
@@ -143,21 +144,40 @@ serve(async (req) => {
       })
     });
 
+    // Log de la réponse brute pour diagnostic
+    const responseText = await contactResponse.text();
+    logStep('CINETPAY_RAW', { status: contactResponse.status, responseText });
+
     let contactData: CinetPayContactResponse;
     try {
-      contactData = await contactResponse.json();
+      contactData = JSON.parse(responseText);
     } catch (e) {
-      contactData = { code: "JSON_ERROR", message: "Invalid response format" };
+      contactData = { code: "JSON_ERROR", message: "Invalid response format: " + responseText };
     }
 
-    logStep("Réponse création contact", { 
-      status: contactResponse.status, 
+    logStep("Réponse création contact parsed", { 
       code: contactData.code, 
       message: contactData.message 
     });
 
-    // Gérer les cas de succès et contact déjà existant
+    // Gérer les cas d'erreur spécifiques
     if (!contactResponse.ok) {
+      if (contactResponse.status === 422) {
+        logStep("Erreur 422 - Numéro de téléphone invalide");
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: 'INVALID_PHONE',
+            status: 422,
+            debug: { originalPhone: phone, cleanedPhone }
+          }),
+          { 
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 422
+          }
+        );
+      }
+      
       if (contactResponse.status === 409 || contactData.message?.includes('PHONE_ALREADY_MY_CONTACT')) {
         logStep("Contact déjà existant - traité comme succès");
         contactData = { code: "ERROR_PHONE_ALREADY_MY_CONTACT", message: "Contact already exists" };

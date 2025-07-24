@@ -362,8 +362,13 @@ async function doTransfer(
       try {
         // Sanitiser le numéro de téléphone - retire +225 et le 0 initial
         const cleanedPhone = payoutAccountData.phone
-          .replace(/^\+?225/, '')   // retire +225 (sans espaces)
+          .replace(/^\+?225/, '')   // AUCUN espace - retire +225
           .replace(/^0+/, '');      // retire un ou plusieurs 0 initiaux
+        
+        console.log(`[${timestamp}] [doTransfer] DEBUG Phone cleaning:`, { 
+          original: payoutAccountData.phone, 
+          cleaned: cleanedPhone 
+        });
         
         const { data: contactResponse, error: contactError } = await supabase.functions.invoke('create-owner-contact', {
           body: {
