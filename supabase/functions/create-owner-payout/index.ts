@@ -284,8 +284,40 @@ async function doTransfer(
         }
       }
 
+      // Second fallback: utiliser l'owner_id de la réservation
+      if (!ownerDataResult && bookingData?.fields?.owner_id) {
+        console.log(`[${timestamp}] [doTransfer] Second fallback via booking.fields.owner_id=${bookingData.fields.owner_id}`);
+        const { data: ownerByBooking } = await supabase
+          .from('owners')
+          .select('id, user_id')
+          .eq('user_id', bookingData.fields.owner_id)
+          .single();
+        
+        if (ownerByBooking) {
+          console.warn(`[${timestamp}] [doTransfer] Second fallback réussi: trouvé owner via booking avec user_id=${bookingData.fields.owner_id}, owner.id=${ownerByBooking.id}`);
+          ownerDataResult = ownerByBooking;
+        }
+      }
+
       if (!ownerDataResult) {
-        throw new Error(`Owner row not found for owner_id ${payout.owner_id} (avec fallback)`);
+        console.error(`[${timestamp}] [doTransfer] Owner introuvable pour payout.owner_id=${payout.owner_id} après tous les fallbacks`);
+        
+        // Marquer le payout comme bloqué
+        await supabase
+          .from('payouts')
+          .update({
+            status: 'blocked',
+            error_message: 'Owner introuvable, payout bloqué',
+            payout_attempted_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', payout.id);
+
+        return {
+          success: false,
+          message: 'Owner not found for payout',
+          error_code: 'OWNER_NOT_FOUND'
+        };
       }
 
       const { data: accountData } = await supabase
