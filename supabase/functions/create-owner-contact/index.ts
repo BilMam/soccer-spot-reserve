@@ -69,7 +69,12 @@ serve(async (req) => {
       throw new Error("Données propriétaire manquantes : owner_id, owner_name, phone, email requis");
     }
 
-    logStep("Données propriétaire reçues", { owner_id, owner_name, phone: phone.substring(0, 4) + "***" });
+    // Sanitiser le numéro de téléphone - retire +225 et le 0 initial
+    const cleanedPhone = phone
+      .replace(/^\+?225/, '')  // retire +225
+      .replace(/^0/, '');      // retire 0 initial
+
+    logStep("Données propriétaire reçues", { owner_id, owner_name, phone: cleanedPhone.substring(0, 3) + "***" });
 
     // Vérifier si le contact a déjà été créé
     const { data: existingAccount, error: fetchError } = await supabaseClient
@@ -124,28 +129,44 @@ serve(async (req) => {
     // ÉTAPE 2: Créer le contact
     logStep("Début création contact CinetPay");
     
-    const contactResponse = await fetch(`${apiBase}/v1/transfer/contact?token=${token}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prefix: country_prefix,
-        phone: phone,
-        name: owner_name,
-        surname: owner_surname || "",
-        email: email
-      })
-    });
+    try {
+      const contactResponse = await fetch(`${apiBase}/v1/transfer/contact?token=${token}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prefix: country_prefix,
+          phone: cleanedPhone,
+          name: owner_name,
+          surname: owner_surname || "",
+          email: email
+        })
+      });
 
-    const contactData: CinetPayContactResponse = await contactResponse.json();
-    logStep("Réponse création contact", { code: contactData.code, message: contactData.message });
+      const contactData: CinetPayContactResponse = await contactResponse.json();
+      logStep("Réponse création contact", { code: contactData.code, message: contactData.message });
 
-    // Traiter les réponses acceptables
-    const isSuccess = contactData.code === "OPERATION_SUCCES" || contactData.code === "ERROR_PHONE_ALREADY_MY_CONTACT";
+      // Traiter les réponses acceptables
+      const isSuccess = contactData.code === "OPERATION_SUCCES" || contactData.code === "ERROR_PHONE_ALREADY_MY_CONTACT";
 
-    if (!isSuccess) {
-      throw new Error(`Échec création contact CinetPay: ${contactData.message}`);
+      if (!isSuccess) {
+        // Si échec, vérifier si c'est un contact déjà existant
+        if (contactData.code === "409" || contactData.message?.includes('PHONE_ALREADY_MY_CONTACT')) {
+          logStep("Contact déjà existant - traité comme succès");
+          // Continuer avec les données existantes
+        } else {
+          throw new Error(`Échec création contact CinetPay: ${contactData.message}`);
+        }
+      }
+    } catch (error) {
+      // Gérer les erreurs de réseau ou de format de réponse
+      if (error.message?.includes('PHONE_ALREADY_MY_CONTACT') || error.message?.includes('409')) {
+        logStep("Contact déjà existant détecté dans l'erreur - traité comme succès");
+        const contactData = { code: "ERROR_PHONE_ALREADY_MY_CONTACT", message: "Contact already exists" };
+      } else {
+        throw error;
+      }
     }
 
     // ÉTAPE 3: Mettre à jour la base de données Supabase
@@ -157,7 +178,7 @@ serve(async (req) => {
       account_type: 'contact',
       owner_name,
       owner_surname: owner_surname || "",
-      phone,
+      phone: cleanedPhone,
       email,
       country_prefix,
       cinetpay_contact_added: true,
@@ -190,7 +211,8 @@ serve(async (req) => {
           ? "Contact déjà existant dans CinetPay mais enregistré en base"
           : "Contact créé avec succès",
         cinetpay_status: contactData.code,
-        owner_id
+        owner_id,
+        contact_id: contactData.data?.contact_id || null
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

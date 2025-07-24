@@ -360,8 +360,10 @@ async function doTransfer(
       console.log(`[${timestamp}] [doTransfer] Creating CinetPay contact for owner`);
       
       try {
-        // Sanitiser le numéro de téléphone
-        const cleanedPhone = payoutAccountData.phone.replace(/^\+?225/, '').replace(/^0/, '');
+        // Sanitiser le numéro de téléphone - retire +225 et le 0 initial
+        const cleanedPhone = payoutAccountData.phone
+          .replace(/^\+?225/, '')  // retire +225
+          .replace(/^0/, '');      // retire 0 initial
         
         const { data: contactResponse, error: contactError } = await supabase.functions.invoke('create-owner-contact', {
           body: {
@@ -390,23 +392,6 @@ async function doTransfer(
             console.warn(`[${timestamp}] [doTransfer] Contact already exists in DB, skipping creation`);
             contactId = payoutAccountData.cinetpay_contact_id;
           } else {
-            throw new Error(`Erreur d'invocation: ${contactError.message}`);
-          }
-        }
-
-        // Gérer les cas où le contact existe déjà
-        if (!contactResponse?.success) {
-          const errorMessage = contactResponse?.message || 'Erreur inconnue';
-          
-          // Si le contact existe déjà, considérer comme un succès
-          if (errorMessage.includes('Contact déjà existant') || 
-              errorMessage.includes('ERROR_PHONE_ALREADY_MY_CONTACT') ||
-              contactResponse?.cinetpay_contact_id) {
-            console.warn(`[${timestamp}] [doTransfer] Contact already exists, using existing ID`);
-            contactId = contactResponse.cinetpay_contact_id;
-          } else {
-            console.error(`[${timestamp}] [doTransfer] Failed to create contact:`, contactResponse);
-            
             // Marquer le payout comme échoué
             await supabase
               .from('payouts')
@@ -420,13 +405,35 @@ async function doTransfer(
 
             return {
               success: false,
-              message: errorMessage,
+              message: contactError.message,
               error_code: 'CONTACT_CREATION_FAILED'
             };
           }
-        } else {
-          contactId = contactResponse.cinetpay_contact_id;
         }
+
+        // Traiter la réponse de création de contact
+        if (!contactResponse?.success) {
+          console.error(`[${timestamp}] [doTransfer] Failed to create contact:`, contactResponse);
+          
+          // Marquer le payout comme échoué
+          await supabase
+            .from('payouts')
+            .update({
+              status: 'failed',
+              error_message: contactResponse?.message || 'CONTACT_CREATION_FAILED',
+              payout_attempted_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', payout.id);
+
+          return {
+            success: false,
+            message: contactResponse?.message || 'Erreur création contact',
+            error_code: 'CONTACT_CREATION_FAILED'
+          };
+        }
+        
+        contactId = contactResponse.contact_id;
         
         // Mettre à jour le contact_id en base si on en a un
         if (contactId) {
