@@ -359,27 +359,87 @@ async function doTransfer(
     if (!contactId) {
       console.log(`[${timestamp}] [doTransfer] Creating CinetPay contact for owner`);
       
-      const { data: contactResponse, error: contactError } = await supabase.functions.invoke('create-owner-contact', {
-        body: {
-          owner_id: ownerData.user_id,
-          owner_name: 'Propriétaire',
-          phone: payoutAccountData.phone.replace(/^\+?225/, ''),
-          email: `owner-${ownerData.user_id}@example.com`,
-          country_prefix: '225'
+      try {
+        // Sanitiser le numéro de téléphone
+        const cleanedPhone = payoutAccountData.phone.replace(/^\+?225/, '').replace(/^0/, '');
+        
+        const { data: contactResponse, error: contactError } = await supabase.functions.invoke('create-owner-contact', {
+          body: {
+            owner_id: ownerData.user_id,
+            owner_name: 'Proprietaire', // Sans accent pour éviter les problèmes d'encodage
+            phone: cleanedPhone,
+            email: `owner-${ownerData.user_id}@example.com`,
+            country_prefix: '225'
+          }
+        });
+
+        if (contactError) {
+          console.error(`[${timestamp}] [doTransfer] Contact creation invoke error:`, contactError);
+          throw new Error(`Erreur d'invocation: ${contactError.message}`);
         }
-      });
 
-      if (contactError || !contactResponse?.success) {
-        console.error(`[${timestamp}] [doTransfer] Failed to create contact:`, contactError);
-        throw new Error('Erreur lors de la création du contact CinetPay');
+        // Gérer les cas où le contact existe déjà
+        if (!contactResponse?.success) {
+          const errorMessage = contactResponse?.message || 'Erreur inconnue';
+          
+          // Si le contact existe déjà, considérer comme un succès
+          if (errorMessage.includes('Contact déjà existant') || 
+              errorMessage.includes('ERROR_PHONE_ALREADY_MY_CONTACT') ||
+              contactResponse?.cinetpay_contact_id) {
+            console.warn(`[${timestamp}] [doTransfer] Contact already exists, using existing ID`);
+            contactId = contactResponse.cinetpay_contact_id;
+          } else {
+            console.error(`[${timestamp}] [doTransfer] Failed to create contact:`, contactResponse);
+            
+            // Marquer le payout comme échoué
+            await supabase
+              .from('payouts')
+              .update({
+                status: 'failed',
+                error_message: 'CONTACT_CREATION_FAILED',
+                payout_attempted_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', payout.id);
+
+            return {
+              success: false,
+              message: errorMessage,
+              error_code: 'CONTACT_CREATION_FAILED'
+            };
+          }
+        } else {
+          contactId = contactResponse.cinetpay_contact_id;
+        }
+        
+        // Mettre à jour le contact_id en base si on en a un
+        if (contactId) {
+          await supabase
+            .from('payout_accounts')
+            .update({ cinetpay_contact_id: contactId })
+            .eq('id', payoutAccountData.id);
+        }
+        
+      } catch (error) {
+        console.error(`[${timestamp}] [doTransfer] Contact creation failed:`, error);
+        
+        // Marquer le payout comme échoué
+        await supabase
+          .from('payouts')
+          .update({
+            status: 'failed',
+            error_message: 'CONTACT_CREATION_FAILED',
+            payout_attempted_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', payout.id);
+
+        return {
+          success: false,
+          message: error.message,
+          error_code: 'CONTACT_CREATION_FAILED'
+        };
       }
-
-      contactId = contactResponse.cinetpay_contact_id;
-      
-      await supabase
-        .from('payout_accounts')
-        .update({ cinetpay_contact_id: contactId })
-        .eq('id', payoutAccountData.id);
     }
 
     // Authentification CinetPay Transfer API
