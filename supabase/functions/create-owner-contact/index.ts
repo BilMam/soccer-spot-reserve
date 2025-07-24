@@ -130,6 +130,10 @@ serve(async (req) => {
     // ÉTAPE 2: Créer le contact
     logStep("Début création contact CinetPay", { phone: cleanedPhone });
     
+    // Nettoyer le nom pour éviter les caractères spéciaux
+    const safeName = owner_name.replace(/[^\w\s]/g, '').slice(0, 30);
+    const safeSurname = (owner_surname || "").replace(/[^\w\s]/g, '').slice(0, 30);
+    
     const contactResponse = await fetch(`${apiBase}/v1/transfer/contact?token=${token}`, {
       method: 'POST',
       headers: {
@@ -138,16 +142,14 @@ serve(async (req) => {
       body: JSON.stringify({
         prefix: country_prefix,
         phone: cleanedPhone,
-        name: owner_name,
-        surname: owner_surname || "",
+        name: safeName,
+        surname: safeSurname,
         email: email
       })
     });
 
-    // Log de la réponse brute pour diagnostic
+    // Lire systématiquement la réponse
     const responseText = await contactResponse.text();
-    logStep('CINETPAY_RAW', { status: contactResponse.status, responseText });
-
     let contactData: CinetPayContactResponse;
     try {
       contactData = JSON.parse(responseText);
@@ -155,21 +157,39 @@ serve(async (req) => {
       contactData = { code: "JSON_ERROR", message: "Invalid response format: " + responseText };
     }
 
-    logStep("Réponse création contact parsed", { 
-      code: contactData.code, 
-      message: contactData.message 
+    logStep('CINETPAY_RAW', { 
+      status: contactResponse.status, 
+      responseText, 
+      parsed: contactData 
     });
 
-    // Gérer les cas d'erreur spécifiques
+    // Gérer les erreurs spécifiques
     if (!contactResponse.ok) {
-      if (contactResponse.status === 422) {
-        logStep("Erreur 422 - Numéro de téléphone invalide");
+      const code = contactData?.code || contactData?.message || '';
+      
+      // Contact déjà existant
+      if (code === 'PHONE_ALREADY_MY_CONTACT' || code === 'ERROR_PHONE_ALREADY_MY_CONTACT' || contactResponse.status === 409) {
+        logStep("Contact déjà existant - traité comme succès");
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Contact déjà existant dans CinetPay",
+            contact_id: contactData.data?.contact_id || null,
+            already_exists: true
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Numéro invalide
+      if (code === 'PHONE_FORMAT_INVALID' || code === 'INVALID_PHONE_NUMBER' || contactResponse.status === 422) {
+        logStep("Erreur format téléphone");
         return new Response(
           JSON.stringify({ 
             success: false, 
             message: 'INVALID_PHONE',
             status: 422,
-            debug: { originalPhone: phone, cleanedPhone }
+            debug: { originalPhone: phone, cleanedPhone, safeName }
           }),
           { 
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -178,12 +198,36 @@ serve(async (req) => {
         );
       }
       
-      if (contactResponse.status === 409 || contactData.message?.includes('PHONE_ALREADY_MY_CONTACT')) {
-        logStep("Contact déjà existant - traité comme succès");
-        contactData = { code: "ERROR_PHONE_ALREADY_MY_CONTACT", message: "Contact already exists" };
-      } else {
-        throw new Error(`CinetPay HTTP ${contactResponse.status}: ${contactData.message}`);
+      // Nom invalide
+      if (code === 'INVALID_NAME' || code === 'INVALID_FIELD') {
+        logStep("Erreur format nom");
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: 'INVALID_NAME',
+            status: 422,
+            debug: { originalName: owner_name, safeName }
+          }),
+          { 
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 422
+          }
+        );
       }
+      
+      // Autres erreurs
+      logStep("Erreur CinetPay non gérée", { code, status: contactResponse.status });
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: code || 'CINETPAY_ERROR',
+          status: contactResponse.status
+        }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: contactResponse.status
+        }
+      );
     }
 
     // Traiter les réponses acceptables
