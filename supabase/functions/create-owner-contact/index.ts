@@ -71,8 +71,8 @@ serve(async (req) => {
 
     // Sanitiser le numéro de téléphone - retire +225 et le 0 initial
     const cleanedPhone = phone
-      .replace(/^\+?225/, '')  // retire +225
-      .replace(/^0/, '');      // retire 0 initial
+      .replace(/^\+?225/, '')   // retire +225 (sans espaces)
+      .replace(/^0+/, '');      // retire un ou plusieurs 0 initiaux
 
     logStep("Données propriétaire reçues", { owner_id, owner_name, phone: cleanedPhone.substring(0, 3) + "***" });
 
@@ -127,46 +127,50 @@ serve(async (req) => {
     logStep("Authentification réussie, token obtenu");
 
     // ÉTAPE 2: Créer le contact
-    logStep("Début création contact CinetPay");
+    logStep("Début création contact CinetPay", { phone: cleanedPhone });
     
+    const contactResponse = await fetch(`${apiBase}/v1/transfer/contact?token=${token}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prefix: country_prefix,
+        phone: cleanedPhone,
+        name: owner_name,
+        surname: owner_surname || "",
+        email: email
+      })
+    });
+
+    let contactData: CinetPayContactResponse;
     try {
-      const contactResponse = await fetch(`${apiBase}/v1/transfer/contact?token=${token}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prefix: country_prefix,
-          phone: cleanedPhone,
-          name: owner_name,
-          surname: owner_surname || "",
-          email: email
-        })
-      });
+      contactData = await contactResponse.json();
+    } catch (e) {
+      contactData = { code: "JSON_ERROR", message: "Invalid response format" };
+    }
 
-      const contactData: CinetPayContactResponse = await contactResponse.json();
-      logStep("Réponse création contact", { code: contactData.code, message: contactData.message });
+    logStep("Réponse création contact", { 
+      status: contactResponse.status, 
+      code: contactData.code, 
+      message: contactData.message 
+    });
 
-      // Traiter les réponses acceptables
-      const isSuccess = contactData.code === "OPERATION_SUCCES" || contactData.code === "ERROR_PHONE_ALREADY_MY_CONTACT";
-
-      if (!isSuccess) {
-        // Si échec, vérifier si c'est un contact déjà existant
-        if (contactData.code === "409" || contactData.message?.includes('PHONE_ALREADY_MY_CONTACT')) {
-          logStep("Contact déjà existant - traité comme succès");
-          // Continuer avec les données existantes
-        } else {
-          throw new Error(`Échec création contact CinetPay: ${contactData.message}`);
-        }
-      }
-    } catch (error) {
-      // Gérer les erreurs de réseau ou de format de réponse
-      if (error.message?.includes('PHONE_ALREADY_MY_CONTACT') || error.message?.includes('409')) {
-        logStep("Contact déjà existant détecté dans l'erreur - traité comme succès");
-        const contactData = { code: "ERROR_PHONE_ALREADY_MY_CONTACT", message: "Contact already exists" };
+    // Gérer les cas de succès et contact déjà existant
+    if (!contactResponse.ok) {
+      if (contactResponse.status === 409 || contactData.message?.includes('PHONE_ALREADY_MY_CONTACT')) {
+        logStep("Contact déjà existant - traité comme succès");
+        contactData = { code: "ERROR_PHONE_ALREADY_MY_CONTACT", message: "Contact already exists" };
       } else {
-        throw error;
+        throw new Error(`CinetPay HTTP ${contactResponse.status}: ${contactData.message}`);
       }
+    }
+
+    // Traiter les réponses acceptables
+    const isSuccess = contactData.code === "OPERATION_SUCCES" || contactData.code === "ERROR_PHONE_ALREADY_MY_CONTACT";
+
+    if (!isSuccess) {
+      throw new Error(`Échec création contact CinetPay: ${contactData.message}`);
     }
 
     // ÉTAPE 3: Mettre à jour la base de données Supabase
