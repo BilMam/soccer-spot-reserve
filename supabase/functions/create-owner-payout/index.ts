@@ -263,14 +263,29 @@ async function doTransfer(
         .eq('id', payout.booking_id)
         .single();
       
-      const { data: ownerDataResult } = await supabase
+      let { data: ownerDataResult } = await supabase
         .from('owners')
         .select('id, user_id')
         .eq('id', payout.owner_id)
         .single();
 
+      // Fallback: si pas trouvé avec owners.id, essayer avec user_id (ancien schéma)
       if (!ownerDataResult) {
-        throw new Error(`Owner row not found for owner_id ${payout.owner_id}`);
+        console.log(`[${timestamp}] [doTransfer] Tentative fallback pour payout.owner_id=${payout.owner_id}`);
+        const { data: ownerFallback } = await supabase
+          .from('owners')
+          .select('id, user_id')
+          .eq('user_id', payout.owner_id) // ancien schéma
+          .single();
+        
+        if (ownerFallback) {
+          console.warn(`[${timestamp}] [doTransfer] Fallback réussi: trouvé owner avec user_id=${payout.owner_id}, owner.id=${ownerFallback.id}`);
+          ownerDataResult = ownerFallback;
+        }
+      }
+
+      if (!ownerDataResult) {
+        throw new Error(`Owner row not found for owner_id ${payout.owner_id} (avec fallback)`);
       }
 
       const { data: accountData } = await supabase
