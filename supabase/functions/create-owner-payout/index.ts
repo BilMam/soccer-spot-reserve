@@ -74,7 +74,7 @@ serve(async (req) => {
       }
     }
 
-    // Étape 1 : Récupérer booking + field en une seule requête
+    // Étape 1 : Récupérer booking + field avec requête séparée
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select(`
@@ -107,33 +107,40 @@ serve(async (req) => {
       field_owner_id: booking.fields.owner_id
     });
 
-    // Étape 2 : Récupérer owner + payout_account actif 
+    // Étape 2 : Récupérer owner avec requête séparée pour éviter les jointures complexes
     const { data: ownerData, error: ownerError } = await supabase
       .from('owners')
-      .select(`
-        id,
-        user_id,
-        payout_accounts!inner (
-          id,
-          phone,
-          cinetpay_contact_id,
-          is_active
-        )
-      `)
+      .select('id, user_id')
       .eq('user_id', booking.fields.owner_id)
-      .eq('payout_accounts.is_active', true)
       .single();
 
     if (ownerError || !ownerData) {
-      console.error(`[${timestamp}] [create-owner-payout] Owner or payout account not found:`, ownerError);
-      throw new Error('Propriétaire ou compte de paiement non trouvé');
+      console.error(`[${timestamp}] [create-owner-payout] Owner not found:`, ownerError);
+      throw new Error('Propriétaire non trouvé');
     }
 
-    const payoutAccount = ownerData.payout_accounts[0];
+    // Étape 3 : Récupérer le payout_account actif 
+    const { data: payoutAccountData, error: payoutAccountError } = await supabase
+      .from('payout_accounts')
+      .select('id, phone, cinetpay_contact_id, is_active')
+      .eq('owner_id', ownerData.id)
+      .eq('is_active', true)
+      .single();
+
+    if (payoutAccountError || !payoutAccountData) {
+      console.error(`[${timestamp}] [create-owner-payout] Active payout account not found:`, payoutAccountError);
+      throw new Error('Compte de paiement actif non trouvé');
+    }
+
+    // Validation des données critiques
+    if (!payoutAccountData.phone) {
+      throw new Error('Numéro de téléphone manquant pour le compte de paiement');
+    }
+
     console.log(`[${timestamp}] [create-owner-payout] Owner data found:`, {
       owner_id: ownerData.id,
-      phone: payoutAccount.phone,
-      has_contact_id: !!payoutAccount.cinetpay_contact_id
+      phone: payoutAccountData.phone,
+      has_contact_id: !!payoutAccountData.cinetpay_contact_id
     });
 
     // Créer ou utiliser le payout existant
@@ -162,7 +169,7 @@ serve(async (req) => {
     }
 
     // Fallback : créer un contact CinetPay s'il manque
-    let contactId = payoutAccount.cinetpay_contact_id;
+    let contactId = payoutAccountData.cinetpay_contact_id;
     if (!contactId) {
       console.log(`[${timestamp}] [create-owner-payout] Creating CinetPay contact for owner`);
       
@@ -171,7 +178,7 @@ serve(async (req) => {
         body: {
           owner_id: ownerData.user_id,
           owner_name: 'Propriétaire',
-          phone: payoutAccount.phone.replace(/^\+?225/, ''),
+          phone: payoutAccountData.phone.replace(/^\+?225/, ''),
           email: `owner-${ownerData.user_id}@example.com`,
           country_prefix: '225'
         }
@@ -188,7 +195,7 @@ serve(async (req) => {
       await supabase
         .from('payout_accounts')
         .update({ cinetpay_contact_id: contactId })
-        .eq('id', payoutAccount.id);
+        .eq('id', payoutAccountData.id);
     }
 
     // Authentification CinetPay Transfer API
