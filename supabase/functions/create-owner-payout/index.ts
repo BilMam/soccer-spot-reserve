@@ -365,17 +365,33 @@ async function doTransfer(
         
         const { data: contactResponse, error: contactError } = await supabase.functions.invoke('create-owner-contact', {
           body: {
-            owner_id: ownerData.user_id,
+            owner_id: ownerData.id,
             owner_name: 'Proprietaire', // Sans accent pour éviter les problèmes d'encodage
+            owner_surname: '',
             phone: cleanedPhone,
-            email: `owner-${ownerData.user_id}@example.com`,
+            email: `owner-${ownerData.id}@example.com`,
             country_prefix: '225'
           }
         });
 
         if (contactError) {
           console.error(`[${timestamp}] [doTransfer] Contact creation invoke error:`, contactError);
-          throw new Error(`Erreur d'invocation: ${contactError.message}`);
+          
+          // Fallback: vérifier si un contact existe déjà en base
+          const { data: existingAccount } = await supabase
+            .from('payment_accounts')
+            .select('cinetpay_contact_added')
+            .eq('owner_id', ownerData.id)
+            .eq('payment_provider', 'cinetpay')
+            .eq('account_type', 'contact')
+            .maybeSingle();
+          
+          if (existingAccount?.cinetpay_contact_added) {
+            console.warn(`[${timestamp}] [doTransfer] Contact already exists in DB, skipping creation`);
+            contactId = payoutAccountData.cinetpay_contact_id;
+          } else {
+            throw new Error(`Erreur d'invocation: ${contactError.message}`);
+          }
         }
 
         // Gérer les cas où le contact existe déjà
