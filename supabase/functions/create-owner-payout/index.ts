@@ -50,18 +50,28 @@ serve(async (req) => {
 
     if (existingPayout) {
       console.log(`[${timestamp}] [create-owner-payout] Payout already exists:`, existingPayout);
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: 'Payout already processed',
-          payout_id: existingPayout.id,
-          amount: existingPayout.amount_net
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200 
-        }
-      );
+      
+      // Si déjà complété, pas besoin de retenter
+      if (existingPayout.status === 'completed') {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'Payout already completed',
+            payout_id: existingPayout.id,
+            amount: existingPayout.amount_net
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200 
+          }
+        );
+      }
+      
+      // 🔄 RETRY pour les statuts pending, waiting_funds, failed
+      if (['pending', 'waiting_funds', 'failed'].includes(existingPayout.status)) {
+        console.log(`[${timestamp}] [create-owner-payout] Retrying payout with status: ${existingPayout.status}`);
+        // Continue avec le processus de transfert
+      }
     }
 
     // Récupérer les détails de la réservation et du propriétaire
@@ -124,7 +134,8 @@ serve(async (req) => {
       password: cinetpayTransferPwd,
       phone: payoutAccount.phone,
       amount: amountNet,
-      description: `Payout réservation ${field.name} - ${booking.id.slice(-8)}`
+      description: `Payout réservation ${field.name} - ${booking.id.slice(-8)}`,
+      notify_url: `${supabaseUrl}/functions/v1/cinetpay-transfer-webhook`
     };
 
     console.log(`[${timestamp}] [create-owner-payout] CinetPay transfer request:`, {
@@ -145,27 +156,54 @@ serve(async (req) => {
       throw new Error(`Échec transfert CinetPay: ${transferResult.message || 'Unknown error'}`);
     }
 
-    // Créer l'enregistrement payout
-    const { data: payout, error: payoutError } = await supabase
-      .from('payouts')
-      .insert({
-        booking_id: booking.id,
-        owner_id: owner.user_id,
-        amount: amountNet,
-        amount_net: amountNet,
-        platform_fee_owner: booking.platform_fee_owner,
-        cinetpay_transfer_id: transferResult.transaction_id || transferResult.data?.transaction_id,
-        status: 'pending',
-        transfer_response: transferResult,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
+    // Gérer le statut selon la réponse CinetPay
+    let payoutStatus = 'pending';
+    if (transferResult.status === 'success') {
+      payoutStatus = 'pending'; // En attente de confirmation
+    } else if (transferResult.code === '603') {
+      payoutStatus = 'waiting_funds'; // Solde insuffisant, retry plus tard
+    } else {
+      payoutStatus = 'failed';
+    }
 
-    if (payoutError) {
-      console.error(`[${timestamp}] [create-owner-payout] Payout creation failed:`, payoutError);
-      throw new Error('Échec création payout');
+    // Créer ou mettre à jour l'enregistrement payout
+    const payoutData = {
+      booking_id: booking.id,
+      owner_id: owner.id,
+      amount: amountNet,
+      amount_net: amountNet,
+      platform_fee_owner: booking.platform_fee_owner,
+      status: payoutStatus,
+      cinetpay_transfer_id: transferResult.client_transaction_id || transferResult.transaction_id,
+      transfer_response: transferResult,
+      updated_at: new Date().toISOString()
+    };
+
+    let payout;
+    if (existingPayout) {
+      // Mettre à jour le payout existant
+      const { data: updatedPayout, error: updateError } = await supabase
+        .from('payouts')
+        .update(payoutData)
+        .eq('id', existingPayout.id)
+        .select()
+        .single();
+      
+      if (updateError) throw updateError;
+      payout = updatedPayout;
+    } else {
+      // Créer un nouveau payout
+      const { data: newPayout, error: createError } = await supabase
+        .from('payouts')
+        .insert(payoutData)
+        .select()
+        .single();
+      
+      if (createError) {
+        console.error(`[${timestamp}] [create-owner-payout] Payout creation failed:`, createError);
+        throw new Error('Échec création payout');
+      }
+      payout = newPayout;
     }
 
     // Marquer la réservation comme ayant son payout traité

@@ -171,21 +171,8 @@ serve(async (req) => {
       }
     }
 
-    // Envoyer l'email de confirmation si paiement réussi
-    if (paymentStatus === 'paid' && booking) {
-      console.log(`📧 Envoi email de confirmation pour booking ${booking.id}`)
-      try {
-        await supabaseClient.functions.invoke('send-booking-email', {
-          body: {
-            booking_id: booking.id,
-            notification_type: 'payment_confirmation'
-          }
-        })
-      } catch (emailError) {
-        console.error('Erreur envoi email:', emailError)
-        // Ne pas faire échouer le webhook pour un problème d'email
-      }
-    }
+    // Email de confirmation désactivé - flux automatique silencieux
+    // L'utilisateur sera notifié via d'autres canaux si nécessaire
 
     return new Response(
       JSON.stringify({ 
