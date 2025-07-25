@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { OtpDialog } from '@/components/owner/OtpDialog';
-import { CheckCircle, MapPin, Users, Calendar, Euro } from 'lucide-react';
+import { CheckCircle, MapPin, Users, Calendar } from 'lucide-react';
 import { PhoneInputCI } from '@/components/ui/PhoneInputCI';
 
 const BecomeOwner = () => {
@@ -205,7 +205,7 @@ const BecomeOwner = () => {
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Devenez propriétaire sur FieldBook
+            Devenez propriétaire sur MySport
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Rejoignez notre communauté de propriétaires et commencez à générer des revenus 
@@ -213,7 +213,7 @@ const BecomeOwner = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Avantages */}
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">
@@ -223,15 +223,14 @@ const BecomeOwner = () => {
             <div className="space-y-6">
               <div className="flex items-start space-x-4">
                 <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Euro className="w-6 h-6 text-green-600" />
+                  <span className="text-2xl font-bold text-green-600">₣</span>
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
                     Revenus supplémentaires
                   </h3>
                   <p className="text-gray-600">
-                    Monétisez vos terrains inutilisés et générez des revenus passifs 
-                    en les louant à des équipes et des joueurs.
+                    Rentabilisez vos terrains inoccupés.
                   </p>
                 </div>
               </div>
@@ -245,8 +244,7 @@ const BecomeOwner = () => {
                     Gestion simplifiée
                   </h3>
                   <p className="text-gray-600">
-                    Notre plateforme vous permet de gérer facilement vos réservations, 
-                    vos tarifs et la disponibilité de vos terrains.
+                    Gérez vos réservations depuis un seul tableau de bord.
                   </p>
                 </div>
               </div>
@@ -260,8 +258,7 @@ const BecomeOwner = () => {
                     Communauté active
                   </h3>
                   <p className="text-gray-600">
-                    Rejoignez une communauté de propriétaires passionnés et 
-                    bénéficiez de notre support dédié.
+                    Rejoignez des centaines de propriétaires sportifs.
                   </p>
                 </div>
               </div>
@@ -275,8 +272,7 @@ const BecomeOwner = () => {
                     Visibilité maximale
                   </h3>
                   <p className="text-gray-600">
-                    Votre terrain sera visible par des milliers de joueurs 
-                    recherchant des espaces de qualité pour pratiquer leur sport.
+                    Vos terrains visibles par des milliers de joueurs.
                   </p>
                 </div>
               </div>
@@ -290,26 +286,26 @@ const BecomeOwner = () => {
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-gray-700">Soumettez votre demande de propriétaire</span>
+                  <span className="text-gray-700">Envoyez votre demande</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-gray-700">Notre équipe examine votre profil</span>
+                  <span className="text-gray-700">Nous validons votre profil</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-gray-700">Une fois approuvé, ajoutez vos terrains</span>
+                  <span className="text-gray-700">Ajoutez vos terrains</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-gray-700">Recevez des réservations et générez des revenus</span>
+                  <span className="text-gray-700">Recevez vos revenus</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Formulaire de demande */}
-          <div>
+          <div className="max-w-lg">
             <Card>
               <CardHeader>
                 <CardTitle className="text-2xl text-center">
