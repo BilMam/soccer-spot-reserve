@@ -305,18 +305,18 @@ const BecomeOwner = () => {
           </div>
 
           {/* Formulaire de demande */}
-          <div className="max-w-lg">
+          <div className="max-w-md">
             <Card>
               <CardHeader>
                 <CardTitle className="text-2xl text-center">
                   Soumettre votre demande
                 </CardTitle>
                 <p className="text-center text-gray-600">
-                  Remplissez ce formulaire pour devenir propriétaire. Notre équipe examinera votre demande.
+                  Remplissez le formulaire ci-dessous.
                 </p>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="full_name">Nom complet *</Label>
                     <Input
@@ -337,7 +337,7 @@ const BecomeOwner = () => {
                      required
                    />
                    <p className="text-sm text-muted-foreground -mt-1">
-                     Ce numéro sera utilisé pour l'authentification OTP et recevoir vos paiements Mobile Money
+                     Numéro ivoirien 10 chiffres (Wave / Orange / MTN / Moov). Ce numéro servira à l'OTP et aux paiements Mobile Money.
                    </p>
 
                   <div>
@@ -346,7 +346,7 @@ const BecomeOwner = () => {
                       id="experience"
                       value={formData.experience}
                       onChange={(e) => handleInputChange('experience', e.target.value)}
-                      placeholder="Décrivez votre expérience avec la gestion de terrains de sport (optionnel)"
+                      placeholder="Votre expérience (optionnel)"
                       rows={3}
                     />
                   </div>
@@ -357,7 +357,7 @@ const BecomeOwner = () => {
                       id="motivation"
                       value={formData.motivation}
                       onChange={(e) => handleInputChange('motivation', e.target.value)}
-                      placeholder="Parlez-nous de votre motivation et de vos objectifs (optionnel)"
+                      placeholder="Votre motivation (optionnel)"
                       rows={3}
                     />
                   </div>
