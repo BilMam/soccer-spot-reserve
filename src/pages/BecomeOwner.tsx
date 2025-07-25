@@ -110,16 +110,58 @@ const BecomeOwner = () => {
 
       if (error) throw error;
 
+      // Check if signup was actually successful
+      if (!data.success) {
+        console.error('Owner signup failed:', data);
+        
+        let errorTitle = "Erreur d'inscription";
+        let errorDescription = data.message || "Impossible de finaliser l'inscription";
+        
+        // Customize error message based on error code
+        if (data.code === 'CINETPAY_ERROR') {
+          errorTitle = "Service temporairement indisponible";
+          errorDescription = "Problème avec le service de paiement. Veuillez réessayer dans quelques minutes.";
+        } else if (data.code === 'DUPLICATE_OWNER') {
+          errorTitle = "Compte déjà existant";
+          errorDescription = "Un compte propriétaire existe déjà avec ce numéro.";
+        } else if (data.code === 'SCHEMA_ERROR') {
+          errorTitle = "Erreur système";
+          errorDescription = "Mise à jour système en cours. Veuillez réessayer plus tard.";
+        }
+        
+        toast({
+          title: errorTitle,
+          description: errorDescription,
+          variant: "destructive",
+        });
+        
+        // Don't navigate away - keep user on form to retry
+        return;
+      }
+
+      // Only proceed if signup was successful AND we have required data
+      if (!data.owner_id) {
+        toast({
+          title: "Erreur de validation",
+          description: "Inscription incomplète. Veuillez réessayer.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Success - show success message and navigate
+      console.log('Owner signup successful:', data);
       toast({
         title: "Inscription réussie !",
         description: "Votre compte propriétaire a été créé avec succès.",
       });
       navigate('/profile');
+      
     } catch (error: any) {
       console.error('Owner signup error:', error);
       toast({
-        title: "Erreur",
-        description: error.message || "Impossible de finaliser l'inscription",
+        title: "Erreur réseau",
+        description: "Impossible de contacter le serveur. Vérifiez votre connexion.",
         variant: "destructive",
       });
     }

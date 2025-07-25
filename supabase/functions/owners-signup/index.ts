@@ -16,6 +16,8 @@ interface SignupResponse {
   message: string;
   owner_id?: string;
   cinetpay_contact_id?: string;
+  code?: string;
+  retryable?: boolean;
 }
 
 // Helper function with timeout
@@ -151,9 +153,8 @@ serve(async (req) => {
         
       } catch (error) {
         console.error(`[${timestamp}] CinetPay contact creation failed:`, error);
-        // FALLBACK: Create owner without contact, to be completed later
-        console.log(`[${timestamp}] ⚠️ FALLBACK: Creating owner without CinetPay contact`);
-        contactId = null; // Will be created later via admin or retry
+        // In production mode, fail completely if CinetPay contact creation fails
+        throw new Error(`CinetPay contact creation failed: ${error.message}`);
       }
     } else {
       // Test mode - simulate contact creation
@@ -161,7 +162,12 @@ serve(async (req) => {
       console.log(`[${timestamp}] ⚠️ TEST MODE: Simulated contact ID: ${contactId}`);
     }
 
-    // Create owner record (check if schema has new columns)
+    // Validate that we have a valid contact ID before creating owner
+    if (!contactId) {
+      throw new Error(`Cannot create owner without valid CinetPay contact ID`);
+    }
+
+    // Create owner record with transaction-like behavior
     let ownerData: any = {
       user_id: '11111111-1111-1111-1111-111111111111', // Temporary fallback user_id
     };
@@ -170,11 +176,13 @@ serve(async (req) => {
     try {
       ownerData.phone = phone;
       ownerData.mobile_money = phone; // Same as phone for "one number" approach
-      if (contactId) {
-        ownerData.cinetpay_contact_id = contactId;
-      }
+      ownerData.cinetpay_contact_id = contactId;
     } catch (error) {
-      console.log(`[${timestamp}] Using fallback owner creation without new columns`);
+      console.log(`[${timestamp}] Schema columns not available, using fallback`);
+      // In fallback mode, still require contact_id
+      if (!isTestMode) {
+        throw new Error(`Schema migration required: missing phone/cinetpay_contact_id columns`);
+      }
     }
 
     const { data: newOwner, error: ownerError } = await supabase
@@ -184,6 +192,7 @@ serve(async (req) => {
       .single();
 
     if (ownerError) {
+      console.error(`[${timestamp}] Owner creation failed:`, ownerError);
       throw new Error(`Failed to create owner: ${ownerError.message}`);
     }
 
@@ -206,14 +215,40 @@ serve(async (req) => {
 
   } catch (error) {
     console.error(`[${timestamp}] Error:`, error);
+    
+    // Determine error code and retryability
+    let errorCode = 'UNKNOWN_ERROR';
+    let retryable = false;
+    let status = 500;
+    
+    if (error.message.includes('CinetPay contact creation failed')) {
+      errorCode = 'CINETPAY_ERROR';
+      retryable = true;
+      status = 503; // Service Unavailable
+    } else if (error.message.includes('already exists')) {
+      errorCode = 'DUPLICATE_OWNER';
+      retryable = false;
+      status = 409; // Conflict
+    } else if (error.message.includes('Schema migration required')) {
+      errorCode = 'SCHEMA_ERROR';
+      retryable = false;
+      status = 500;
+    } else if (error.message.includes('OTP must be validated')) {
+      errorCode = 'OTP_NOT_VALIDATED';
+      retryable = true;
+      status = 400; // Bad Request
+    }
+    
     return new Response(
       JSON.stringify({ 
         success: false, 
         message: error.message,
+        code: errorCode,
+        retryable: retryable,
         timestamp 
       }),
       { 
-        status: 500, 
+        status: status, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
