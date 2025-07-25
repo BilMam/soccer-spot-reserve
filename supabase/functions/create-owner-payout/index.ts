@@ -81,9 +81,7 @@ serve(async (req) => {
           owner_id,
           owners!inner (
             id,
-            user_id,
             phone,
-            mobile_money,
             cinetpay_contact_id
           )
         )
@@ -130,7 +128,7 @@ serve(async (req) => {
       throw new Error(`Owner ${owner.id} has no CinetPay contact. Owner must be registered through signup flow.`);
     }
     
-    console.log(`[${timestamp}] Using existing CinetPay contact: ${contactId}`);
+    console.log(`[${timestamp}] [refactor] contact creation logic removed – using existing contact_id only: ${contactId}`);
 
     // Step 4: Create or update payout record
     let payoutId = existingPayout?.id;
