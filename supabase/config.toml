@@ -23,31 +23,46 @@ major_version = 15
 [functions.approve-owner-request]
 verify_jwt = false
 
-[functions.send-booking-notification]
+[functions.verify-owner-otp]
 verify_jwt = false
 
-[functions.verify-owner-otp]
+[functions.request-owner-otp]
 verify_jwt = false
 
 [functions.create-field]
 verify_jwt = true
 
-[functions.test-webhook]
-verify_jwt = false
-
-[functions.test-webhook-simple]
-verify_jwt = false
-
-[functions.force-confirm-booking]
-verify_jwt = false
-
 [functions.cinetpay-webhook]
+verify_jwt = false
+
+[functions.cinetpay-transfer-webhook]
 verify_jwt = false
 
 [functions.create-owner-payout]
 verify_jwt = false
 
-[functions.create-owner-contact]
+[functions.create-cinetpay-payment]
+verify_jwt = false
+
+[functions.create-cinetpay-merchant]
+verify_jwt = false
+
+[functions.approve-booking]
+verify_jwt = false
+
+[functions.confirm-booking-owner]
+verify_jwt = false
+
+[functions.send-booking-email]
+verify_jwt = false
+
+[functions.send-sms-notification]
+verify_jwt = false
+
+[functions.cleanup-expired-bookings]
+verify_jwt = false
+
+[functions.owners-signup]
 verify_jwt = false
 
 [realtime]

@@ -23,7 +23,6 @@ const BecomeOwner = () => {
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
-    phone_payout: '',
     experience: '',
     motivation: ''
   });
@@ -104,9 +103,9 @@ const BecomeOwner = () => {
   });
 
   const requestOtpMutation = useMutation({
-    mutationFn: async (phone_payout: string) => {
+    mutationFn: async (phone: string) => {
       const { data, error } = await supabase.functions.invoke('request-owner-otp', {
-        body: { phone_payout }
+        body: { phone_payout: phone }
       });
 
       if (error) throw error;
@@ -132,10 +131,10 @@ const BecomeOwner = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.phone_payout) {
+    if (!formData.phone) {
       toast({
-        title: "Numéro Mobile Money requis",
-        description: "Veuillez saisir votre numéro Mobile Money",
+        title: "Numéro de téléphone requis",
+        description: "Veuillez saisir votre numéro de téléphone",
         variant: "destructive",
       });
       return;
@@ -145,17 +144,36 @@ const BecomeOwner = () => {
   };
 
   const handleRequestOtp = () => {
-    if (formData.phone_payout) {
-      requestOtpMutation.mutate(formData.phone_payout);
+    if (formData.phone) {
+      requestOtpMutation.mutate(formData.phone);
     }
   };
 
-  const handleOtpVerified = () => {
-    toast({
-      title: "Demande envoyée !",
-      description: "Votre demande a été soumise avec succès. Nous l'examinerons dans les plus brefs délais.",
-    });
-    navigate('/profile');
+  const handleOtpVerified = async () => {
+    try {
+      // Call owners-signup to complete registration
+      const { data, error } = await supabase.functions.invoke('owners-signup', {
+        body: { 
+          phone: formData.phone,
+          otp_validated: true 
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Inscription réussie !",
+        description: "Votre compte propriétaire a été créé avec succès.",
+      });
+      navigate('/profile');
+    } catch (error: any) {
+      console.error('Owner signup error:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de finaliser l'inscription",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleInputChange = (field: keyof typeof formData, value: string) => {
@@ -404,21 +422,13 @@ const BecomeOwner = () => {
 
                    <PhoneInputCI
                      id="phone"
-                     label="Téléphone"
+                     label="Numéro de téléphone"
                      value={formData.phone}
                      onChange={(value) => handleInputChange('phone', value)}
                      required
                    />
-
-                   <PhoneInputCI
-                     id="phone_payout"
-                     label="Téléphone Mobile Money"
-                     value={formData.phone_payout}
-                     onChange={(value) => handleInputChange('phone_payout', value)}
-                     required
-                   />
                    <p className="text-sm text-muted-foreground -mt-1">
-                     Numéro pour recevoir vos paiements (sera vérifié par SMS)
+                     Ce numéro sera utilisé pour l'authentification OTP et recevoir vos paiements Mobile Money
                    </p>
 
                   <div>
