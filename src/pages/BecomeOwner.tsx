@@ -29,87 +29,40 @@ const BecomeOwner = () => {
   const [showOtpDialog, setShowOtpDialog] = useState(false);
   const [otpPhone, setOtpPhone] = useState('');
 
-  // Vérifier si l'utilisateur a déjà une demande ou est déjà propriétaire
-  const { data: existingApplication, isLoading: checkingApplication } = useQuery({
-    queryKey: ['user-owner-application', user?.id],
-    queryFn: async () => {
-      if (!user) return null;
-      
-      const { data, error } = await supabase.rpc('get_user_owner_application', {
-        p_user_id: user.id
-      });
-
-      if (error) {
-        console.error('Error fetching application:', error);
-        return null;
-      }
-
-      return data && data.length > 0 ? data[0] : null;
-    },
-    enabled: !!user
-  });
-
-  // Vérifier le profil utilisateur
-  const { data: userProfile } = useQuery({
-    queryKey: ['user-profile', user?.id],
+  // Vérifier si l'utilisateur est déjà propriétaire
+  const { data: existingOwner, isLoading: checkingOwner } = useQuery({
+    queryKey: ['user-owner', user?.id],
     queryFn: async () => {
       if (!user) return null;
       
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+        .from('owners')
+        .select('id, phone, cinetpay_contact_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching owner:', error);
+        return null;
+      }
+
       return data;
     },
     enabled: !!user
   });
 
-  const createApplicationMutation = useMutation({
+
+  const requestOtpForSignupMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       if (!user) throw new Error('User not authenticated');
 
-      const { error } = await supabase
-        .from('owner_applications')
-        .insert({
-          user_id: user.id,
-          full_name: data.full_name,
-          phone: data.phone,
-          experience: data.experience || null,
-          motivation: data.motivation || null,
-          status: 'pending'
-        });
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Demande créée !",
-        description: "Veuillez maintenant vérifier votre numéro Mobile Money.",
-      });
-      // Trigger OTP verification
-      handleRequestOtp();
-    },
-    onError: (error: any) => {
-      console.error('Error creating application:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'envoyer votre demande. Veuillez réessayer.",
-        variant: "destructive",
-      });
-    }
-  });
-
-  const requestOtpMutation = useMutation({
-    mutationFn: async (phone: string) => {
-      const { data, error } = await supabase.functions.invoke('request-owner-otp', {
-        body: { phone_payout: phone }
+      // Request OTP directly for signup
+      const { data: otpData, error } = await supabase.functions.invoke('request-owner-otp', {
+        body: { phone_payout: data.phone }
       });
 
       if (error) throw error;
-      return data;
+      return otpData;
     },
     onSuccess: (data) => {
       setOtpPhone(data.phone);
@@ -120,13 +73,15 @@ const BecomeOwner = () => {
       });
     },
     onError: (error: any) => {
+      console.error('Error requesting OTP:', error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'envoyer le code OTP",
+        description: "Impossible d'envoyer le code OTP. Veuillez réessayer.",
         variant: "destructive",
       });
     }
   });
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,13 +95,7 @@ const BecomeOwner = () => {
       return;
     }
 
-    createApplicationMutation.mutate(formData);
-  };
-
-  const handleRequestOtp = () => {
-    if (formData.phone) {
-      requestOtpMutation.mutate(formData.phone);
-    }
+    requestOtpForSignupMutation.mutate(formData);
   };
 
   const handleOtpVerified = async () => {
@@ -195,7 +144,7 @@ const BecomeOwner = () => {
     );
   }
 
-  if (checkingApplication) {
+  if (checkingOwner) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
@@ -206,10 +155,8 @@ const BecomeOwner = () => {
     );
   }
 
-  // Si l'utilisateur est déjà propriétaire - utiliser le hook usePermissions
-  const { isOwner } = usePermissions();
-  
-  if (isOwner) {
+  // Si l'utilisateur est déjà propriétaire
+  if (existingOwner) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
@@ -249,40 +196,6 @@ const BecomeOwner = () => {
     );
   }
 
-  // Si l'utilisateur a déjà une demande en cours
-  if (existingApplication) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto">
-            <Card>
-              <CardHeader className="text-center">
-                <CardTitle className="text-2xl">Demande en cours</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center space-y-4">
-                <p className="text-gray-700">
-                  Vous avez déjà soumis une demande pour devenir propriétaire. 
-                  Notre équipe l'examine actuellement.
-                </p>
-                <p className="text-sm text-gray-500">
-                  Statut actuel: <strong>{existingApplication.status}</strong>
-                </p>
-                <div className="pt-4">
-                  <Button 
-                    onClick={() => navigate('/profile')}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    Voir le statut de ma demande
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -456,16 +369,15 @@ const BecomeOwner = () => {
                    <Button 
                      type="submit" 
                      className="w-full bg-green-600 hover:bg-green-700"
-                     disabled={createApplicationMutation.isPending || requestOtpMutation.isPending}
+                     disabled={requestOtpForSignupMutation.isPending}
                    >
-                     {createApplicationMutation.isPending ? "Création en cours..." : 
-                      requestOtpMutation.isPending ? "Envoi du code..." : "Soumettre ma demande"}
+                     {requestOtpForSignupMutation.isPending ? "Envoi du code..." : "Devenir propriétaire"}
                    </Button>
 
                   <p className="text-sm text-gray-500 text-center">
-                    En soumettant cette demande, vous acceptez nos conditions d'utilisation 
-                    et notre politique de confidentialité. Notre équipe examinera votre demande 
-                    dans un délai de 2-3 jours ouvrables.
+                    En devenant propriétaire, vous acceptez nos conditions d'utilisation 
+                    et notre politique de confidentialité. Votre inscription sera activée 
+                    immédiatement après validation OTP.
                   </p>
                 </form>
               </CardContent>
