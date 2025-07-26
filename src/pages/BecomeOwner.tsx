@@ -119,11 +119,21 @@ const BecomeOwner = () => {
 
   const handleOtpVerified = async () => {
     try {
-      // Call owners-signup to complete registration
+      // Verify user is authenticated
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        throw new Error('Vous devez être connecté pour devenir propriétaire');
+      }
+
+      // Call owners-signup to complete registration with authentication
       const { data, error } = await supabase.functions.invoke('owners-signup', {
         body: { 
           phone: formData.phone,
           otp_validated: true 
+        },
+        headers: {
+          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         }
       });
 
@@ -180,9 +190,26 @@ const BecomeOwner = () => {
       
     } catch (error: any) {
       console.error('Owner signup error:', error);
+      
+      let errorTitle = "Erreur d'inscription";
+      let errorDescription = "Une erreur inattendue s'est produite";
+      
+      if (error.message?.includes('connecté')) {
+        errorTitle = "Authentification requise";
+        errorDescription = "Vous devez être connecté pour devenir propriétaire";
+      } else if (error.message?.includes('Invalid or expired token')) {
+        errorTitle = "Session expirée";
+        errorDescription = "Veuillez vous reconnecter et réessayer";
+      } else if (error.message?.includes('authorization')) {
+        errorTitle = "Erreur d'authentification";
+        errorDescription = "Problème d'authentification. Veuillez vous reconnecter";
+      } else {
+        errorDescription = "Impossible de contacter le serveur. Vérifiez votre connexion.";
+      }
+      
       toast({
-        title: "Erreur réseau",
-        description: "Impossible de contacter le serveur. Vérifiez votre connexion.",
+        title: errorTitle,
+        description: errorDescription,
         variant: "destructive",
       });
     }
