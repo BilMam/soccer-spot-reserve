@@ -36,13 +36,28 @@ export function PayoutAccountsManager() {
     phone: ''
   })
 
-  // Fetch payout accounts
+  // Fetch payout accounts for current user only
   const { data: accounts, isLoading } = useQuery({
     queryKey: ['payout-accounts'],
     queryFn: async () => {
+      // Get current user first
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Non authentifié')
+
+      // Get owner info for current user
+      const { data: ownerData } = await supabase
+        .from('owners')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!ownerData) throw new Error('Compte propriétaire non trouvé')
+
+      // Fetch only payout accounts for this owner
       const { data, error } = await supabase
         .from('payout_accounts')
         .select('*')
+        .eq('owner_id', ownerData.id)
         .order('is_active', { ascending: false })
       
       if (error) throw error
