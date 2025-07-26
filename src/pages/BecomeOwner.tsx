@@ -35,37 +35,53 @@ const BecomeOwner = () => {
     queryFn: async () => {
       if (!user) return null;
       
-      // Try to fetch with status column first
-      let { data, error } = await supabase
-        .from('owners')
-        .select('id, phone, status, cinetpay_contact_id, created_at')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      // If error is due to missing status column, fallback to old structure
-      if (error && error.code === 'PGRST203') {
-        console.log('Status column not found, falling back to legacy structure');
-        const { data: legacyData, error: legacyError } = await supabase
+      try {
+        // Try to fetch with status column first
+        const { data, error } = await supabase
           .from('owners')
-          .select('id, phone, cinetpay_contact_id, created_at')
+          .select('id, phone, status, cinetpay_contact_id, created_at')
           .eq('user_id', user.id)
           .maybeSingle();
-        
-        if (legacyError && legacyError.code !== 'PGRST116') {
-          console.error('Error fetching owner:', legacyError);
-          return null;
-        }
-        
-        // If owner exists in legacy format, treat as approved
-        return legacyData ? { ...legacyData, status: 'approved' } : null;
-      }
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching owner:', error);
+        if (error) {
+          // If error is due to missing status column, fallback to old structure
+          if (error.code === 'PGRST203') {
+            console.log('Status column not found, falling back to legacy structure');
+            const { data: legacyData, error: legacyError } = await supabase
+              .from('owners')
+              .select('id, phone, cinetpay_contact_id, created_at')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            
+            if (legacyError && legacyError.code !== 'PGRST116') {
+              console.error('Error fetching owner:', legacyError);
+              return null;
+            }
+            
+            // If owner exists in legacy format, treat as approved
+            if (legacyData) {
+              return {
+                id: (legacyData as any).id,
+                phone: (legacyData as any).phone || '',
+                status: 'approved' as const,
+                cinetpay_contact_id: (legacyData as any).cinetpay_contact_id || null,
+                created_at: (legacyData as any).created_at || ''
+              };
+            }
+            return null;
+          }
+          
+          if (error.code !== 'PGRST116') {
+            console.error('Error fetching owner:', error);
+            return null;
+          }
+        }
+
+        return data;
+      } catch (error) {
+        console.error('Unexpected error fetching owner:', error);
         return null;
       }
-
-      return data;
     },
     enabled: !!user
   });
@@ -246,9 +262,9 @@ const BecomeOwner = () => {
   }
 
   // Status-based rendering for owner workflow
-  if (ownerStatus) {
+  if (ownerStatus && typeof ownerStatus === 'object' && 'status' in ownerStatus) {
     // Pending approval status
-    if (ownerStatus.status === 'pending') {
+    if ((ownerStatus as any).status === 'pending') {
       return (
         <div className="min-h-screen bg-gray-50">
           <Navbar />
@@ -267,7 +283,7 @@ const BecomeOwner = () => {
                     Un administrateur doit valider votre profil avant l'activation.
                   </p>
                   <p className="text-sm text-gray-600">
-                    Numéro de téléphone: {ownerStatus.phone}
+                    Numéro de téléphone: {'phone' in ownerStatus ? (ownerStatus.phone || 'N/A') : 'N/A'}
                   </p>
 
                   <div className="pt-4">
@@ -287,7 +303,7 @@ const BecomeOwner = () => {
     }
 
     // Approved status with CinetPay contact
-    if (ownerStatus.status === 'approved' && ownerStatus.cinetpay_contact_id) {
+    if ((ownerStatus as any).status === 'approved' && (ownerStatus as any).cinetpay_contact_id) {
       return (
         <div className="min-h-screen bg-gray-50">
           <Navbar />
@@ -331,7 +347,7 @@ const BecomeOwner = () => {
     }
 
     // Rejected status
-    if (ownerStatus.status === 'rejected') {
+    if ((ownerStatus as any).status === 'rejected') {
       return (
         <div className="min-h-screen bg-gray-50">
           <Navbar />

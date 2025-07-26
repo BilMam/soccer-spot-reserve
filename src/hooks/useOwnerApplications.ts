@@ -13,7 +13,7 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
     queryKey: ['owner-applications-admin'],
     queryFn: async (): Promise<OwnerApplication[]> => {
       try {
-        // Récupérer les demandes d'abord
+        // Récupérer toutes les demandes (pas seulement les pending)
         const { data: applicationsData, error: applicationsError } = await supabase
           .from('owner_applications')
           .select('*, phone_payout')
