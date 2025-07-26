@@ -1379,6 +1379,10 @@ export type Database = {
         Args: { "": string }
         Returns: string[]
       }
+      test_role_system: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       update_owner_stats_for_field: {
         Args: { field_uuid: string }
         Returns: undefined
