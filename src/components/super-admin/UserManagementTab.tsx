@@ -35,18 +35,37 @@ export const UserManagementTab: React.FC<UserManagementTabProps> = ({ isSuperAdm
   const { data: users, isLoading: loadingUsers } = useQuery({
     queryKey: ['users-with-roles'],
     queryFn: async (): Promise<UserWithRoles[]> => {
-      const { data, error } = await supabase.rpc('get_users_with_roles');
-      if (error) {
-        console.error('Error fetching users:', error);
+      // Appel direct SQL temporaire en attendant de fixer la fonction RPC
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, created_at');
+        
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
         return [];
       }
-      return (data || []).map((user: any) => ({
-        user_id: user.user_id,
-        email: user.email || '',
-        full_name: user.full_name || '',
-        roles: user.roles || [],
-        created_at: user.created_at || ''
-      }));
+      
+      if (!profiles) return [];
+      
+      // Pour chaque profil, récupérer ses rôles
+      const usersWithRoles: UserWithRoles[] = [];
+      for (const profile of profiles) {
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', profile.id)
+          .eq('is_active', true);
+          
+        usersWithRoles.push({
+          user_id: profile.id,
+          email: profile.email || '',
+          full_name: profile.full_name || '',
+          roles: roles?.map(r => r.role) || [],
+          created_at: profile.created_at || ''
+        });
+      }
+      
+      return usersWithRoles;
     },
     enabled: isSuperAdmin
   });
