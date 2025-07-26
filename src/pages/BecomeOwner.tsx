@@ -29,17 +29,36 @@ const BecomeOwner = () => {
   const [showOtpDialog, setShowOtpDialog] = useState(false);
   const [otpPhone, setOtpPhone] = useState('');
 
-  // Vérifier si l'utilisateur est déjà propriétaire
-  const { data: existingOwner, isLoading: checkingOwner } = useQuery({
-    queryKey: ['user-owner', user?.id],
+  // Vérifier le statut du propriétaire
+  const { data: ownerStatus, isLoading: checkingOwner } = useQuery({
+    queryKey: ['owner-status', user?.id],
     queryFn: async () => {
       if (!user) return null;
       
-      const { data, error } = await supabase
+      // Try to fetch with status column first
+      let { data, error } = await supabase
         .from('owners')
-        .select('id, phone, cinetpay_contact_id')
+        .select('id, phone, status, cinetpay_contact_id, created_at')
         .eq('user_id', user.id)
         .maybeSingle();
+
+      // If error is due to missing status column, fallback to old structure
+      if (error && error.code === 'PGRST203') {
+        console.log('Status column not found, falling back to legacy structure');
+        const { data: legacyData, error: legacyError } = await supabase
+          .from('owners')
+          .select('id, phone, cinetpay_contact_id, created_at')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (legacyError && legacyError.code !== 'PGRST116') {
+          console.error('Error fetching owner:', legacyError);
+          return null;
+        }
+        
+        // If owner exists in legacy format, treat as approved
+        return legacyData ? { ...legacyData, status: 'approved' } : null;
+      }
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching owner:', error);
@@ -149,13 +168,15 @@ const BecomeOwner = () => {
         return;
       }
 
-      // Success - show success message and navigate
+      // Success - show success message for pending status
       console.log('Owner signup successful:', data);
       toast({
-        title: "Inscription réussie !",
-        description: "Votre compte propriétaire a été créé avec succès.",
+        title: "Demande soumise !",
+        description: "Votre demande de propriétaire est en attente de validation admin.",
       });
-      navigate('/profile');
+      
+      // Refresh owner status to show pending state
+      window.location.reload();
       
     } catch (error: any) {
       console.error('Owner signup error:', error);
@@ -197,45 +218,126 @@ const BecomeOwner = () => {
     );
   }
 
-  // Si l'utilisateur est déjà propriétaire
-  if (existingOwner) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto">
-            <Card className="border-green-200 bg-green-50 border-2">
-              <CardHeader className="text-center">
-                <div className="flex justify-center mb-4">
-                  <CheckCircle className="w-6 h-6 text-green-500" />
-                </div>
-                <CardTitle className="text-2xl">Demande approuvée !</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center space-y-4">
-                <p className="text-gray-700">Félicitations ! Vous êtes maintenant propriétaire. Vous pouvez commencer à ajouter vos terrains.</p>
+  // Status-based rendering for owner workflow
+  if (ownerStatus) {
+    // Pending approval status
+    if (ownerStatus.status === 'pending') {
+      return (
+        <div className="min-h-screen bg-gray-50">
+          <Navbar />
+          <div className="container mx-auto px-4 py-8">
+            <div className="max-w-2xl mx-auto">
+              <Card className="border-yellow-200 bg-yellow-50 border-2">
+                <CardHeader className="text-center">
+                  <div className="flex justify-center mb-4">
+                    <div className="w-6 h-6 bg-yellow-500 rounded-full animate-pulse" />
+                  </div>
+                  <CardTitle className="text-2xl">Demande en cours</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center space-y-4">
+                  <p className="text-gray-700">
+                    Votre demande de propriétaire a été soumise avec succès. 
+                    Un administrateur doit valider votre profil avant l'activation.
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Numéro de téléphone: {ownerStatus.phone}
+                  </p>
 
-                <div className="pt-4">
-                  <Button 
-                    onClick={() => navigate('/owner-dashboard')}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    Accéder au dashboard propriétaire
-                  </Button>
-                  
-                  <Button 
-                    onClick={() => navigate('/profile')}
-                    variant="outline"
-                    className="ml-4"
-                  >
-                    Retour au profil
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="pt-4">
+                    <Button 
+                      onClick={() => navigate('/profile')}
+                      variant="outline"
+                    >
+                      Retour au profil
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
-      </div>
-    );
+      );
+    }
+
+    // Approved status with CinetPay contact
+    if (ownerStatus.status === 'approved' && ownerStatus.cinetpay_contact_id) {
+      return (
+        <div className="min-h-screen bg-gray-50">
+          <Navbar />
+          <div className="container mx-auto px-4 py-8">
+            <div className="max-w-2xl mx-auto">
+              <Card className="border-green-200 bg-green-50 border-2">
+                <CardHeader className="text-center">
+                  <div className="flex justify-center mb-4">
+                    <CheckCircle className="w-6 h-6 text-green-500" />
+                  </div>
+                  <CardTitle className="text-2xl">Demande approuvée !</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center space-y-4">
+                  <p className="text-gray-700">
+                    Félicitations ! Vous êtes maintenant propriétaire. 
+                    Vous pouvez commencer à ajouter vos terrains.
+                  </p>
+
+                  <div className="pt-4">
+                    <Button 
+                      onClick={() => navigate('/owner-dashboard')}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      Accéder au dashboard propriétaire
+                    </Button>
+                    
+                    <Button 
+                      onClick={() => navigate('/profile')}
+                      variant="outline"
+                      className="ml-4"
+                    >
+                      Retour au profil
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Rejected status
+    if (ownerStatus.status === 'rejected') {
+      return (
+        <div className="min-h-screen bg-gray-50">
+          <Navbar />
+          <div className="container mx-auto px-4 py-8">
+            <div className="max-w-2xl mx-auto">
+              <Card className="border-red-200 bg-red-50 border-2">
+                <CardHeader className="text-center">
+                  <div className="flex justify-center mb-4">
+                    <div className="w-6 h-6 bg-red-500 rounded-full" />
+                  </div>
+                  <CardTitle className="text-2xl">Demande refusée</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center space-y-4">
+                  <p className="text-gray-700">
+                    Votre demande de propriétaire n'a pas été approuvée. 
+                    Contactez notre support pour plus d'informations.
+                  </p>
+
+                  <div className="pt-4">
+                    <Button 
+                      onClick={() => navigate('/profile')}
+                      variant="outline"
+                    >
+                      Retour au profil
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      );
+    }
   }
 
 

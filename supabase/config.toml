@@ -63,6 +63,15 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.owners-signup]
+verify_jwt = true
+
+[functions.admin-approve-owner]
+verify_jwt = false
+
+[functions.apply-migration]
+verify_jwt = false
+
+[functions.force-migration]
 verify_jwt = false
 
 [realtime]

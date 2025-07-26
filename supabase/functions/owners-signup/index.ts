@@ -65,6 +65,22 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
+    // Get user from JWT token
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing authorization header');
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      throw new Error('Invalid or expired token');
+    }
+
+    const userId = user.id;
+    console.log(`[${timestamp}] Authenticated user: ${userId}`);
+    
     // Parse request
     const { phone, otp_validated }: SignupRequest = await req.json();
     console.log(`[${timestamp}] Processing signup for phone: ${phone}`);
@@ -93,125 +109,92 @@ serve(async (req) => {
       );
     }
 
-    // Create CinetPay contact
-    let contactId: string;
-    
-    // Clean phone number for CinetPay (remove +225 and leading zeros)
-    const cleanedPhone = phone
-      .replace(/^\+?225/, '')
-      .replace(/^0+/, '');
+    console.log(`[${timestamp}] Creating pending owner (CinetPay contact will be created on admin approval)`);
 
-    console.log(`[${timestamp}] Phone cleaned: ${phone} → ${cleanedPhone}`);
+    // Create pending owner record (admin will approve and create CinetPay contact)
+    const ownerData: any = {
+      user_id: userId, // Real authenticated user ID
+      phone: phone,
+      mobile_money: phone, // Same as phone for "one number" approach
+      created_at: new Date().toISOString()
+    };
 
-    if (!isTestMode) {
-      try {
-        // Authenticate with CinetPay
-        const authResponse = await fetchWithTimeout('https://api-money-transfer.cinetpay.com/v2/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            login: cinetpayTransferLogin,
-            password: cinetpayTransferPwd
-          })
-        }, 10000); // Reduced timeout
+    // Try to add status if column exists, fallback to legacy format
+    try {
+      ownerData.status = 'pending';
+      ownerData.cinetpay_contact_id = null;
+      
+      console.log(`[${timestamp}] Owner data prepared:`, {
+        user_id: ownerData.user_id,
+        phone: ownerData.phone,
+        status: ownerData.status,
+        cinetpay_contact_id: ownerData.cinetpay_contact_id
+      });
+      
+      const { data: newOwner, error: ownerError } = await supabase
+        .from('owners')
+        .insert(ownerData)
+        .select('id')
+        .single();
 
-        if (!authResponse.ok) {
-          throw new Error(`CinetPay auth failed: ${authResponse.status}`);
+      if (ownerError) throw ownerError;
+      
+      console.log(`[${timestamp}] ✅ Pending owner created successfully: ${newOwner.id}`);
+      
+      const response: SignupResponse = {
+        success: true,
+        message: 'Owner application submitted successfully. Awaiting admin approval.',
+        owner_id: newOwner.id,
+        code: 'PENDING_APPROVAL',
+        retryable: false
+      };
+
+      return new Response(
+        JSON.stringify(response),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 201 
         }
+      );
+      
+    } catch (insertError: any) {
+      // If status column doesn't exist, fallback to legacy format
+      if (insertError.code === 'PGRST204' || insertError.message?.includes('status')) {
+        console.log(`[${timestamp}] Status column not found, creating legacy owner`);
+        
+        // Remove status-related fields for legacy insert
+        delete ownerData.status;
+        delete ownerData.cinetpay_contact_id;
+        
+        const { data: legacyOwner, error: legacyError } = await supabase
+          .from('owners')
+          .insert(ownerData)
+          .select('id')
+          .single();
 
-        const authData = await authResponse.json();
-        if (!authData.success) {
-          throw new Error(`CinetPay auth failed: ${authData.message}`);
-        }
-
-        // Create contact
-        const contactData = {
-          name: 'Proprietaire',
-          surname: '',
-          phone: cleanedPhone,
-          email: `owner-${Date.now()}@mysport.ci`,
-          country_prefix: '225'
+        if (legacyError) throw legacyError;
+        
+        console.log(`[${timestamp}] ✅ Legacy owner created successfully: ${legacyOwner.id}`);
+        
+        const legacyResponse: SignupResponse = {
+          success: true,
+          message: 'Owner account created successfully.',
+          owner_id: legacyOwner.id,
+          code: 'APPROVED', // Legacy format treats as immediately approved
+          retryable: false
         };
 
-        const contactResponse = await fetchWithTimeout('https://api-money-transfer.cinetpay.com/v2/contact', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authData.access_token}`
-          },
-          body: JSON.stringify(contactData)
-        }, 10000);
-
-        const contactResult = await contactResponse.json();
-        
-        if (!contactResult.success) {
-          throw new Error(`Failed to create CinetPay contact: ${contactResult.message}`);
-        }
-
-        contactId = contactResult.data.contact_id;
-        console.log(`[${timestamp}] CinetPay contact created: ${contactId}`);
-        
-      } catch (error) {
-        console.error(`[${timestamp}] CinetPay contact creation failed:`, error);
-        // In production mode, fail completely if CinetPay contact creation fails
-        throw new Error(`CinetPay contact creation failed: ${error.message}`);
-      }
-    } else {
-      // Test mode - simulate contact creation
-      contactId = `test_contact_${Date.now()}`;
-      console.log(`[${timestamp}] ⚠️ TEST MODE: Simulated contact ID: ${contactId}`);
-    }
-
-    // Validate that we have a valid contact ID before creating owner
-    if (!contactId) {
-      throw new Error(`Cannot create owner without valid CinetPay contact ID`);
-    }
-
-    // Create owner record with transaction-like behavior
-    let ownerData: any = {
-      user_id: '11111111-1111-1111-1111-111111111111', // Temporary fallback user_id
-    };
-    
-    // Try to add new columns if they exist
-    try {
-      ownerData.phone = phone;
-      ownerData.mobile_money = phone; // Same as phone for "one number" approach
-      ownerData.cinetpay_contact_id = contactId;
-    } catch (error) {
-      console.log(`[${timestamp}] Schema columns not available, using fallback`);
-      // In fallback mode, still require contact_id
-      if (!isTestMode) {
-        throw new Error(`Schema migration required: missing phone/cinetpay_contact_id columns`);
+        return new Response(
+          JSON.stringify(legacyResponse),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 201 
+          }
+        );
+      } else {
+        throw insertError;
       }
     }
-
-    const { data: newOwner, error: ownerError } = await supabase
-      .from('owners')
-      .insert(ownerData)
-      .select('id')
-      .single();
-
-    if (ownerError) {
-      console.error(`[${timestamp}] Owner creation failed:`, ownerError);
-      throw new Error(`Failed to create owner: ${ownerError.message}`);
-    }
-
-    console.log(`[${timestamp}] ✅ Owner created successfully: ${newOwner.id}`);
-
-    const response: SignupResponse = {
-      success: true,
-      message: 'Owner registered successfully',
-      owner_id: newOwner.id,
-      cinetpay_contact_id: contactId
-    };
-
-    return new Response(
-      JSON.stringify(response),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 201 
-      }
-    );
 
   } catch (error) {
     console.error(`[${timestamp}] Error:`, error);
