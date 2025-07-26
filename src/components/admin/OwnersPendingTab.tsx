@@ -5,6 +5,7 @@ import { CheckCircle, Phone, Calendar, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { approveOwnerWithCinetPay } from '@/utils/approveOwner';
 
 interface PendingOwner {
   id: string;
