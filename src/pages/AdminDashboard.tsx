@@ -4,7 +4,7 @@ import Navbar from '@/components/Navbar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, MapPin, BarChart3, Map } from 'lucide-react';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
-import { OwnerApplicationsTab } from '@/components/admin/OwnerApplicationsTab';
+import OwnerApplicationsTab from '@/components/admin/OwnerApplicationsTab';
 import { OwnersPendingTab } from '@/components/admin/OwnersPendingTab';
 import { FieldsManagementTab } from '@/components/admin/FieldsManagementTab';
 import { AdminStats } from '@/components/admin/AdminStats';

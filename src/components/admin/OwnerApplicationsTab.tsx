@@ -54,3 +54,5 @@ export const OwnerApplicationsTab: React.FC<OwnerApplicationsTabProps> = ({ hasA
     </Card>
   );
 };
+
+export default OwnerApplicationsTab;
