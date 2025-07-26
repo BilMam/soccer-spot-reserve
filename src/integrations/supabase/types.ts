@@ -503,23 +503,44 @@ export type Database = {
       }
       owners: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
+          cinetpay_contact_id: string | null
           created_at: string
           default_payout_account_id: string | null
           id: string
+          mobile_money: string
+          phone: string
+          rejection_reason: string | null
+          status: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          cinetpay_contact_id?: string | null
           created_at?: string
           default_payout_account_id?: string | null
           id?: string
+          mobile_money?: string
+          phone?: string
+          rejection_reason?: string | null
+          status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          cinetpay_contact_id?: string | null
           created_at?: string
           default_payout_account_id?: string | null
           id?: string
+          mobile_money?: string
+          phone?: string
+          rejection_reason?: string | null
+          status?: string
           updated_at?: string
           user_id?: string
         }
