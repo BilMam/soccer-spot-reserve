@@ -77,18 +77,20 @@ serve(async (req) => {
       throw new Error('Invalid authorization token');
     }
 
-    // Check if user is admin
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('user_type')
-      .eq('id', user.id)
-      .single();
+    // Check if user has admin role using the new role system
+    const { data: userRoles, error: rolesError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .in('role', ['super_admin', 'admin']);
 
-    if (profileError || !profile) {
-      throw new Error('User profile not found');
+    if (rolesError) {
+      console.error(`[${timestamp}] Error checking user roles:`, rolesError);
+      throw new Error('Error checking user permissions');
     }
 
-    if (profile.user_type !== 'admin') {
+    if (!userRoles || userRoles.length === 0) {
       throw new Error('Access denied: admin privileges required');
     }
 

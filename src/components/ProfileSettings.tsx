@@ -12,7 +12,6 @@ interface Profile {
   id: string;
   full_name: string;
   phone: string;
-  user_type: string;
 }
 
 interface ProfileSettingsProps {
