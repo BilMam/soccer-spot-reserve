@@ -64,6 +64,36 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
+    // Verify admin permissions via Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing authorization header');
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      throw new Error('Invalid authorization token');
+    }
+
+    // Check if user is admin
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('user_type')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      throw new Error('User profile not found');
+    }
+
+    if (profile.user_type !== 'admin') {
+      throw new Error('Access denied: admin privileges required');
+    }
+
+    console.log(`[${timestamp}] Admin ${user.id} authorized for owner approval`);
+    
     // Parse request
     const { owner_id, admin_notes }: ApprovalRequest = await req.json();
     console.log(`[${timestamp}] Processing approval for owner: ${owner_id}`);

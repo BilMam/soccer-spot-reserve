@@ -66,7 +66,7 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.admin-approve-owner]
-verify_jwt = false
+verify_jwt = true
 
 [functions.apply-migration]
 verify_jwt = false

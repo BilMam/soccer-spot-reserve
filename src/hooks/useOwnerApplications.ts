@@ -80,7 +80,7 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
         .eq('id', applicationData.user_id)
         .single();
 
-      // Approuver l'application
+      // Approuver l'application via la fonction RPC
       const { data, error } = await supabase.rpc('approve_owner_application', {
         application_id: applicationId
       });
