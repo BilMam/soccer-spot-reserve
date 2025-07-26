@@ -32,7 +32,10 @@ interface UserEditDialogProps {
 
 const roleTypes: { value: UserRoleType; label: string }[] = [
   { value: 'super_admin', label: 'Super Admin' },
-  { value: 'admin', label: 'Admin' },
+  { value: 'admin_general', label: 'Admin Général' },
+  { value: 'admin_fields', label: 'Admin Terrains' },
+  { value: 'admin_users', label: 'Admin Utilisateurs' },
+  { value: 'moderator', label: 'Modérateur' },
   { value: 'owner', label: 'Propriétaire' },
   { value: 'player', label: 'Joueur' }
 ];
