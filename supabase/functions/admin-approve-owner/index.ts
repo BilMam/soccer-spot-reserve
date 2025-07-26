@@ -101,7 +101,7 @@ serve(async (req) => {
     // Get pending owner
     const { data: owner, error: ownerError } = await supabase
       .from('owners')
-      .select('id, phone, mobile_money, status')
+      .select('id, phone, mobile_money, status, user_id')
       .eq('id', owner_id)
       .eq('status', 'pending')
       .single();
@@ -110,17 +110,34 @@ serve(async (req) => {
       throw new Error(`Owner not found or already processed: ${ownerError?.message}`);
     }
 
-    console.log(`[${timestamp}] Found pending owner: ${owner.id}, phone: ${owner.phone}`);
+    let phoneNumber = owner.phone;
+    
+    // If no phone in owner table, try to get it from application
+    if (!phoneNumber) {
+      const { data: application } = await supabase
+        .from('owner_applications')
+        .select('phone')
+        .eq('user_id', owner.user_id)
+        .single();
+      
+      phoneNumber = application?.phone;
+    }
+    
+    if (!phoneNumber) {
+      throw new Error('No phone number found for this owner. Please ensure the owner has a valid phone number.');
+    }
+
+    console.log(`[${timestamp}] Found pending owner: ${owner.id}, phone: ${phoneNumber}`);
 
     // Create CinetPay contact
     let contactId: string;
     
     // Clean phone number for CinetPay (remove +225 and leading zeros)
-    const cleanedPhone = owner.phone
+    const cleanedPhone = phoneNumber
       .replace(/^\+?225/, '')
       .replace(/^0+/, '');
 
-    console.log(`[${timestamp}] Phone cleaned: ${owner.phone} → ${cleanedPhone}`);
+    console.log(`[${timestamp}] Phone cleaned: ${phoneNumber} → ${cleanedPhone}`);
 
     if (!isTestMode) {
       try {
@@ -180,11 +197,13 @@ serve(async (req) => {
       console.log(`[${timestamp}] ⚠️ TEST MODE: Simulated contact ID: ${contactId}`);
     }
 
-    // Update owner status to approved with contact ID
+    // Update owner status to approved with contact ID and ensure phone is saved
     const { error: updateError } = await supabase
       .from('owners')
       .update({
         status: 'approved',
+        phone: phoneNumber, // Ensure phone is saved
+        mobile_money: phoneNumber, // Ensure mobile_money is also set
         cinetpay_contact_id: contactId,
         approved_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

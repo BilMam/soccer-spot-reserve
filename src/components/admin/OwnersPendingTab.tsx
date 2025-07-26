@@ -52,17 +52,25 @@ export const OwnersPendingTab: React.FC<OwnersPendingTabProps> = ({ hasAdminPerm
           .select('id, full_name, email')
           .in('id', userIds);
 
+        // Récupérer les applications correspondantes (si elles existent encore)
+        const { data: applicationsData } = await supabase
+          .from('owner_applications')
+          .select('user_id, phone, full_name')
+          .in('user_id', userIds);
+
         if (profilesError) {
           console.error('Error fetching profiles:', profilesError);
-          return ownersData.map(owner => ({ ...owner, full_name: undefined, email: undefined }));
         }
 
-        // Joindre les données
+        // Joindre les données et utiliser le téléphone de l'application si le owner n'en a pas
         const enrichedData = ownersData.map(owner => {
           const profile = profilesData?.find(p => p.id === owner.user_id);
+          const application = applicationsData?.find(a => a.user_id === owner.user_id);
+          
           return {
             ...owner,
-            full_name: profile?.full_name,
+            phone: owner.phone || application?.phone || 'Non renseigné',
+            full_name: profile?.full_name || application?.full_name || 'Nom non disponible',
             email: profile?.email
           };
         });
@@ -80,13 +88,25 @@ export const OwnersPendingTab: React.FC<OwnersPendingTabProps> = ({ hasAdminPerm
     mutationFn: async (ownerId: string) => {
       console.log('Attempting to approve owner via admin-approve-owner:', ownerId);
       
+      // Vérifier que le propriétaire a un numéro de téléphone
+      const owner = pendingOwners?.find(o => o.id === ownerId);
+      if (!owner?.phone || owner.phone === 'Non renseigné') {
+        throw new Error('Le propriétaire doit avoir un numéro de téléphone pour créer un contact CinetPay');
+      }
+      
       const { data, error } = await supabase.functions.invoke('admin-approve-owner', {
         body: { owner_id: ownerId }
       });
       
-      console.log('Edge function response:', { data, error });
+      console.log('Edge function full response:', { data, error });
+      
       if (error) {
-        console.error('Edge function error:', error);
+        console.error('Edge function error details:', error);
+        
+        // Try to get more details about the error
+        if (error.message?.includes('non-2xx status code')) {
+          throw new Error('Erreur d\'authentification ou de permission. Vérifiez que vous êtes bien admin.');
+        }
         throw error;
       }
       
@@ -113,8 +133,64 @@ export const OwnersPendingTab: React.FC<OwnersPendingTabProps> = ({ hasAdminPerm
     }
   });
 
+  const fixPhoneMutation = useMutation({
+    mutationFn: async (ownerId: string) => {
+      console.log('Attempting to fix phone number for owner:', ownerId);
+      
+      const owner = pendingOwners?.find(o => o.id === ownerId);
+      if (!owner?.user_id) {
+        throw new Error('Owner not found');
+      }
+
+      // Récupérer le numéro depuis l'application
+      const { data: application, error: appError } = await supabase
+        .from('owner_applications')
+        .select('phone')
+        .eq('user_id', owner.user_id)
+        .single();
+
+      if (appError || !application?.phone) {
+        throw new Error('Aucun numéro de téléphone trouvé dans l\'application');
+      }
+
+      // Mettre à jour le propriétaire avec le numéro
+      const { error: updateError } = await supabase
+        .from('owners')
+        .update({
+          phone: application.phone,
+          mobile_money: application.phone
+        })
+        .eq('id', ownerId);
+
+      if (updateError) {
+        throw new Error(`Erreur lors de la mise à jour: ${updateError.message}`);
+      }
+
+      return application.phone;
+    },
+    onSuccess: (phoneNumber) => {
+      toast({
+        title: "Numéro récupéré",
+        description: `Numéro de téléphone mis à jour: ${phoneNumber}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['owners-pending'] });
+    },
+    onError: (error: any) => {
+      console.error('Error fixing phone:', error);
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   const handleApprove = (ownerId: string) => {
     approveOwnerMutation.mutate(ownerId);
+  };
+
+  const handleFixPhone = (ownerId: string) => {
+    fixPhoneMutation.mutate(ownerId);
   };
 
   return (
@@ -166,14 +242,25 @@ export const OwnersPendingTab: React.FC<OwnersPendingTabProps> = ({ hasAdminPerm
                 </div>
 
                 <div className="flex space-x-2">
-                  <Button 
-                    onClick={() => handleApprove(owner.id)}
-                    disabled={approveOwnerMutation.isPending}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    {approveOwnerMutation.isPending ? 'Création CinetPay...' : 'Créer Contact CinetPay'}
-                  </Button>
+                  {owner.phone === 'Non renseigné' ? (
+                    <Button 
+                      onClick={() => handleFixPhone(owner.id)}
+                      disabled={fixPhoneMutation.isPending}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Phone className="w-4 h-4 mr-2" />
+                      {fixPhoneMutation.isPending ? 'Récupération...' : 'Récupérer le numéro'}
+                    </Button>
+                  ) : (
+                    <Button 
+                      onClick={() => handleApprove(owner.id)}
+                      disabled={approveOwnerMutation.isPending}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      {approveOwnerMutation.isPending ? 'Création CinetPay...' : 'Créer Contact CinetPay'}
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
