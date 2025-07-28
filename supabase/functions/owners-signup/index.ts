@@ -8,14 +8,15 @@ const corsHeaders = {
 
 interface SignupRequest {
   phone: string;
+  full_name: string;
+  phone_payout?: string;
   otp_validated: boolean;
 }
 
 interface SignupResponse {
   success: boolean;
   message: string;
-  owner_id?: string;
-  cinetpay_contact_id?: string;
+  application_id?: string;
   code?: string;
   retryable?: boolean;
 }
@@ -82,25 +83,30 @@ serve(async (req) => {
     console.log(`[${timestamp}] Authenticated user: ${userId}`);
     
     // Parse request
-    const { phone, otp_validated }: SignupRequest = await req.json();
+    const { phone, full_name, phone_payout, otp_validated }: SignupRequest = await req.json();
     console.log(`[${timestamp}] Processing signup for phone: ${phone}`);
 
     if (!otp_validated) {
       throw new Error('OTP must be validated before signup');
     }
 
-    // Check if owner already exists
-    const { data: existingOwner } = await supabase
-      .from('owners')
-      .select('id, phone')
-      .eq('phone', phone)
+    if (!full_name || full_name.trim().length < 2) {
+      throw new Error('Full name is required (minimum 2 characters)');
+    }
+
+    // Check if application already exists for this user
+    const { data: existingApplication } = await supabase
+      .from('owner_applications')
+      .select('id, status, phone')
+      .eq('user_id', userId)
       .maybeSingle();
 
-    if (existingOwner) {
+    if (existingApplication) {
       return new Response(
         JSON.stringify({
           success: false,
-          message: 'Owner already exists with this phone number'
+          message: `Application already exists with status: ${existingApplication.status}`,
+          code: 'APPLICATION_EXISTS'
         }),
         { 
           status: 409,
@@ -109,92 +115,75 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[${timestamp}] Creating pending owner (CinetPay contact will be created on admin approval)`);
+    // Check if phone number is already used by another application
+    const { data: existingPhone } = await supabase
+      .from('owner_applications')
+      .select('id, user_id')
+      .eq('phone', phone)
+      .maybeSingle();
 
-    // Create pending owner record (admin will approve and create CinetPay contact)
-    const ownerData: any = {
-      user_id: userId, // Real authenticated user ID
+    if (existingPhone && existingPhone.user_id !== userId) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: 'This phone number is already registered by another user',
+          code: 'PHONE_TAKEN'
+        }),
+        { 
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    console.log(`[${timestamp}] Creating owner application (awaiting admin approval)`);
+
+    // Create owner application record
+    const applicationData = {
+      user_id: userId,
+      full_name: full_name.trim(),
       phone: phone,
-      mobile_money: phone, // Same as phone for "one number" approach
+      phone_payout: phone_payout || phone, // Use provided payout phone or default to signup phone
+      phone_verified_at: new Date().toISOString(), // OTP was validated
+      status: 'pending',
       created_at: new Date().toISOString()
     };
 
-    // Try to add status if column exists, fallback to legacy format
-    try {
-      ownerData.status = 'pending';
-      ownerData.cinetpay_contact_id = null;
-      
-      console.log(`[${timestamp}] Owner data prepared:`, {
-        user_id: ownerData.user_id,
-        phone: ownerData.phone,
-        status: ownerData.status,
-        cinetpay_contact_id: ownerData.cinetpay_contact_id
-      });
-      
-      const { data: newOwner, error: ownerError } = await supabase
-        .from('owners')
-        .insert(ownerData)
-        .select('id')
-        .single();
+    console.log(`[${timestamp}] Application data prepared:`, {
+      user_id: applicationData.user_id,
+      full_name: applicationData.full_name,
+      phone: applicationData.phone,
+      status: applicationData.status
+    });
 
-      if (ownerError) throw ownerError;
-      
-      console.log(`[${timestamp}] ✅ Pending owner created successfully: ${newOwner.id}`);
-      
-      const response: SignupResponse = {
-        success: true,
-        message: 'Owner application submitted successfully. Awaiting admin approval.',
-        owner_id: newOwner.id,
-        code: 'PENDING_APPROVAL',
-        retryable: false
-      };
+    const { data: newApplication, error: applicationError } = await supabase
+      .from('owner_applications')
+      .insert(applicationData)
+      .select('id')
+      .single();
 
-      return new Response(
-        JSON.stringify(response),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 201 
-        }
-      );
-      
-    } catch (insertError: any) {
-      // If status column doesn't exist, fallback to legacy format
-      if (insertError.code === 'PGRST204' || insertError.message?.includes('status')) {
-        console.log(`[${timestamp}] Status column not found, creating legacy owner`);
-        
-        // Remove status-related fields for legacy insert
-        delete ownerData.status;
-        delete ownerData.cinetpay_contact_id;
-        
-        const { data: legacyOwner, error: legacyError } = await supabase
-          .from('owners')
-          .insert(ownerData)
-          .select('id')
-          .single();
-
-        if (legacyError) throw legacyError;
-        
-        console.log(`[${timestamp}] ✅ Legacy owner created successfully: ${legacyOwner.id}`);
-        
-        const legacyResponse: SignupResponse = {
-          success: true,
-          message: 'Owner account created successfully.',
-          owner_id: legacyOwner.id,
-          code: 'APPROVED', // Legacy format treats as immediately approved
-          retryable: false
-        };
-
-        return new Response(
-          JSON.stringify(legacyResponse),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 201 
-          }
-        );
-      } else {
-        throw insertError;
-      }
+    if (applicationError) {
+      console.error(`[${timestamp}] Error creating application:`, applicationError);
+      throw applicationError;
     }
+
+    console.log(`[${timestamp}] ✅ Owner application created successfully: ${newApplication.id}`);
+
+    const response: SignupResponse = {
+      success: true,
+      message: 'Votre demande a été soumise avec succès. Elle est en attente de validation par un administrateur.',
+      application_id: newApplication.id,
+      code: 'PENDING_APPROVAL',
+      retryable: false
+    };
+
+    return new Response(
+      JSON.stringify(response),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 201 
+      }
+    );
 
   } catch (error) {
     console.error(`[${timestamp}] Error:`, error);
@@ -208,8 +197,8 @@ serve(async (req) => {
       errorCode = 'CINETPAY_ERROR';
       retryable = true;
       status = 503; // Service Unavailable
-    } else if (error.message.includes('already exists')) {
-      errorCode = 'DUPLICATE_OWNER';
+    } else if (error.message.includes('already exists') || error.message.includes('APPLICATION_EXISTS')) {
+      errorCode = 'DUPLICATE_APPLICATION';
       retryable = false;
       status = 409; // Conflict
     } else if (error.message.includes('Schema migration required')) {

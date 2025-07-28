@@ -92,6 +92,26 @@ npm install
 npm run dev
 ```
 
+## 🧪 Tests
+
+Le projet inclut une suite de tests Jest complète couvrant le workflow d'approbation des propriétaires :
+
+```bash
+# Lancer tous les tests
+npm test
+
+# Lancer les tests en mode watch
+npm run test:watch
+```
+
+### Couverture de Tests (50+ tests)
+- **Owner Approval Workflow** : Tests du processus complet application → approbation → intégration CinetPay
+- **Payment Accounts Integration** : Tests de l'intégration avec CinetPay et gestion des comptes de paiement
+- **Edge Function Integration** : Tests des fonctions Edge (owners-signup, create-owner-contact, request-owner-otp)
+- **Database RPC Functions** : Tests des fonctions RPC (approve_owner_application, reject_owner_application)
+- **Error Handling** : Tests des cas d'erreur et validation des contraintes de base de données
+- **Security & Validation** : Tests des contraintes UNIQUE, permissions admin, validation OTP
+
 ## 🚀 Déploiement Edge Functions
 
 ```bash
@@ -117,34 +137,40 @@ supabase functions deploy check-cinetpay-transfers
 - **confirm-booking-owner** : Confirmation finale par le propriétaire
 - **cinetpay-webhook** : Webhook principal pour les notifications de paiement
 
+### Workflow Propriétaires (Nouveau)
+- **owners-signup** : Création d'application propriétaire avec vérification OTP
+- **request-owner-otp** : Demande de code OTP pour vérification téléphone
+- **create-owner-contact** : Ajout du contact propriétaire dans CinetPay après approbation admin
+
 ### Services auxiliaires
-- **create-owner-contact** : Ajout du contact propriétaire dans CinetPay
 - **send-sms-notification** : Envoi de notifications SMS
 
 ## 👤 Owner Onboarding - Nouveau Workflow en 3 Étapes
 
 Le système d'inscription des propriétaires suit maintenant un processus sécurisé en 3 étapes :
 
-### 1. **Application** (`owner_applications`)
-- Utilisateur s'inscrit via l'interface de candidature
-- Saisie des informations : téléphone, nom complet, payout
-- Vérification OTP obligatoire du numéro de téléphone
-- Statut : `pending` dans `owner_applications`
+### 1. **Application** (`owners-signup`)
+- Utilisateur s'inscrit via l'interface de candidature (`/become-owner`)
+- Saisie des informations : nom complet, téléphone, expérience, motivation
+- Vérification OTP obligatoire via `request-owner-otp`
+- Création dans `owner_applications` avec statut `pending`
+- Une seule application par utilisateur (contrainte UNIQUE sur `user_id`)
 
 ### 2. **Admin Approval** (Dashboard Admin)
 - Admin valide la demande dans l'onglet "Demandes de propriétaires"
 - RPC `approve_owner_application` vérifie :
   - ✅ Téléphone vérifié (`phone_verified_at` non null)
-  - ✅ Pas de doublon de téléphone
+  - ✅ Pas de doublon de téléphone dans `owners`
   - ✅ Permissions admin requises
 - Création automatique dans la table `owners` avec statut `approved`
 - Attribution du rôle `owner` dans `user_roles`
 
 ### 3. **CinetPay Integration** (`create-owner-contact`)
-- Appel automatique à l'Edge Function `create-owner-contact`
-- Création du contact dans CinetPay Transfer API
-- Enregistrement dans `payment_accounts` pour les payouts
+- Appel automatique à l'Edge Function `create-owner-contact` après approbation
+- Création du contact dans CinetPay Transfer API (ou mode test si credentials manquants)
+- Enregistrement dans `payment_accounts` avec `was_already_existing` flag
 - Gestion des cas d'erreur (contact déjà existant, API indisponible)
+- Contact creation can fail without blocking the approval
 
 ### Variables d'environnement requises
 
@@ -158,12 +184,15 @@ CINETPAY_API_KEY=your_api_key
 CINETPAY_SITE_ID=your_site_id
 ```
 
-### Contraintes de sécurité
+### Contraintes de sécurité et Intégrité
 
+- **UNIQUE** contraintes sur `user_id` dans `owner_applications` (une application par utilisateur)
 - **UNIQUE** contraintes sur `phone` dans `owner_applications` et `owners`
+- Index de performance : `idx_payment_accounts_lookup` pour les requêtes de paiement
 - Validation du format téléphone (Côte d'Ivoire +225)
 - Vérification OTP obligatoire avant approbation admin
-- Détection des doublons avant création du compte
+- Permissions admin requises pour approve/reject operations
+- Foreign key constraints pour l'intégrité référentielle
 
 ## Technologies utilisées
 

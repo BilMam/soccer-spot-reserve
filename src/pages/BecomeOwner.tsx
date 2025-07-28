@@ -29,43 +29,53 @@ const BecomeOwner = () => {
   const [showOtpDialog, setShowOtpDialog] = useState(false);
   const [otpPhone, setOtpPhone] = useState('');
 
-  // Vérifier le statut du propriétaire
+  // Vérifier le statut du propriétaire (nouveau flux owner_applications)
   const { data: ownerStatus, isLoading: checkingOwner } = useQuery({
-    queryKey: ['owner-status', user?.id],
+    queryKey: ['owner-application-status', user?.id],
     queryFn: async () => {
       if (!user) return null;
       
-      // Try to fetch with status column first
-      let { data, error } = await supabase
-        .from('owners')
-        .select('id, phone, status, cinetpay_contact_id, created_at')
+      // Chercher d'abord dans owner_applications (nouveau flux)
+      const { data: applicationData, error: appError } = await supabase
+        .from('owner_applications')
+        .select('id, phone, status, full_name, created_at, admin_notes')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      // If error is due to missing status column, fallback to old structure
-      if (error && error.code === 'PGRST203') {
-        console.log('Status column not found, falling back to legacy structure');
-        const { data: legacyData, error: legacyError } = await supabase
-          .from('owners')
-          .select('id, phone, cinetpay_contact_id, created_at')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        if (legacyError && legacyError.code !== 'PGRST116') {
-          console.error('Error fetching owner:', legacyError);
-          return null;
-        }
-        
-        // If owner exists in legacy format, treat as approved
-        return legacyData ? { ...legacyData, status: 'approved' } : null;
+      if (appError && appError.code !== 'PGRST116') {
+        console.error('Error fetching owner application:', appError);
       }
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching owner:', error);
+      // Si une application existe, la retourner
+      if (applicationData) {
+        return {
+          ...applicationData,
+          source: 'application'
+        };
+      }
+
+      // Sinon, vérifier la table owners (flux legacy ou propriétaires approuvés)
+      const { data: ownerData, error: ownerError } = await supabase
+        .from('owners')
+        .select('id, phone, status, created_at')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (ownerError && ownerError.code !== 'PGRST116') {
+        console.error('Error fetching owner:', ownerError);
         return null;
       }
 
-      return data;
+      // Si un propriétaire existe, le traiter comme approuvé
+      if (ownerData) {
+        return {
+          ...ownerData,
+          status: ownerData.status || 'approved', // Legacy owners sans status = approved
+          source: 'owner'
+        };
+      }
+
+      return null;
     },
     enabled: !!user
   });
@@ -105,6 +115,24 @@ const BecomeOwner = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.full_name.trim()) {
+      toast({
+        title: "Nom complet requis",
+        description: "Veuillez saisir votre nom complet",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.full_name.trim().length < 2) {
+      toast({
+        title: "Nom trop court",
+        description: "Le nom doit contenir au moins 2 caractères",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (!formData.phone) {
       toast({
         title: "Numéro de téléphone requis",
@@ -130,6 +158,8 @@ const BecomeOwner = () => {
       const { data, error } = await supabase.functions.invoke('owners-signup', {
         body: { 
           phone: formData.phone,
+          full_name: formData.full_name,
+          phone_payout: formData.phone, // Use same phone for payout
           otp_validated: true 
         },
         headers: {
@@ -150,9 +180,9 @@ const BecomeOwner = () => {
         if (data.code === 'CINETPAY_ERROR') {
           errorTitle = "Service temporairement indisponible";
           errorDescription = "Problème avec le service de paiement. Veuillez réessayer dans quelques minutes.";
-        } else if (data.code === 'DUPLICATE_OWNER') {
-          errorTitle = "Compte déjà existant";
-          errorDescription = "Un compte propriétaire existe déjà avec ce numéro.";
+        } else if (data.code === 'DUPLICATE_APPLICATION' || data.code === 'APPLICATION_EXISTS') {
+          errorTitle = "Demande déjà existante";
+          errorDescription = "Une demande propriétaire existe déjà pour ce compte.";
         } else if (data.code === 'SCHEMA_ERROR') {
           errorTitle = "Erreur système";
           errorDescription = "Mise à jour système en cours. Veuillez réessayer plus tard.";
@@ -169,10 +199,10 @@ const BecomeOwner = () => {
       }
 
       // Only proceed if signup was successful AND we have required data
-      if (!data.owner_id) {
+      if (!data.application_id) {
         toast({
           title: "Erreur de validation",
-          description: "Inscription incomplète. Veuillez réessayer.",
+          description: "Demande incomplète. Veuillez réessayer.",
           variant: "destructive",
         });
         return;
@@ -286,8 +316,8 @@ const BecomeOwner = () => {
       );
     }
 
-    // Approved status with CinetPay contact
-    if (ownerStatus.status === 'approved' && ownerStatus.cinetpay_contact_id) {
+    // Approved status (with or without CinetPay contact for legacy compatibility)
+    if (ownerStatus.status === 'approved') {
       return (
         <div className="min-h-screen bg-gray-50">
           <Navbar />

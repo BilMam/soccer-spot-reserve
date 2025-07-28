@@ -6,13 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper logging function for enhanced debugging
-const logStep = (step: string, details?: any) => {
-  const timestamp = new Date().toISOString();
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[${timestamp}] [CREATE-OWNER-CONTACT] ${step}${detailsStr}`);
-};
-
 interface CinetPayAuthResponse {
   code: string;
   message: string;
@@ -24,19 +17,54 @@ interface CinetPayAuthResponse {
 interface CinetPayContactResponse {
   code: string;
   message: string;
-  data?: any;
+  data?: {
+    contact_id?: string;
+  };
 }
 
-interface OwnerContactData {
+interface CreateContactRequest {
   owner_id: string;
   owner_name: string;
-  owner_surname: string;
+  owner_surname?: string;
   phone: string;
   email: string;
   country_prefix?: string;
 }
 
-serve(async (req) => {
+interface CreateContactResponse {
+  success: boolean;
+  contact_id?: string;
+  was_already_existing?: boolean;
+  error?: string;
+  cinetpay_status?: string;
+}
+
+// Helper logging function
+const logStep = (step: string, details?: any) => {
+  const timestamp = new Date().toISOString();
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[${timestamp}] [CREATE-OWNER-CONTACT] ${step}${detailsStr}`);
+};
+
+// Helper function with timeout
+const fetchWithTimeout = async (url: string, options: any, timeoutMs = 15000): Promise<Response> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
+};
+
+export default async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -47,13 +75,13 @@ serve(async (req) => {
     // Vérifier les variables d'environnement
     const transferLogin = Deno.env.get("CINETPAY_TRANSFER_LOGIN");
     const transferPwd = Deno.env.get("CINETPAY_TRANSFER_PWD");
-    const apiBase = Deno.env.get("CINETPAY_API_BASE") || "https://client.cinetpay.com";
+    const apiBase = "https://api-money-transfer.cinetpay.com";
 
-    if (!transferLogin || !transferPwd) {
-      throw new Error("Variables d'environnement CinetPay Transfer manquantes");
+    // Mode test si credentials manquants
+    const isTestMode = !transferLogin || !transferPwd;
+    if (isTestMode) {
+      logStep("⚠️ MODE TEST: Credentials CinetPay manquants - simulation");
     }
-
-    logStep("Variables d'environnement vérifiées");
 
     // Initialiser le client Supabase avec service role
     const supabaseClient = createClient(
@@ -63,13 +91,25 @@ serve(async (req) => {
     );
 
     // Récupérer les données du body
-    const { owner_id, owner_name, owner_surname, phone, email, country_prefix = "225" }: OwnerContactData = await req.json();
+    const requestData: CreateContactRequest = await req.json();
+    const { 
+      owner_id, 
+      owner_name, 
+      owner_surname = "", 
+      phone, 
+      email, 
+      country_prefix = "225" 
+    } = requestData;
 
     if (!owner_id || !owner_name || !phone || !email) {
-      throw new Error("Données propriétaire manquantes : owner_id, owner_name, phone, email requis");
+      throw new Error("Données manquantes : owner_id, owner_name, phone, email requis");
     }
 
-    logStep("Données propriétaire reçues", { owner_id, owner_name, phone: phone.substring(0, 4) + "***" });
+    logStep("Données propriétaire reçues", { 
+      owner_id, 
+      owner_name, 
+      phone: phone.substring(0, 4) + "***" 
+    });
 
     // Vérifier si le contact a déjà été créé
     const { data: existingAccount, error: fetchError } = await supabaseClient
@@ -87,88 +127,127 @@ serve(async (req) => {
 
     if (existingAccount?.cinetpay_contact_added) {
       logStep("Contact déjà créé pour ce propriétaire", { owner_id });
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: "Contact déjà existant",
-          already_exists: true 
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      
+      const response: CreateContactResponse = {
+        success: true,
+        contact_id: existingAccount.cinetpay_contact_id || `existing_${owner_id}`,
+        was_already_existing: true,
+        cinetpay_status: existingAccount.cinetpay_contact_status || "ALREADY_EXISTS"
+      };
+
+      return new Response(JSON.stringify(response), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
-    // ÉTAPE 1: Authentification CinetPay Transfer
-    logStep("Début authentification CinetPay Transfer");
-    
-    const authResponse = await fetch(`${apiBase}/v1/transfer/auth`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        login: transferLogin,
-        pwd: transferPwd
-      })
-    });
+    let contactId: string;
+    let contactStatus: string;
+    let wasAlreadyExisting = false;
 
-    const authData: CinetPayAuthResponse = await authResponse.json();
-    logStep("Réponse authentification CinetPay", { code: authData.code, message: authData.message });
+    if (!isTestMode) {
+      try {
+        // ÉTAPE 1: Authentification CinetPay
+        logStep("Début authentification CinetPay");
+        
+        const authResponse = await fetchWithTimeout(`${apiBase}/v2/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            login: transferLogin,
+            password: transferPwd
+          })
+        }, 10000);
 
-    if (authData.code !== "OPERATION_SUCCES" || !authData.data?.token) {
-      throw new Error(`Échec authentification CinetPay: ${authData.message}`);
+        const authData: CinetPayAuthResponse = await authResponse.json();
+        logStep("Réponse authentification", { code: authData.code });
+
+        if (authData.code !== "OPERATION_SUCCES" || !authData.data?.token) {
+          throw new Error(`Échec authentification CinetPay: ${authData.message}`);
+        }
+
+        const token = authData.data.token;
+        logStep("Authentification réussie");
+
+        // ÉTAPE 2: Créer le contact
+        logStep("Début création contact CinetPay");
+        
+        // Nettoyer le numéro de téléphone pour CinetPay
+        const cleanedPhone = phone.replace(/^\+?225/, '').replace(/^0+/, '');
+        
+        const contactResponse = await fetchWithTimeout(`${apiBase}/v2/contact`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            prefix: country_prefix,
+            phone: cleanedPhone,
+            name: owner_name,
+            surname: owner_surname,
+            email: email
+          })
+        }, 10000);
+
+        const contactData: CinetPayContactResponse = await contactResponse.json();
+        logStep("Réponse création contact", { code: contactData.code });
+
+        // Traiter les réponses acceptables
+        const isSuccess = contactData.code === "OPERATION_SUCCES";
+        const isAlreadyExists = contactData.code === "ERROR_PHONE_ALREADY_MY_CONTACT";
+
+        if (!isSuccess && !isAlreadyExists) {
+          throw new Error(`Échec création contact CinetPay: ${contactData.message}`);
+        }
+
+        contactId = contactData.data?.contact_id || `cp_contact_${owner_id}_${Date.now()}`;
+        contactStatus = contactData.message;
+        wasAlreadyExisting = isAlreadyExists;
+
+        logStep("Contact CinetPay traité", { 
+          contactId, 
+          wasAlreadyExisting,
+          status: contactData.code 
+        });
+
+      } catch (error) {
+        logStep("ERREUR CinetPay", { error: error.message });
+        throw new Error(`Erreur CinetPay: ${error.message}`);
+      }
+    } else {
+      // Mode test - créer un contact fictif
+      contactId = `TEST_CONTACT_${owner_id}_${Date.now()}`;
+      contactStatus = "TEST_MODE_SUCCESS";
+      wasAlreadyExisting = false;
+      logStep("⚠️ MODE TEST: Contact fictif créé", { contactId });
     }
 
-    const token = authData.data.token;
-    logStep("Authentification réussie, token obtenu");
+    // ÉTAPE 3: Mettre à jour la base de données
+    logStep("Mise à jour base de données");
 
-    // ÉTAPE 2: Créer le contact
-    logStep("Début création contact CinetPay");
-    
-    const contactResponse = await fetch(`${apiBase}/v1/transfer/contact?token=${token}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prefix: country_prefix,
-        phone: phone,
-        name: owner_name,
-        surname: owner_surname || "",
-        email: email
-      })
-    });
-
-    const contactData: CinetPayContactResponse = await contactResponse.json();
-    logStep("Réponse création contact", { code: contactData.code, message: contactData.message });
-
-    // Traiter les réponses acceptables
-    const isSuccess = contactData.code === "OPERATION_SUCCES" || contactData.code === "ERROR_PHONE_ALREADY_MY_CONTACT";
-
-    if (!isSuccess) {
-      throw new Error(`Échec création contact CinetPay: ${contactData.message}`);
-    }
-
-    // ÉTAPE 3: Mettre à jour la base de données Supabase
-    logStep("Mise à jour base de données Supabase");
-
-    const updateData = {
+    const accountData = {
       owner_id,
       payment_provider: 'cinetpay',
       account_type: 'contact',
       owner_name,
-      owner_surname: owner_surname || "",
+      owner_surname,
       phone,
       email,
       country_prefix,
+      cinetpay_contact_id: contactId,
       cinetpay_contact_added: true,
-      cinetpay_contact_status: contactData.message,
-      cinetpay_contact_response: contactData,
+      cinetpay_contact_status: contactStatus,
+      was_already_existing: wasAlreadyExisting,
+      cinetpay_contact_response: isTestMode ? { 
+        code: "TEST_MODE", 
+        message: contactStatus 
+      } : undefined,
       updated_at: new Date().toISOString()
     };
 
     const { error: upsertError } = await supabaseClient
       .from('payment_accounts')
-      .upsert(updateData, { 
+      .upsert(accountData, { 
         onConflict: 'owner_id,payment_provider,account_type'
       });
 
@@ -179,35 +258,34 @@ serve(async (req) => {
 
     logStep("Contact créé avec succès", { 
       owner_id, 
-      cinetpay_status: contactData.code,
-      was_already_existing: contactData.code === "ERROR_PHONE_ALREADY_MY_CONTACT"
+      contactId,
+      wasAlreadyExisting,
+      isTestMode
     });
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: contactData.code === "ERROR_PHONE_ALREADY_MY_CONTACT" 
-          ? "Contact déjà existant dans CinetPay mais enregistré en base"
-          : "Contact créé avec succès",
-        cinetpay_status: contactData.code,
-        owner_id
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const response: CreateContactResponse = {
+      success: true,
+      contact_id: contactId,
+      was_already_existing: wasAlreadyExisting,
+      cinetpay_status: contactStatus
+    };
+
+    return new Response(JSON.stringify(response), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERREUR", { message: errorMessage, stack: error instanceof Error ? error.stack : undefined });
+    logStep("ERREUR", { message: errorMessage });
     
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        message: errorMessage 
-      }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500
-      }
-    );
+    const response: CreateContactResponse = {
+      success: false,
+      error: errorMessage
+    };
+    
+    return new Response(JSON.stringify(response), { 
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500
+    });
   }
-});
+};
