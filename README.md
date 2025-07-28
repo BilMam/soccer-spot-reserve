@@ -121,6 +121,50 @@ supabase functions deploy check-cinetpay-transfers
 - **create-owner-contact** : Ajout du contact propriétaire dans CinetPay
 - **send-sms-notification** : Envoi de notifications SMS
 
+## 👤 Owner Onboarding - Nouveau Workflow en 3 Étapes
+
+Le système d'inscription des propriétaires suit maintenant un processus sécurisé en 3 étapes :
+
+### 1. **Application** (`owner_applications`)
+- Utilisateur s'inscrit via l'interface de candidature
+- Saisie des informations : téléphone, nom complet, payout
+- Vérification OTP obligatoire du numéro de téléphone
+- Statut : `pending` dans `owner_applications`
+
+### 2. **Admin Approval** (Dashboard Admin)
+- Admin valide la demande dans l'onglet "Demandes de propriétaires"
+- RPC `approve_owner_application` vérifie :
+  - ✅ Téléphone vérifié (`phone_verified_at` non null)
+  - ✅ Pas de doublon de téléphone
+  - ✅ Permissions admin requises
+- Création automatique dans la table `owners` avec statut `approved`
+- Attribution du rôle `owner` dans `user_roles`
+
+### 3. **CinetPay Integration** (`create-owner-contact`)
+- Appel automatique à l'Edge Function `create-owner-contact`
+- Création du contact dans CinetPay Transfer API
+- Enregistrement dans `payment_accounts` pour les payouts
+- Gestion des cas d'erreur (contact déjà existant, API indisponible)
+
+### Variables d'environnement requises
+
+```env
+# CinetPay Transfer API (obligatoire pour les payouts)
+CINETPAY_TRANSFER_LOGIN=your_transfer_login
+CINETPAY_TRANSFER_PWD=your_transfer_password
+
+# CinetPay Payment API (obligatoire pour les paiements)
+CINETPAY_API_KEY=your_api_key
+CINETPAY_SITE_ID=your_site_id
+```
+
+### Contraintes de sécurité
+
+- **UNIQUE** contraintes sur `phone` dans `owner_applications` et `owners`
+- Validation du format téléphone (Côte d'Ivoire +225)
+- Vérification OTP obligatoire avant approbation admin
+- Détection des doublons avant création du compte
+
 ## Technologies utilisées
 
 - **Frontend** : React, TypeScript, Tailwind CSS, Shadcn UI, Vite
