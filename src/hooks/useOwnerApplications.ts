@@ -117,64 +117,69 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
       }
 
       // Check if the approval was successful and if we need to create CinetPay contact
-      if (data?.success && data?.should_create_contact && data?.contact_data) {
-        try {
-          console.log('Creating CinetPay contact with data:', data.contact_data);
-          
-          // Call the create-owner-contact edge function
-          const { data: contactResponse, error: contactError } = await supabase.functions.invoke('create-owner-contact', {
-            body: data.contact_data
-          });
+      if (data) {
+        const approvalData = data as any;
+        
+        if (approvalData.should_create_contact && approvalData.contact_data) {
+          try {
+            console.log('Creating CinetPay contact with data:', approvalData.contact_data);
+            
+            // Call the create-owner-contact edge function
+            const { data: contactResponse, error: contactError } = await supabase.functions.invoke('create-owner-contact', {
+              body: approvalData.contact_data
+            });
 
-          if (contactError) {
-            console.error('CinetPay contact creation failed:', contactError);
-            // Don't throw here - approval was successful, contact creation is secondary
-            console.warn('Application approved but CinetPay contact creation failed');
-            
-            // Update data to reflect contact creation failure
-            data.contact_creation_failed = true;
-            data.contact_error = contactError.message;
-          } else if (contactResponse?.success) {
-            console.log('CinetPay contact created successfully:', contactResponse);
-            
-            // Update data to reflect successful contact creation
-            data.contact_created = true;
-            data.contact_id = contactResponse.contact_id;
-            data.was_already_existing = contactResponse.was_already_existing;
-          } else {
-            console.warn('CinetPay contact creation returned unsuccessful response:', contactResponse);
-            data.contact_creation_failed = true;
-            data.contact_error = contactResponse?.error || 'Unknown contact creation error';
+            if (contactError) {
+              console.error('CinetPay contact creation failed:', contactError);
+              // Don't throw here - approval was successful, contact creation is secondary
+              console.warn('Application approved but CinetPay contact creation failed');
+              
+              // Update data to reflect contact creation failure
+              approvalData.contact_creation_failed = true;
+              approvalData.contact_error = contactError.message;
+            } else if (contactResponse?.success) {
+              console.log('CinetPay contact created successfully:', contactResponse);
+              
+              // Update data to reflect successful contact creation
+              approvalData.contact_created = true;
+              approvalData.contact_id = contactResponse.contact_id;
+              approvalData.was_already_existing = contactResponse.was_already_existing;
+            } else {
+              console.warn('CinetPay contact creation returned unsuccessful response:', contactResponse);
+              approvalData.contact_creation_failed = true;
+              approvalData.contact_error = contactResponse?.error || 'Unknown contact creation error';
+            }
+          } catch (contactError: any) {
+            console.error('Error creating CinetPay contact:', contactError);
+            // Don't throw - approval was successful
+            approvalData.contact_creation_failed = true;
+            approvalData.contact_error = contactError.message;
           }
-        } catch (contactError) {
-          console.error('Error creating CinetPay contact:', contactError);
-          // Don't throw - approval was successful
-          data.contact_creation_failed = true;
-          data.contact_error = contactError.message;
+        } else {
+          console.log('Application approved without CinetPay contact requirement');
         }
-      } else if (data?.success) {
-        console.log('Application approved without CinetPay contact requirement');
       }
 
       return data;
     },
     onSuccess: (data) => {
       let description = "L'utilisateur est maintenant propriétaire.";
+      const approvalData = data as any;
       
-      if (data?.contact_created) {
-        description = data.was_already_existing 
+      if (approvalData?.contact_created) {
+        description = approvalData.was_already_existing 
           ? "L'utilisateur est maintenant propriétaire. Compte CinetPay existant réutilisé."
           : "L'utilisateur est maintenant propriétaire et son compte CinetPay a été créé.";
-      } else if (data?.contact_creation_failed) {
+      } else if (approvalData?.contact_creation_failed) {
         description = "L'utilisateur est maintenant propriétaire, mais la création du compte CinetPay a échoué. Veuillez réessayer manuellement.";
-      } else if (data?.should_create_contact) {
+      } else if (approvalData?.should_create_contact) {
         description = "L'utilisateur est maintenant propriétaire. Configuration CinetPay en cours...";
       }
       
       toast({
         title: "Demande approuvée ✔",
         description: description,
-        variant: data?.contact_creation_failed ? "destructive" : "default"
+        variant: approvalData?.contact_creation_failed ? "destructive" : "default"
       });
       queryClient.invalidateQueries({ queryKey: ['owner-applications-admin'] });
     },
@@ -204,8 +209,9 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
         throw new Error(error.message || 'Erreur lors du rejet');
       }
       
-      if (!data?.success) {
-        throw new Error(data?.error || 'Erreur lors du rejet');
+      const rejectionData = data as any;
+      if (!rejectionData?.success) {
+        throw new Error(rejectionData?.error || 'Erreur lors du rejet');
       }
       
       return data;

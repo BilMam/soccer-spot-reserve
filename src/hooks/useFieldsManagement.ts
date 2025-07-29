@@ -12,6 +12,8 @@ export const useFieldsManagement = (hasAdminPermissions: boolean) => {
     queryKey: ['fields-admin'],
     queryFn: async (): Promise<Field[]> => {
       try {
+        console.log('🔍 [DEBUG] Fetching fields with admin permissions:', hasAdminPermissions);
+        
         const { data, error } = await supabase
           .from('fields')
           .select(`
@@ -21,16 +23,26 @@ export const useFieldsManagement = (hasAdminPermissions: boolean) => {
           .order('created_at', { ascending: false });
 
         if (error) {
-          console.error('Error fetching fields:', error);
+          console.error('❌ Error fetching fields:', error);
           return [];
         }
+        
+        console.log('✅ [DEBUG] Fields fetched:', data?.length || 0, 'fields');
+        console.log('📊 [DEBUG] Active/Inactive breakdown:', {
+          total: data?.length || 0,
+          active: data?.filter(f => f.is_active).length || 0,
+          inactive: data?.filter(f => !f.is_active).length || 0
+        });
+        
         return data || [];
       } catch (error) {
-        console.error('Error fetching fields:', error);
+        console.error('❌ Error fetching fields:', error);
         return [];
       }
     },
-    enabled: hasAdminPermissions
+    enabled: hasAdminPermissions,
+    staleTime: 0,
+    gcTime: 0
   });
 
   const approveFieldMutation = useMutation({
