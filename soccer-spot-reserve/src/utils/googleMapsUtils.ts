@@ -279,7 +279,7 @@ export const createMarkerCluster = (map: any, markers: any[]) => {
   markers.forEach(marker => {
     let addedToCluster = false;
     
-    for (let cluster of clusters) {
+    for (const cluster of clusters) {
       if (getPixelDistance(marker, cluster.markers[0]) < clusterDistance) {
         cluster.markers.push(marker);
         addedToCluster = true;

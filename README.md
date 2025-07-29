@@ -92,6 +92,27 @@ npm install
 npm run dev
 ```
 
+## 🧪 Tests
+
+Le projet inclut une suite de tests Jest complète couvrant le workflow d'approbation des propriétaires :
+
+```bash
+# Lancer tous les tests
+npm test
+
+# Lancer les tests en mode watch
+npm run test:watch
+```
+
+### Couverture de Tests (80+ tests)
+- **Owner Approval Workflow** : Tests du processus complet application → approbation → intégration CinetPay
+- **Payment Accounts Integration** : Tests de l'intégration avec CinetPay et gestion des comptes de paiement
+- **Edge Function Integration** : Tests des fonctions Edge (owners-signup, create-owner-contact, request-owner-otp)
+- **Database RPC Functions** : Tests des fonctions RPC (approve_owner_application, reject_owner_application)
+- **Phone Normalization** : Tests complets de normalisation des numéros de téléphone (30+ tests)
+- **Error Handling** : Tests des cas d'erreur et validation des contraintes de base de données
+- **Security & Validation** : Tests des contraintes UNIQUE, permissions admin, validation OTP
+
 ## 🚀 Déploiement Edge Functions
 
 ```bash
@@ -117,9 +138,89 @@ supabase functions deploy check-cinetpay-transfers
 - **confirm-booking-owner** : Confirmation finale par le propriétaire
 - **cinetpay-webhook** : Webhook principal pour les notifications de paiement
 
+### Workflow Propriétaires (Nouveau)
+- **owners-signup** : Création d'application propriétaire avec vérification OTP
+- **request-owner-otp** : Demande de code OTP pour vérification téléphone
+- **create-owner-contact** : Ajout du contact propriétaire dans CinetPay après approbation admin
+
 ### Services auxiliaires
-- **create-owner-contact** : Ajout du contact propriétaire dans CinetPay
 - **send-sms-notification** : Envoi de notifications SMS
+
+## 👤 Owner Onboarding - Nouveau Workflow en 3 Étapes
+
+Le système d'inscription des propriétaires suit maintenant un processus sécurisé en 3 étapes :
+
+### 1. **Application** (`owners-signup`)
+- Utilisateur s'inscrit via l'interface de candidature (`/become-owner`)
+- Saisie des informations : nom complet, téléphone, expérience, motivation
+- Vérification OTP obligatoire via `request-owner-otp`
+- Création dans `owner_applications` avec statut `pending`
+- Une seule application par utilisateur (contrainte UNIQUE sur `user_id`)
+
+### 2. **Admin Approval** (Dashboard Admin)
+- Admin valide la demande dans l'onglet "Demandes de propriétaires"
+- RPC `approve_owner_application` vérifie :
+  - ✅ Téléphone vérifié (`phone_verified_at` non null)
+  - ✅ Pas de doublon de téléphone dans `owners`
+  - ✅ Permissions admin requises
+- Création automatique dans la table `owners` avec statut `approved`
+- Attribution du rôle `owner` dans `user_roles`
+
+### 3. **CinetPay Integration** (`create-owner-contact`)
+- Appel automatique à l'Edge Function `create-owner-contact` après approbation
+- Création du contact dans CinetPay Transfer API (ou mode test si credentials manquants)
+- Enregistrement dans `payment_accounts` avec `was_already_existing` flag
+- Gestion des cas d'erreur (contact déjà existant, API indisponible)
+- Contact creation can fail without blocking the approval
+
+## 📱 Normalisation des Numéros de Téléphone
+
+Le système inclut une normalisation automatique des numéros de téléphone ivoiriens pour assurer la cohérence des données et éviter les doublons.
+
+### Formats supportés en entrée
+- **International complet** : `+2250701234567`
+- **Sans le signe +** : `2250701234567`
+- **Format local avec zéro** : `0701234567`
+- **8 chiffres uniquement** : `70123456`
+- **Avec espaces/tirets** : `+225 07 01 23 45 67`, `07-01-23-45-67`
+
+### Format de sortie standardisé
+Tous les numéros sont normalisés au format **+225XXXXXXXX** pour :
+- Stockage en base de données (`owner_applications`, `owners`, `payment_accounts`)
+- Vérification des doublons
+- Affichage utilisateur
+
+### Validation stricte
+- Préfixes mobiles ivoiriens uniquement : **01** (Moov), **05** (MTN), **07/08/09** (Orange)
+- Exactement 8 chiffres après le préfixe pays
+- Rejet des numéros fixes ou étrangers
+
+### Intégration CinetPay  
+Pour les appels API CinetPay, les numéros sont convertis au format **XXXXXXXX** (8 chiffres sans +225).
+
+### Variables d'environnement requises
+
+```env
+# CinetPay Transfer API (obligatoire pour les payouts)
+CINETPAY_TRANSFER_LOGIN=your_transfer_login
+CINETPAY_TRANSFER_PWD=your_transfer_password
+
+# CinetPay Payment API (obligatoire pour les paiements)
+CINETPAY_API_KEY=your_api_key
+CINETPAY_SITE_ID=your_site_id
+```
+
+### Contraintes de sécurité et Intégrité
+
+- **UNIQUE** contraintes sur `user_id` dans `owner_applications` (une application par utilisateur)
+- **UNIQUE** contraintes sur `phone` dans `owner_applications` et `owners`
+- Index de performance : `idx_payment_accounts_lookup` pour les requêtes de paiement
+- **Normalisation automatique des numéros de téléphone** : tous les formats supportés (+225XXXXXXXX, 225XXXXXXXX, 0XXXXXXXX, XXXXXXXX)
+- Validation stricte des préfixes mobiles ivoiriens (01, 05, 07, 08, 09)
+- Vérification OTP obligatoire avant approbation admin
+- Permissions admin requises pour approve/reject operations
+- Foreign key constraints pour l'intégrité référentielle
+- Migration `was_already_existing` dans `payment_accounts` pour tracking des contacts CinetPay
 
 ## Technologies utilisées
 
