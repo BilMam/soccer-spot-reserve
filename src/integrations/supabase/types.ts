@@ -503,23 +503,44 @@ export type Database = {
       }
       owners: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
+          cinetpay_contact_id: string | null
           created_at: string
           default_payout_account_id: string | null
           id: string
+          mobile_money: string
+          phone: string
+          rejection_reason: string | null
+          status: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          cinetpay_contact_id?: string | null
           created_at?: string
           default_payout_account_id?: string | null
           id?: string
+          mobile_money?: string
+          phone?: string
+          rejection_reason?: string | null
+          status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          cinetpay_contact_id?: string | null
           created_at?: string
           default_payout_account_id?: string | null
           id?: string
+          mobile_money?: string
+          phone?: string
+          rejection_reason?: string | null
+          status?: string
           updated_at?: string
           user_id?: string
         }
@@ -739,7 +760,6 @@ export type Database = {
           id: string
           phone: string | null
           updated_at: string | null
-          user_type: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -749,7 +769,6 @@ export type Database = {
           id: string
           phone?: string | null
           updated_at?: string | null
-          user_type?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -759,7 +778,6 @@ export type Database = {
           id?: string
           phone?: string | null
           updated_at?: string | null
-          user_type?: string | null
         }
         Relationships: []
       }
@@ -1361,6 +1379,10 @@ export type Database = {
         Args: { "": string }
         Returns: string[]
       }
+      test_role_system: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       update_owner_stats_for_field: {
         Args: { field_uuid: string }
         Returns: undefined
@@ -1375,6 +1397,7 @@ export type Database = {
         | "moderator"
         | "owner"
         | "player"
+        | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1510,6 +1533,7 @@ export const Constants = {
         "moderator",
         "owner",
         "player",
+        "admin",
       ],
     },
   },

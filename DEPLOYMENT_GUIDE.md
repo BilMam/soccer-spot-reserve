@@ -3,14 +3,20 @@
 ## 📋 Pré-requis de Déploiement
 
 ### Variables d'Environnement Configurées ✅
-Toutes les variables nécessaires sont déjà configurées via `supabase secrets`:
 
+#### Supabase Edge Functions (configurées via `supabase secrets`) ✅
 - `CINETPAY_API_KEY` - Clé API CinetPay
 - `CINETPAY_SITE_ID` - ID du site CinetPay  
 - `CINETPAY_TRANSFER_LOGIN` - Login pour les virements CinetPay
 - `CINETPAY_TRANSFER_PWD` - Mot de passe pour les virements CinetPay
 - `FRONTEND_BASE_URL` - URL du frontend
 - `SUPABASE_*` - Configuration Supabase
+
+#### Vercel/Lovable Frontend (à configurer) ⚠️
+Variables requises dans l'interface Vercel/Lovable:
+- `NEXT_PUBLIC_SUPABASE_URL` - URL du projet Supabase
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Clé anonyme publique Supabase
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` - Clé API Google Maps (optionnel)
 
 ## 🚀 Étapes de Déploiement
 

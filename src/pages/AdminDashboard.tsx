@@ -4,7 +4,8 @@ import Navbar from '@/components/Navbar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, MapPin, BarChart3, Map } from 'lucide-react';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
-import { OwnerApplicationsTab } from '@/components/admin/OwnerApplicationsTab';
+import OwnerApplicationsTab from '@/components/admin/OwnerApplicationsTab';
+import { OwnersPendingTab } from '@/components/admin/OwnersPendingTab';
 import { FieldsManagementTab } from '@/components/admin/FieldsManagementTab';
 import { AdminStats } from '@/components/admin/AdminStats';
 import GeocodingDashboard from '@/components/admin/GeocodingDashboard';
@@ -55,6 +56,10 @@ const AdminDashboard = () => {
               <Users className="w-4 h-4" />
               <span>Demandes de propriétaires</span>
             </TabsTrigger>
+            <TabsTrigger value="pending-owners" className="flex items-center space-x-2">
+              <Users className="w-4 h-4" />
+              <span>Propriétaires (CinetPay)</span>
+            </TabsTrigger>
             <TabsTrigger value="fields" className="flex items-center space-x-2">
               <MapPin className="w-4 h-4" />
               <span>Terrains</span>
@@ -71,6 +76,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="applications">
             <OwnerApplicationsTab hasAdminPermissions={hasAdminPermissions} />
+          </TabsContent>
+
+          <TabsContent value="pending-owners">
+            <OwnersPendingTab hasAdminPermissions={hasAdminPermissions} />
           </TabsContent>
 
           <TabsContent value="fields">

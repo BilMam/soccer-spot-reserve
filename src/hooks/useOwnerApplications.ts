@@ -87,7 +87,29 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
     mutationFn: async (applicationId: string) => {
       console.log('Attempting to approve application:', applicationId);
       
+<<<<<<< HEAD
       // Approuver l'application via RPC
+=======
+      // Récupérer les détails de l'application avant approbation
+      const { data: applicationData, error: fetchError } = await supabase
+        .from('owner_applications')
+        .select('*')
+        .eq('id', applicationId)
+        .single();
+
+      if (fetchError || !applicationData) {
+        throw new Error('Impossible de récupérer les détails de l\'application');
+      }
+
+      // Récupérer le profil utilisateur
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('full_name, email, phone')
+        .eq('id', applicationData.user_id)
+        .single();
+
+      // Approuver l'application via la fonction RPC
+>>>>>>> origin/main
       const { data, error } = await supabase.rpc('approve_owner_application', {
         application_id: applicationId
       });

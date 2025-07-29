@@ -13,7 +13,6 @@ interface UserWithRoles {
   user_id: string;
   email: string;
   full_name: string;
-  user_type: string;
   roles: string[];
   created_at: string;
 }
@@ -33,8 +32,12 @@ interface UserEditDialogProps {
 
 const roleTypes: { value: UserRoleType; label: string }[] = [
   { value: 'super_admin', label: 'Super Admin' },
-  { value: 'admin_general', label: 'Admin' },
-  { value: 'owner', label: 'Propriétaire' }
+  { value: 'admin_general', label: 'Admin Général' },
+  { value: 'admin_fields', label: 'Admin Terrains' },
+  { value: 'admin_users', label: 'Admin Utilisateurs' },
+  { value: 'moderator', label: 'Modérateur' },
+  { value: 'owner', label: 'Propriétaire' },
+  { value: 'player', label: 'Joueur' }
 ];
 
 export const UserEditDialog: React.FC<UserEditDialogProps> = ({

@@ -36,18 +36,47 @@ export function PayoutAccountsManager() {
     phone: ''
   })
 
-  // Fetch payout accounts
+  // Fetch payout accounts for current user only
   const { data: accounts, isLoading } = useQuery({
     queryKey: ['payout-accounts'],
     queryFn: async () => {
+      // Get current user first
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Non authentifié')
+
+      console.log('🔍 Current user ID:', user.id)
+
+      // Get owner info for current user
+      const { data: ownerData } = await supabase
+        .from('owners')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!ownerData) {
+        console.log('⚠️ No owner found for user:', user.id)
+        return [] // Return empty array instead of throwing error
+      }
+
+      console.log('✅ Owner found:', ownerData.id)
+
+      // Fetch only payout accounts for this owner
       const { data, error } = await supabase
         .from('payout_accounts')
         .select('*')
+        .eq('owner_id', ownerData.id)
         .order('is_active', { ascending: false })
       
-      if (error) throw error
+      if (error) {
+        console.error('❌ Error fetching payout accounts:', error)
+        throw error
+      }
+
+      console.log('📊 Payout accounts found:', data?.length || 0)
       return data as PayoutAccount[]
-    }
+    },
+    staleTime: 0, // Always refetch
+    gcTime: 0 // Don't cache
   })
 
   // Fetch owner info

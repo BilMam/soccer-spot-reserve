@@ -9,7 +9,6 @@ interface UserWithRoles {
   user_id: string;
   email: string;
   full_name: string;
-  user_type: string;
   roles: string[];
   created_at: string;
 }
