@@ -87,9 +87,6 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
     mutationFn: async (applicationId: string) => {
       console.log('Attempting to approve application:', applicationId);
       
-<<<<<<< HEAD
-      // Approuver l'application via RPC
-=======
       // Récupérer les détails de l'application avant approbation
       const { data: applicationData, error: fetchError } = await supabase
         .from('owner_applications')
@@ -109,7 +106,6 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
         .single();
 
       // Approuver l'application via la fonction RPC
->>>>>>> origin/main
       const { data, error } = await supabase.rpc('approve_owner_application', {
         application_id: applicationId
       });
