@@ -66,7 +66,7 @@ const checkSlotsAvailability = async (
   parsedTimeSlot: { startTime: string; endTime: string }
 ): Promise<boolean> => {
   let isFieldAvailable = true;
-  let unavailableSlots = [];
+  const unavailableSlots = [];
   
   for (const slot of requiredSlots) {
     console.log(`\n🔍 → Vérification créneau ${slot.start}-${slot.end}`);

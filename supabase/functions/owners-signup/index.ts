@@ -21,8 +21,53 @@ interface SignupResponse {
   retryable?: boolean;
 }
 
+// Phone number normalization utility
+const normalizePhoneNumber = (phone: string): string | null => {
+  if (!phone || typeof phone !== 'string') {
+    return null;
+  }
+
+  // Remove all spaces, dashes, and other non-digit characters except +
+  const cleaned = phone.trim().replace(/[\s\-().]/g, '');
+  
+  // Handle different input formats
+  let digits = '';
+  
+  if (cleaned.startsWith('+225')) {
+    // Format: +225XXXXXXXX
+    digits = cleaned.substring(4);
+  } else if (cleaned.startsWith('225')) {
+    // Format: 225XXXXXXXX
+    digits = cleaned.substring(3);
+  } else if (cleaned.startsWith('0')) {
+    // Format: 0XXXXXXXX (local format with leading 0)
+    digits = cleaned.substring(1);
+  } else if (/^\d{8}$/.test(cleaned)) {
+    // Format: XXXXXXXX (8 digits only)
+    digits = cleaned;
+  } else {
+    // Invalid format
+    return null;
+  }
+
+  // Validate that we have exactly 8 digits
+  if (!/^\d{8}$/.test(digits)) {
+    return null;
+  }
+
+  // Validate Ivorian mobile prefixes (01, 05, 07, 08, 09)
+  const firstTwoDigits = digits.substring(0, 2);
+  const validPrefixes = ['01', '05', '07', '08', '09'];
+  
+  if (!validPrefixes.includes(firstTwoDigits)) {
+    return null;
+  }
+
+  return `+225${digits}`;
+};
+
 // Helper function with timeout
-const fetchWithTimeout = async (url: string, options: any, timeoutMs = 15000): Promise<Response> => {
+const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs = 15000): Promise<Response> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   
@@ -94,6 +139,20 @@ serve(async (req) => {
       throw new Error('Full name is required (minimum 2 characters)');
     }
 
+    // Normalize phone numbers for consistency
+    const normalizedPhone = normalizePhoneNumber(phone);
+    const normalizedPhonePayout = phone_payout ? normalizePhoneNumber(phone_payout) : normalizedPhone;
+
+    if (!normalizedPhone) {
+      throw new Error('Invalid phone number format. Must be a valid Ivorian mobile number.');
+    }
+
+    if (phone_payout && !normalizedPhonePayout) {
+      throw new Error('Invalid payout phone number format. Must be a valid Ivorian mobile number.');
+    }
+
+    console.log(`[${timestamp}] Normalized phone: ${normalizedPhone}, payout: ${normalizedPhonePayout}`);
+
     // Check if application already exists for this user
     const { data: existingApplication } = await supabase
       .from('owner_applications')
@@ -115,35 +174,68 @@ serve(async (req) => {
       );
     }
 
-    // Check if phone number is already used by another application
+    // Check if normalized phone number is already used by another application
     const { data: existingPhone } = await supabase
       .from('owner_applications')
-      .select('id, user_id')
-      .eq('phone', phone)
+      .select('id, user_id, phone')
       .maybeSingle();
 
-    if (existingPhone && existingPhone.user_id !== userId) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: 'This phone number is already registered by another user',
-          code: 'PHONE_TAKEN'
-        }),
-        { 
-          status: 409,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    // Since we can't use SQL functions easily, we'll fetch all applications and check in code
+    const { data: allApplications } = await supabase
+      .from('owner_applications')
+      .select('id, user_id, phone');
+
+    if (allApplications) {
+      for (const app of allApplications) {
+        const appNormalizedPhone = normalizePhoneNumber(app.phone);
+        if (appNormalizedPhone === normalizedPhone && app.user_id !== userId) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              message: 'This phone number is already registered by another user',
+              code: 'PHONE_TAKEN'
+            }),
+            { 
+              status: 409,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
         }
-      );
+      }
+    }
+
+    // Also check in owners table for duplicates
+    const { data: allOwners } = await supabase
+      .from('owners')
+      .select('id, user_id, phone');
+
+    if (allOwners) {
+      for (const owner of allOwners) {
+        const ownerNormalizedPhone = normalizePhoneNumber(owner.phone);
+        if (ownerNormalizedPhone === normalizedPhone && owner.user_id !== userId) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              message: 'This phone number is already registered by another owner',
+              code: 'PHONE_TAKEN'
+            }),
+            { 
+              status: 409,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
+      }
     }
 
     console.log(`[${timestamp}] Creating owner application (awaiting admin approval)`);
 
-    // Create owner application record
+    // Create owner application record with normalized phone numbers
     const applicationData = {
       user_id: userId,
       full_name: full_name.trim(),
-      phone: phone,
-      phone_payout: phone_payout || phone, // Use provided payout phone or default to signup phone
+      phone: normalizedPhone, // Use normalized phone
+      phone_payout: normalizedPhonePayout, // Use normalized payout phone
       phone_verified_at: new Date().toISOString(), // OTP was validated
       status: 'pending',
       created_at: new Date().toISOString()

@@ -4,6 +4,62 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+// Phone number normalization utility (shared with owners-signup)
+const normalizePhoneNumber = (phone: string): string | null => {
+  if (!phone || typeof phone !== 'string') {
+    return null;
+  }
+
+  // Remove all spaces, dashes, and other non-digit characters except +
+  const cleaned = phone.trim().replace(/[\s\-().]/g, '');
+  
+  // Handle different input formats
+  let digits = '';
+  
+  if (cleaned.startsWith('+225')) {
+    // Format: +225XXXXXXXX
+    digits = cleaned.substring(4);
+  } else if (cleaned.startsWith('225')) {
+    // Format: 225XXXXXXXX
+    digits = cleaned.substring(3);
+  } else if (cleaned.startsWith('0')) {
+    // Format: 0XXXXXXXX (local format with leading 0)
+    digits = cleaned.substring(1);
+  } else if (/^\d{8}$/.test(cleaned)) {
+    // Format: XXXXXXXX (8 digits only)
+    digits = cleaned;
+  } else {
+    // Invalid format
+    return null;
+  }
+
+  // Validate that we have exactly 8 digits
+  if (!/^\d{8}$/.test(digits)) {
+    return null;
+  }
+
+  // Validate Ivorian mobile prefixes (01, 05, 07, 08, 09)
+  const firstTwoDigits = digits.substring(0, 2);
+  const validPrefixes = ['01', '05', '07', '08', '09'];
+  
+  if (!validPrefixes.includes(firstTwoDigits)) {
+    return null;
+  }
+
+  return `+225${digits}`;
+};
+
+// Extract phone digits for CinetPay API (without +225)
+const extractPhoneDigits = (phone: string): string | null => {
+  const normalized = normalizePhoneNumber(phone);
+  if (!normalized) {
+    return null;
+  }
+  
+  // Remove +225 prefix to get 8 digits
+  return normalized.substring(4);
 };
 
 interface CinetPayAuthResponse {
@@ -40,14 +96,14 @@ interface CreateContactResponse {
 }
 
 // Helper logging function
-const logStep = (step: string, details?: any) => {
+const logStep = (step: string, details?: unknown) => {
   const timestamp = new Date().toISOString();
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[${timestamp}] [CREATE-OWNER-CONTACT] ${step}${detailsStr}`);
 };
 
 // Helper function with timeout
-const fetchWithTimeout = async (url: string, options: any, timeoutMs = 15000): Promise<Response> => {
+const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs = 15000): Promise<Response> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   
@@ -171,8 +227,14 @@ export default async (req: Request): Promise<Response> => {
         // ÉTAPE 2: Créer le contact
         logStep("Début création contact CinetPay");
         
-        // Nettoyer le numéro de téléphone pour CinetPay
-        const cleanedPhone = phone.replace(/^\+?225/, '').replace(/^0+/, '');
+        // Nettoyer le numéro de téléphone pour CinetPay (normalize and extract digits)
+        const cleanedPhone = extractPhoneDigits(phone);
+        
+        if (!cleanedPhone) {
+          throw new Error(`Numéro de téléphone invalide: ${phone}. Doit être un numéro mobile ivoirien valide.`);
+        }
+        
+        console.log(`[${timestamp}] Normalized phone: ${phone} -> ${cleanedPhone}`);
         
         const contactResponse = await fetchWithTimeout(`${apiBase}/v2/contact`, {
           method: 'POST',
@@ -225,13 +287,16 @@ export default async (req: Request): Promise<Response> => {
     // ÉTAPE 3: Mettre à jour la base de données
     logStep("Mise à jour base de données");
 
+    // Normalize phone for database storage
+    const normalizedPhone = normalizePhoneNumber(phone);
+    
     const accountData = {
       owner_id,
       payment_provider: 'cinetpay',
       account_type: 'contact',
       owner_name,
       owner_surname,
-      phone,
+      phone: normalizedPhone || phone, // Use normalized phone or fallback to original
       email,
       country_prefix,
       cinetpay_contact_id: contactId,
