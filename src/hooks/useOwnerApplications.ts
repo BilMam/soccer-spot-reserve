@@ -87,99 +87,24 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
     mutationFn: async (applicationId: string) => {
       console.log('Attempting to approve application:', applicationId);
       
-      // Récupérer les détails de l'application avant approbation
-      const { data: applicationData, error: fetchError } = await supabase
-        .from('owner_applications')
-        .select('*')
-        .eq('id', applicationId)
-        .single();
-
-      if (fetchError || !applicationData) {
-        throw new Error('Impossible de récupérer les détails de l\'application');
-      }
-
-      // Récupérer le profil utilisateur
-      const { data: userProfile } = await supabase
-        .from('profiles')
-        .select('full_name, email, phone')
-        .eq('id', applicationData.user_id)
-        .single();
-
-      // Approuver l'application via la fonction RPC
-      const { data, error } = await supabase.rpc('approve_owner_application', {
-        application_id: applicationId
-      });
-      
-      console.log('RPC response:', { data, error });
-      if (error) {
-        console.error('RPC Error details:', error);
-        throw new Error(error.message || 'Erreur lors de l\'approbation');
-      }
-
-      // Check if the approval was successful and if we need to create CinetPay contact
-      if (data) {
-        const approvalData = data as any;
-        
-        if (approvalData.should_create_contact && approvalData.contact_data) {
-          try {
-            console.log('Creating CinetPay contact with data:', approvalData.contact_data);
-            
-            // Call the create-owner-contact edge function
-            const { data: contactResponse, error: contactError } = await supabase.functions.invoke('create-owner-contact', {
-              body: approvalData.contact_data
-            });
-
-            if (contactError) {
-              console.error('CinetPay contact creation failed:', contactError);
-              // Don't throw here - approval was successful, contact creation is secondary
-              console.warn('Application approved but CinetPay contact creation failed');
-              
-              // Update data to reflect contact creation failure
-              approvalData.contact_creation_failed = true;
-              approvalData.contact_error = contactError.message;
-            } else if (contactResponse?.success) {
-              console.log('CinetPay contact created successfully:', contactResponse);
-              
-              // Update data to reflect successful contact creation
-              approvalData.contact_created = true;
-              approvalData.contact_id = contactResponse.contact_id;
-              approvalData.was_already_existing = contactResponse.was_already_existing;
-            } else {
-              console.warn('CinetPay contact creation returned unsuccessful response:', contactResponse);
-              approvalData.contact_creation_failed = true;
-              approvalData.contact_error = contactResponse?.error || 'Unknown contact creation error';
-            }
-          } catch (contactError: any) {
-            console.error('Error creating CinetPay contact:', contactError);
-            // Don't throw - approval was successful
-            approvalData.contact_creation_failed = true;
-            approvalData.contact_error = contactError.message;
-          }
-        } else {
-          console.log('Application approved without CinetPay contact requirement');
+      // Utiliser l'edge function approve-owner-request qui gère tout le flux
+      const { data, error } = await supabase.functions.invoke('approve-owner-request', {
+        body: { 
+          application_id: applicationId
         }
+      });
+
+      if (error) {
+        console.error('Edge Function Error:', error);
+        throw error;
       }
 
       return data;
     },
     onSuccess: (data) => {
-      let description = "L'utilisateur est maintenant propriétaire.";
-      const approvalData = data as any;
-      
-      if (approvalData?.contact_created) {
-        description = approvalData.was_already_existing 
-          ? "L'utilisateur est maintenant propriétaire. Compte CinetPay existant réutilisé."
-          : "L'utilisateur est maintenant propriétaire et son compte CinetPay a été créé.";
-      } else if (approvalData?.contact_creation_failed) {
-        description = "L'utilisateur est maintenant propriétaire, mais la création du compte CinetPay a échoué. Veuillez réessayer manuellement.";
-      } else if (approvalData?.should_create_contact) {
-        description = "L'utilisateur est maintenant propriétaire. Configuration CinetPay en cours...";
-      }
-      
       toast({
-        title: "Demande approuvée ✔",
-        description: description,
-        variant: approvalData?.contact_creation_failed ? "destructive" : "default"
+        title: "Demande approuvée",
+        description: "L'utilisateur est maintenant propriétaire et son compte CinetPay a été configuré.",
       });
       queryClient.invalidateQueries({ queryKey: ['owner-applications-admin'] });
     },

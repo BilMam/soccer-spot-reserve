@@ -12,7 +12,7 @@ export const useOwnerPaymentAccount = () => {
       if (!user) throw new Error('Utilisateur non connecté');
 
       const { data, error } = await supabase
-        .from('payment_accounts')
+        .from('payout_accounts')
         .select('*')
         .eq('owner_id', user.id)
         .maybeSingle();
