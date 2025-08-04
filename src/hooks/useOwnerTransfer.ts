@@ -45,7 +45,7 @@ export const useOwnerTransfer = () => {
   });
 };
 
-// Fonction utilitaire pour déclencher automatiquement le transfert (nouvelle version optimisée)
+// Fonction utilitaire pour déclencher automatiquement le payout (nouvelle version optimisée)
 export const triggerOwnerTransferOnConfirmation = async (bookingId: string) => {
   try {
     console.log('🔄 Déclenchement automatique payout pour booking:', bookingId);

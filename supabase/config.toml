@@ -19,14 +19,9 @@ port = 54322
 shadow_port = 54320
 major_version = 15
 
+# FONCTIONS ACTIVES POUR LE SYSTÈME MYSPORT
 
 [functions.approve-owner-request]
-verify_jwt = false
-
-[functions.verify-owner-otp]
-verify_jwt = false
-
-[functions.request-owner-otp]
 verify_jwt = false
 
 [functions.create-field]
@@ -62,20 +57,7 @@ verify_jwt = false
 [functions.cleanup-expired-bookings]
 verify_jwt = false
 
-[functions.owners-signup]
-verify_jwt = true
-
 [functions.create-owner-contact]
-verify_jwt = false
-
-[functions.migrate-legacy-owners]
-verify_jwt = false
-
-
-[functions.apply-migration]
-verify_jwt = false
-
-[functions.force-migration]
 verify_jwt = false
 
 [realtime]
@@ -89,7 +71,6 @@ file_size_limit = "50MiB"
 enabled = false
 port = 54327
 vector_port = 54328
-
 
 [experimental]
 orioledb_version = ""
