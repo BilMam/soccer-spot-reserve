@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, CheckCircle, Clock, Smartphone, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useOwnerPaymentAccount } from '@/hooks/useOwnerPaymentAccount';
 
 const CinetPayOnboarding = () => {
   const { user } = useAuth();
@@ -23,25 +23,7 @@ const CinetPayOnboarding = () => {
     address: ''
   });
 
-  const { data: paymentAccount, isLoading, refetch } = useQuery({
-    queryKey: ['payment-account', user?.id],
-    queryFn: async () => {
-      if (!user) return null;
-      
-      const { data, error } = await supabase
-        .from('payment_accounts')
-        .select('*')
-        .eq('owner_id', user.id)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-      
-      return data;
-    },
-    enabled: !!user
-  });
+  const { data: paymentAccount, isLoading, refetch } = useOwnerPaymentAccount();
 
   const handleCreateMerchantAccount = async (e: React.FormEvent) => {
     e.preventDefault();
