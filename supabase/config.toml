@@ -60,6 +60,9 @@ verify_jwt = false
 [functions.create-owner-contact]
 verify_jwt = false
 
+[functions.paydunya-ipn]
+verify_jwt = false
+
 [realtime]
 enabled = true
 
