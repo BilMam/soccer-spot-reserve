@@ -105,7 +105,11 @@ const Checkout = () => {
         throw new Error(`Impossible de créer la réservation: ${bookingError.message}`);
       }
 
-      // Créer le paiement CinetPay
+      // Feature flag pour PayDunya vs CinetPay (Preview uniquement)
+      const PAYMENT_PROVIDER_DEFAULT = import.meta.env.VITE_PAYMENT_PROVIDER_DEFAULT || 'cinetpay';
+      const isPayDunya = PAYMENT_PROVIDER_DEFAULT === 'paydunya';
+      
+      // Créer le paiement avec le provider sélectionné
       const paymentRequestData = {
         booking_id: booking.id,
         amount: checkoutData.totalPrice,
@@ -115,6 +119,7 @@ const Checkout = () => {
       };
 
       console.log('🔍 Debug paymentRequestData:', paymentRequestData);
+      console.log('🔍 Payment Provider:', isPayDunya ? 'PayDunya' : 'CinetPay');
       console.log('🔍 booking.id:', booking.id);
       console.log('🔍 checkoutData.totalPrice:', checkoutData.totalPrice);
       console.log('🔍 field.name:', field.name);
@@ -122,12 +127,19 @@ const Checkout = () => {
       console.log('🔍 selectedStartTime:', checkoutData.selectedStartTime);
       console.log('🔍 selectedEndTime:', checkoutData.selectedEndTime);
 
-      const response = await fetch('https://zldawmyoscicxoiqvfpu.supabase.co/functions/v1/create-cinetpay-payment', {
+      // Utiliser la bonne URL selon le provider
+      const paymentEndpoint = isPayDunya 
+        ? 'https://qhrxetwdnwxbchdupitq.functions.supabase.co/create-paydunya-invoice'
+        : 'https://zldawmyoscicxoiqvfpu.supabase.co/functions/v1/create-cinetpay-payment';
+
+      const response = await fetch(paymentEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsZGF3bXlvc2NpY3hvaXF2ZnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MjY5NDAsImV4cCI6MjA2NTUwMjk0MH0.kKLUE9qwd4eCiegvGYvM3TKTPp8PuyycGp5L3wsUJu4'
+          'apikey': isPayDunya 
+            ? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFocnhldHdkbnd4YmNoZHVwaXRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk0MTk1ODAsImV4cCI6MjA2NDk5NTU4MH0.Q4PVkDOxFFnyDVJzQOCnNvMzlmh_bLYzE9PdF7n38o8'
+            : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsZGF3bXlvc2NpY3hvaXF2ZnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MjY5NDAsImV4cCI6MjA2NTUwMjk0MH0.kKLUE9qwd4eCiegvGYvM3TKTPp8PuyycGp5L3wsUJu4'
         },
         body: JSON.stringify(paymentRequestData)
       });
@@ -143,17 +155,18 @@ const Checkout = () => {
         throw new Error('URL de paiement non générée');
       }
 
-      // Rediriger vers CinetPay
+      // Rediriger vers le provider de paiement
       setTimeout(() => {
         window.location.href = paymentData.url;
       }, 1500);
 
-      return { booking, paymentUrl: paymentData.url };
+      return { booking, paymentUrl: paymentData.url, provider: isPayDunya ? 'PayDunya' : 'CinetPay' };
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      const provider = data?.provider || 'le fournisseur de paiement';
       toast({
         title: "Redirection vers le paiement",
-        description: `Vous allez être redirigé vers CinetPay pour payer ${checkoutData?.totalPrice.toLocaleString()} XOF`,
+        description: `Vous allez être redirigé vers ${provider} pour payer ${checkoutData?.totalPrice.toLocaleString()} XOF`,
         duration: 2000
       });
     },

@@ -16,6 +16,8 @@ interface PayoutResponse {
   payout_id?: string;
   amount?: number;
   cinetpay_transfer_id?: string;
+  provider_transfer_id?: string;
+  payment_provider?: string;
 }
 
 // Helper function with timeout
@@ -50,15 +52,12 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const cinetpayTransferLogin = Deno.env.get('CINETPAY_TRANSFER_LOGIN');
     const cinetpayTransferPwd = Deno.env.get('CINETPAY_TRANSFER_PWD');
+    const paydunya_master_key = Deno.env.get('PAYDUNYA_MASTER_KEY');
+    const paydunya_private_key = Deno.env.get('PAYDUNYA_PRIVATE_KEY');
+    const paydunya_token = Deno.env.get('PAYDUNYA_TOKEN');
     
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing Supabase configuration');
-    }
-
-    // Test mode if CinetPay credentials are missing
-    const isTestMode = !cinetpayTransferLogin || !cinetpayTransferPwd;
-    if (isTestMode) {
-      console.log(`[${timestamp}] ⚠️ TEST MODE: CinetPay credentials missing - will simulate transfers`);
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -74,6 +73,7 @@ serve(async (req) => {
         id,
         owner_amount,
         payment_status,
+        payment_provider,
         payout_sent,
         fields!inner (
           id,
@@ -82,6 +82,7 @@ serve(async (req) => {
           owners!inner (
             id,
             phone,
+            mobile_money,
             cinetpay_contact_id
           )
         )
@@ -95,7 +96,8 @@ serve(async (req) => {
     }
 
     const owner = bookingData.fields.owners;
-    console.log(`[${timestamp}] Found owner: ${owner.id}, phone: ${owner.phone}`);
+    const paymentProvider = bookingData.payment_provider || 'cinetpay'; // Default to cinetpay for backward compatibility
+    console.log(`[${timestamp}] Found owner: ${owner.id}, phone: ${owner.phone}, payment_provider: ${paymentProvider}`);
 
     // Step 2: Check for existing payout (idempotency)
     const { data: existingPayout } = await supabase
@@ -121,14 +123,20 @@ serve(async (req) => {
       console.log(`[${timestamp}] Retrying existing payout: ${existingPayout.id}`);
     }
 
-    // Step 3: Validate CinetPay contact exists
-    const contactId = owner.cinetpay_contact_id;
-    
-    if (!contactId) {
-      throw new Error(`Owner ${owner.id} has no CinetPay contact. Owner must be registered through signup flow.`);
+    // Step 3: Validate provider-specific contact info
+    if (paymentProvider === 'paydunya') {
+      if (!owner.mobile_money) {
+        throw new Error(`Owner ${owner.id} has no mobile money number for PayDunya transfers.`);
+      }
+      console.log(`[${timestamp}] Using PayDunya with mobile_money: ${owner.mobile_money}`);
+    } else {
+      // CinetPay validation
+      const contactId = owner.cinetpay_contact_id;
+      if (!contactId) {
+        throw new Error(`Owner ${owner.id} has no CinetPay contact. Owner must be registered through signup flow.`);
+      }
+      console.log(`[${timestamp}] [refactor] contact creation logic removed – using existing contact_id only: ${contactId}`);
     }
-    
-    console.log(`[${timestamp}] [refactor] contact creation logic removed – using existing contact_id only: ${contactId}`);
 
     // Step 4: Create or update payout record
     let payoutId = existingPayout?.id;
@@ -154,89 +162,166 @@ serve(async (req) => {
       console.log(`[${timestamp}] Payout created: ${payoutId}`);
     }
 
-    // Step 5: Execute transfer
+    // Step 5: Execute transfer based on payment provider
     let transferResult;
     let transferId;
 
-    if (isTestMode) {
-      // Simulate successful transfer
-      transferResult = {
-        code: '00',
-        success: true,
-        message: 'Transfer completed successfully (test mode)',
-        transaction_id: `test_transfer_${payoutId}`,
-        amount: bookingData.owner_amount
-      };
-      transferId = transferResult.transaction_id;
+    if (paymentProvider === 'paydunya') {
+      // PayDunya Transfer
+      const isPayDunyaTestMode = !paydunya_master_key || !paydunya_private_key || !paydunya_token;
       
-      console.log(`[${timestamp}] ⚠️ TEST MODE: Simulated transfer of ${bookingData.owner_amount} XOF`);
-    } else {
-      // Real CinetPay transfer
-      try {
-        // Authenticate with CinetPay
-        const authResponse = await fetchWithTimeout('https://api-money-transfer.cinetpay.com/v2/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            login: cinetpayTransferLogin,
-            password: cinetpayTransferPwd
-          })
-        });
-
-        if (!authResponse.ok) {
-          throw new Error(`CinetPay auth failed: ${authResponse.status}`);
-        }
-
-        const authData = await authResponse.json();
-        if (!authData.success) {
-          throw new Error(`CinetPay auth failed: ${authData.message}`);
-        }
-
-        // Execute transfer
-        const transferData = {
-          amount: Math.round(bookingData.owner_amount),
-          client_transaction_id: payoutId,
-          contact_id: contactId,
-          currency: 'XOF',
-          description: `MySport payout - ${bookingData.fields.name}`,
-          notify_url: `${supabaseUrl}/functions/v1/cinetpay-transfer-webhook`
+      if (isPayDunyaTestMode) {
+        // Simulate successful PayDunya transfer
+        transferResult = {
+          response_code: '00',
+          success: true,
+          response_text: 'Transfer completed successfully (PayDunya test mode)',
+          transaction_id: `paydunya_test_transfer_${payoutId}`,
+          amount: bookingData.owner_amount
         };
-
-        const transferResponse = await fetchWithTimeout('https://api-money-transfer.cinetpay.com/v2/transfer', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authData.access_token}`
-          },
-          body: JSON.stringify(transferData)
-        });
-
-        transferResult = await transferResponse.json();
         transferId = transferResult.transaction_id;
         
-        console.log(`[${timestamp}] CinetPay transfer response:`, transferResult);
-      } catch (error) {
-        console.error(`[${timestamp}] Transfer failed:`, error);
+        console.log(`[${timestamp}] ⚠️ PAYDUNYA TEST MODE: Simulated transfer of ${bookingData.owner_amount} XOF`);
+      } else {
+        // Real PayDunya transfer
+        try {
+          const transferData = {
+            account_alias: owner.mobile_money,
+            amount: Math.round(bookingData.owner_amount),
+            withdraw_mode: "PER" // Perfect Money withdrawal mode
+          };
+
+          console.log(`[${timestamp}] PayDunya transfer data:`, transferData);
+
+          const transferResponse = await fetchWithTimeout('https://app.paydunya.com/sandbox-api/v1/direct-pay/credit-account', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'PAYDUNYA-MASTER-KEY': paydunya_master_key,
+              'PAYDUNYA-PRIVATE-KEY': paydunya_private_key,
+              'PAYDUNYA-TOKEN': paydunya_token
+            },
+            body: JSON.stringify(transferData)
+          });
+
+          transferResult = await transferResponse.json();
+          transferId = transferResult.transaction_id || transferResult.response_data?.transaction_id;
+          
+          console.log(`[${timestamp}] PayDunya transfer response:`, transferResult);
+        } catch (error) {
+          console.error(`[${timestamp}] PayDunya transfer failed:`, error);
+          transferResult = {
+            success: false,
+            response_text: error.message,
+            response_code: 'ERROR'
+          };
+        }
+      }
+    } else {
+      // CinetPay Transfer (existing logic)
+      const isCinetPayTestMode = !cinetpayTransferLogin || !cinetpayTransferPwd;
+      
+      if (isCinetPayTestMode) {
+        // Simulate successful transfer
         transferResult = {
-          success: false,
-          message: error.message,
-          code: 'ERROR'
+          code: '00',
+          success: true,
+          message: 'Transfer completed successfully (CinetPay test mode)',
+          transaction_id: `cinetpay_test_transfer_${payoutId}`,
+          amount: bookingData.owner_amount
         };
+        transferId = transferResult.transaction_id;
+        
+        console.log(`[${timestamp}] ⚠️ CINETPAY TEST MODE: Simulated transfer of ${bookingData.owner_amount} XOF`);
+      } else {
+        // Real CinetPay transfer
+        const contactId = owner.cinetpay_contact_id;
+        try {
+          // Authenticate with CinetPay
+          const authResponse = await fetchWithTimeout('https://api-money-transfer.cinetpay.com/v2/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              login: cinetpayTransferLogin,
+              password: cinetpayTransferPwd
+            })
+          });
+
+          if (!authResponse.ok) {
+            throw new Error(`CinetPay auth failed: ${authResponse.status}`);
+          }
+
+          const authData = await authResponse.json();
+          if (!authData.success) {
+            throw new Error(`CinetPay auth failed: ${authData.message}`);
+          }
+
+          // Execute transfer
+          const transferData = {
+            amount: Math.round(bookingData.owner_amount),
+            client_transaction_id: payoutId,
+            contact_id: contactId,
+            currency: 'XOF',
+            description: `MySport payout - ${bookingData.fields.name}`,
+            notify_url: `${supabaseUrl}/functions/v1/cinetpay-transfer-webhook`
+          };
+
+          const transferResponse = await fetchWithTimeout('https://api-money-transfer.cinetpay.com/v2/transfer', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authData.access_token}`
+            },
+            body: JSON.stringify(transferData)
+          });
+
+          transferResult = await transferResponse.json();
+          transferId = transferResult.transaction_id;
+          
+          console.log(`[${timestamp}] CinetPay transfer response:`, transferResult);
+        } catch (error) {
+          console.error(`[${timestamp}] CinetPay transfer failed:`, error);
+          transferResult = {
+            success: false,
+            message: error.message,
+            code: 'ERROR'
+          };
+        }
       }
     }
 
     // Step 6: Update payout status
-    const newStatus = transferResult.success && transferResult.code === '00' ? 'completed' : 'failed';
-    const shouldMarkBookingSent = newStatus === 'completed';
+    let newStatus, shouldMarkBookingSent;
+    
+    if (paymentProvider === 'paydunya') {
+      // PayDunya success check
+      const isSuccess = transferResult.success && transferResult.response_code === '00';
+      newStatus = isSuccess ? 'completed' : 'failed';
+      shouldMarkBookingSent = isSuccess;
+    } else {
+      // CinetPay success check
+      const isSuccess = transferResult.success && transferResult.code === '00';
+      newStatus = isSuccess ? 'completed' : 'failed';
+      shouldMarkBookingSent = isSuccess;
+    }
+
+    // Update payout with provider-specific transfer ID
+    const updateData = {
+      status: newStatus,
+      transfer_response: transferResult,
+      updated_at: new Date().toISOString()
+    };
+    
+    // Add provider-specific transfer ID
+    if (paymentProvider === 'paydunya') {
+      updateData.provider_transfer_id = transferId;
+    } else {
+      updateData.cinetpay_transfer_id = transferId;
+    }
 
     const { error: updatePayoutError } = await supabase
       .from('payouts')
-      .update({
-        status: newStatus,
-        transfer_response: transferResult,
-        cinetpay_transfer_id: transferId,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', payoutId);
 
     if (updatePayoutError) {
@@ -260,11 +345,18 @@ serve(async (req) => {
     // Return response
     const response: PayoutResponse = {
       success: transferResult.success,
-      message: transferResult.message || `Payout ${newStatus}`,
+      message: (transferResult.message || transferResult.response_text) || `Payout ${newStatus}`,
       payout_id: payoutId,
       amount: bookingData.owner_amount,
-      cinetpay_transfer_id: transferId
+      payment_provider: paymentProvider
     };
+    
+    // Add provider-specific transfer ID to response
+    if (paymentProvider === 'paydunya') {
+      response.provider_transfer_id = transferId;
+    } else {
+      response.cinetpay_transfer_id = transferId;
+    }
 
     return new Response(
       JSON.stringify(response),
