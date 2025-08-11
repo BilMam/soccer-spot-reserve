@@ -40,6 +40,7 @@ serve(async (req) => {
     const paydunya_master_key = Deno.env.get('PAYDUNYA_MASTER_KEY');
     const paydunya_private_key = Deno.env.get('PAYDUNYA_PRIVATE_KEY');
     const paydunya_token = Deno.env.get('PAYDUNYA_TOKEN');
+    const frontend_base_url = Deno.env.get('FRONTEND_BASE_URL');
     const paydunya_return_url = Deno.env.get('PAYDUNYA_RETURN_URL');
     const paydunya_cancel_url = Deno.env.get('PAYDUNYA_CANCEL_URL');
 
@@ -128,6 +129,18 @@ serve(async (req) => {
     const invoice_token = `paydunya_${booking.id}_${Date.now()}`;
     const callback_url = 'https://qhrxetwdnwxbchdupitq.functions.supabase.co/paydunya-ipn';
 
+    // Build return and cancel URLs with proper fallbacks
+    const baseFrontendUrl = frontend_base_url || supabaseUrl?.replace('.supabase.co', '.lovableproject.com') || 'https://qhrxetwdnwxbchdupitq.lovableproject.com';
+    const finalReturnUrl = paydunya_return_url || `${baseFrontendUrl}/mes-reservations?success=true&ref=${invoice_token}`;
+    const finalCancelUrl = paydunya_cancel_url || `${baseFrontendUrl}/mes-reservations?cancelled=true&ref=${invoice_token}`;
+
+    console.log(`[${timestamp}] [create-paydunya-invoice] URLs configured:`, {
+      frontend_base_url,
+      return_url: finalReturnUrl,
+      cancel_url: finalCancelUrl,
+      callback_url
+    });
+
     const paydunya_data = {
       invoice: {
         total_amount: amountCheckout,
@@ -142,8 +155,8 @@ serve(async (req) => {
         user_id: userData.user.id
       },
       actions: {
-        return_url: paydunya_return_url || `${supabaseUrl?.replace('.supabase.co', '.lovableproject.com')}/mes-reservations?success=true`,
-        cancel_url: paydunya_cancel_url || `${supabaseUrl?.replace('.supabase.co', '.lovableproject.com')}/mes-reservations?cancelled=true`,
+        return_url: finalReturnUrl,
+        cancel_url: finalCancelUrl,
         callback_url: callback_url
       }
     };
