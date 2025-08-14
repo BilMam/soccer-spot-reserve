@@ -105,7 +105,7 @@ const Checkout = () => {
         throw new Error(`Impossible de créer la réservation: ${bookingError.message}`);
       }
 
-      // Créer le paiement CinetPay
+      // Créer le paiement PayDunya
       const paymentRequestData = {
         booking_id: booking.id,
         amount: checkoutData.totalPrice,
@@ -114,7 +114,7 @@ const Checkout = () => {
         time: `${checkoutData.selectedStartTime} - ${checkoutData.selectedEndTime}`
       };
 
-      console.log('🔍 Debug paymentRequestData:', paymentRequestData);
+      console.log('🔍 Debug paymentRequestData PayDunya:', paymentRequestData);
       console.log('🔍 booking.id:', booking.id);
       console.log('🔍 checkoutData.totalPrice:', checkoutData.totalPrice);
       console.log('🔍 field.name:', field.name);
@@ -122,7 +122,8 @@ const Checkout = () => {
       console.log('🔍 selectedStartTime:', checkoutData.selectedStartTime);
       console.log('🔍 selectedEndTime:', checkoutData.selectedEndTime);
 
-      const response = await fetch('https://zldawmyoscicxoiqvfpu.supabase.co/functions/v1/create-cinetpay-payment', {
+      // Use Preview environment URL for PayDunya
+      const response = await fetch('https://qhrxetwdnwxbchdupitq.functions.supabase.co/create-paydunya-invoice', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -136,14 +137,14 @@ const Checkout = () => {
       const paymentError = !response.ok ? paymentData : null;
 
       if (paymentError) {
-        throw new Error(`Erreur de paiement: ${paymentError.message}`);
+        throw new Error(`Erreur de paiement PayDunya: ${paymentError.message}`);
       }
 
       if (!paymentData?.url) {
-        throw new Error('URL de paiement non générée');
+        throw new Error('URL de paiement PayDunya non générée');
       }
 
-      // Rediriger vers CinetPay
+      // Rediriger vers PayDunya
       setTimeout(() => {
         window.location.href = paymentData.url;
       }, 1500);
@@ -153,7 +154,7 @@ const Checkout = () => {
     onSuccess: () => {
       toast({
         title: "Redirection vers le paiement",
-        description: `Vous allez être redirigé vers CinetPay pour payer ${checkoutData?.totalPrice.toLocaleString()} XOF`,
+        description: `Vous allez être redirigé vers PayDunya pour payer ${checkoutData?.totalPrice.toLocaleString()} XOF`,
         duration: 2000
       });
     },
@@ -244,7 +245,7 @@ const Checkout = () => {
                     <CreditCard className="w-5 h-5 text-green-600 mt-0.5" />
                     <div className="text-sm text-green-800">
                       <p className="font-medium mb-1">Tous les moyens de paiement disponibles</p>
-                      <p>Orange Money, MTN Mobile Money, Moov Money, Wave, Visa/Mastercard - Choisissez directement sur la page de paiement CinetPay.</p>
+                      <p>Orange Money, MTN Mobile Money, Moov Money, Wave, Visa/Mastercard - Choisissez directement sur la page de paiement PayDunya.</p>
                     </div>
                   </div>
                 </div>

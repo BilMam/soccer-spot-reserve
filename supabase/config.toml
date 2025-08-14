@@ -63,6 +63,12 @@ verify_jwt = false
 [functions.paydunya-ipn]
 verify_jwt = false
 
+[functions.create-paydunya-invoice]
+verify_jwt = false
+
+[functions.create-paydunya-payout]
+verify_jwt = false
+
 [realtime]
 enabled = true
 
