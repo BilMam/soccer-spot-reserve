@@ -114,6 +114,11 @@ const Checkout = () => {
 
       console.log('🔍 Debug paymentRequestData PayDunya:', paymentRequestData);
 
+      // Debug: tester les secrets PayDunya d'abord
+      console.log('🔍 Test des secrets PayDunya...');
+      const { data: secretsTest, error: secretsTestError } = await supabase.functions.invoke('test-paydunya-secrets');
+      console.log('🔍 Résultat test secrets:', secretsTest, secretsTestError);
+
       // Utiliser l'API Supabase directement au lieu d'une URL externe
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-paydunya-invoice', {
         body: paymentRequestData
