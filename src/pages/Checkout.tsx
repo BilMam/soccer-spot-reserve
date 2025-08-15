@@ -48,8 +48,6 @@ const Checkout = () => {
   const { toast } = useToast();
 
   const checkoutData = location.state as CheckoutState;
-  
-  // Plus besoin de sélecteur - CinetPay gère tous les moyens de paiement
 
   // Rediriger si pas de données de checkout
   React.useEffect(() => {
@@ -105,7 +103,7 @@ const Checkout = () => {
         throw new Error(`Impossible de créer la réservation: ${bookingError.message}`);
       }
 
-      // Créer le paiement PayDunya
+      // Créer le paiement PayDunya avec la bonne URL
       const paymentRequestData = {
         booking_id: booking.id,
         amount: checkoutData.totalPrice,
@@ -115,26 +113,11 @@ const Checkout = () => {
       };
 
       console.log('🔍 Debug paymentRequestData PayDunya:', paymentRequestData);
-      console.log('🔍 booking.id:', booking.id);
-      console.log('🔍 checkoutData.totalPrice:', checkoutData.totalPrice);
-      console.log('🔍 field.name:', field.name);
-      console.log('🔍 selectedDate:', checkoutData.selectedDate);
-      console.log('🔍 selectedStartTime:', checkoutData.selectedStartTime);
-      console.log('🔍 selectedEndTime:', checkoutData.selectedEndTime);
 
-      // Use Preview environment URL for PayDunya
-      const response = await fetch('https://qhrxetwdnwxbchdupitq.functions.supabase.co/create-paydunya-invoice', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsZGF3bXlvc2NpY3hvaXF2ZnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MjY5NDAsImV4cCI6MjA2NTUwMjk0MH0.kKLUE9qwd4eCiegvGYvM3TKTPp8PuyycGp5L3wsUJu4'
-        },
-        body: JSON.stringify(paymentRequestData)
+      // Utiliser l'API Supabase directement au lieu d'une URL externe
+      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-paydunya-invoice', {
+        body: paymentRequestData
       });
-
-      const paymentData = await response.json();
-      const paymentError = !response.ok ? paymentData : null;
 
       if (paymentError) {
         throw new Error(`Erreur de paiement PayDunya: ${paymentError.message}`);
@@ -214,8 +197,6 @@ const Checkout = () => {
       </div>
     );
   }
-
-  // Supprimé : CinetPay affiche directement tous les moyens de paiement
 
   return (
     <div className="min-h-screen bg-gray-50">
