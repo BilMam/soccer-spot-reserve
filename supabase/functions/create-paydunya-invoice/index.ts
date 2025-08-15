@@ -60,7 +60,11 @@ serve(async (req) => {
       hasPaydunyaMasterKey: !!paydunyaMasterKey,
       hasPaydunyaPrivateKey: !!paydunyaPrivateKey,
       hasPaydunyaToken: !!paydunyaToken,
-      paydunyaMode
+      paydunyaMode,
+      // Debug: vérifier les valeurs exactes (masquées)
+      masterKeyLength: paydunyaMasterKey?.length,
+      privateKeyLength: paydunyaPrivateKey?.length,
+      tokenLength: paydunyaToken?.length
     });
 
     if (!supabaseUrl || !supabaseServiceKey) {
