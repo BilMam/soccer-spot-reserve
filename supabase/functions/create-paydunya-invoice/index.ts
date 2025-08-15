@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -34,16 +35,45 @@ serve(async (req) => {
   }
 
   try {
-    // Environment variables
+    // Environment variables avec des noms plus clairs
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const paydunyaMasterKey = Deno.env.get('PAYDUNYA_MASTER_KEY');
-    const paydunyaPrivateKey = Deno.env.get('PAYDUNYA_PRIVATE_KEY');
-    const paydunyaToken = Deno.env.get('PAYDUNYA_TOKEN');
-    const paydunyaMode = Deno.env.get('PAYDUNYA_MODE') || 'test';
+    
+    // Vérifier plusieurs variantes possibles des clés PayDunya
+    const paydunyaMasterKey = Deno.env.get('PAYDUNYA_MASTER_KEY') || 
+                              Deno.env.get('PAYDUNYA_MASTER_KEY_PROD') ||
+                              Deno.env.get('PAYDUNYA_PRODUCTION_MASTER_KEY');
+    
+    const paydunyaPrivateKey = Deno.env.get('PAYDUNYA_PRIVATE_KEY') || 
+                               Deno.env.get('PAYDUNYA_PRIVATE_KEY_PROD') ||
+                               Deno.env.get('PAYDUNYA_PRODUCTION_PRIVATE_KEY');
+    
+    const paydunyaToken = Deno.env.get('PAYDUNYA_TOKEN') || 
+                          Deno.env.get('PAYDUNYA_TOKEN_PROD') ||
+                          Deno.env.get('PAYDUNYA_PRODUCTION_TOKEN');
+    
+    const paydunyaMode = Deno.env.get('PAYDUNYA_MODE') || 'live';
 
-    if (!supabaseUrl || !supabaseServiceKey || !paydunyaMasterKey || !paydunyaPrivateKey || !paydunyaToken) {
-      throw new Error('Configuration PayDunya manquante');
+    console.log(`[${timestamp}] Environment check:`, {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasSupabaseServiceKey: !!supabaseServiceKey,
+      hasPaydunyaMasterKey: !!paydunyaMasterKey,
+      hasPaydunyaPrivateKey: !!paydunyaPrivateKey,
+      hasPaydunyaToken: !!paydunyaToken,
+      paydunyaMode
+    });
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Configuration Supabase manquante');
+    }
+
+    if (!paydunyaMasterKey || !paydunyaPrivateKey || !paydunyaToken) {
+      console.error(`[${timestamp}] Missing PayDunya keys:`, {
+        masterKey: paydunyaMasterKey ? 'Present' : 'Missing',
+        privateKey: paydunyaPrivateKey ? 'Present' : 'Missing',
+        token: paydunyaToken ? 'Present' : 'Missing'
+      });
+      throw new Error('Configuration PayDunya manquante - Vérifiez vos clés API dans les secrets Supabase');
     }
 
     // Authentication
@@ -129,7 +159,11 @@ serve(async (req) => {
     const cancelUrl = `${baseUrl}/field/${existingBooking.field_id}`;
     const callbackUrl = `${supabaseUrl}/functions/v1/paydunya-ipn`;
 
-    // PayDunya Invoice API call
+    // PayDunya Invoice API call - Utiliser l'API de production
+    const paydunyaApiUrl = paydunyaMode === 'test' ? 
+      'https://app.paydunya.com/sandbox-api/v1/checkout-invoice/create' : 
+      'https://app.paydunya.com/api/v1/checkout-invoice/create';
+
     const paydunyaData = {
       invoice: {
         total_amount: amountCheckout,
@@ -156,9 +190,10 @@ serve(async (req) => {
     };
 
     console.log(`[${timestamp}] [create-paydunya-invoice] WEBHOOK URL:`, callbackUrl);
+    console.log(`[${timestamp}] [create-paydunya-invoice] PayDunya API URL:`, paydunyaApiUrl);
     console.log(`[${timestamp}] [create-paydunya-invoice] PayDunya request:`, paydunyaData);
 
-    const paydunyaResponse = await fetch('https://app.paydunya.com/sandbox-api/v1/checkout-invoice/create', {
+    const paydunyaResponse = await fetch(paydunyaApiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -172,9 +207,10 @@ serve(async (req) => {
 
     const paydunyaResult = await paydunyaResponse.json();
     console.log(`[${timestamp}] [create-paydunya-invoice] PayDunya response:`, paydunyaResult);
+    console.log(`[${timestamp}] [create-paydunya-invoice] PayDunya response status:`, paydunyaResponse.status);
 
     if (paydunyaResult.response_code !== '00') {
-      throw new Error(`PayDunya error: ${paydunyaResult.response_text}`);
+      throw new Error(`PayDunya error: ${paydunyaResult.response_text || 'Erreur inconnue'}`);
     }
 
     // Update booking with PayDunya info
