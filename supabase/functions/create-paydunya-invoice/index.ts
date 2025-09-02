@@ -197,6 +197,14 @@ serve(async (req) => {
     console.log(`[${timestamp}] [create-paydunya-invoice] PayDunya API URL:`, paydunyaApiUrl);
     console.log(`[${timestamp}] [create-paydunya-invoice] PayDunya request:`, paydunyaData);
 
+    console.log(`[${timestamp}] [create-paydunya-invoice] Sending request headers:`, {
+      'Content-Type': 'application/json',
+      'PAYDUNYA-MASTER-KEY': paydunyaMasterKey ? `${paydunyaMasterKey.substring(0, 8)}...` : 'Missing',
+      'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey ? `${paydunyaPrivateKey.substring(0, 8)}...` : 'Missing',
+      'PAYDUNYA-TOKEN': paydunyaToken ? `${paydunyaToken.substring(0, 8)}...` : 'Missing',
+      'PAYDUNYA-MODE': paydunyaMode
+    });
+
     const paydunyaResponse = await fetch(paydunyaApiUrl, {
       method: 'POST',
       headers: {
@@ -210,8 +218,9 @@ serve(async (req) => {
     });
 
     const paydunyaResult = await paydunyaResponse.json();
-    console.log(`[${timestamp}] [create-paydunya-invoice] PayDunya response:`, paydunyaResult);
     console.log(`[${timestamp}] [create-paydunya-invoice] PayDunya response status:`, paydunyaResponse.status);
+    console.log(`[${timestamp}] [create-paydunya-invoice] PayDunya response headers:`, Object.fromEntries(paydunyaResponse.headers.entries()));
+    console.log(`[${timestamp}] [create-paydunya-invoice] PayDunya response:`, paydunyaResult);
 
     if (paydunyaResult.response_code !== '00') {
       throw new Error(`PayDunya error: ${paydunyaResult.response_text || 'Erreur inconnue'}`);
