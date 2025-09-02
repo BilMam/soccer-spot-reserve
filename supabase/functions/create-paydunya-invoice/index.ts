@@ -118,7 +118,14 @@ serve(async (req) => {
     const platformFeeUser = Math.round(price * 0.03);    // 3% frais utilisateur MySport
     const platformFeeOwner = Math.round(price * 0.05);   // 5% commission plateforme
     const ownerAmount = price - platformFeeOwner;        // 95% pour le propriétaire
-    const amountCheckout = price + platformFeeUser;      // Montant total à payer
+    let amountCheckout = price + platformFeeUser;        // Montant total à payer
+
+    // PayDunya minimum amount is 200 FCFA
+    const PAYDUNYA_MIN_AMOUNT = 200;
+    if (amountCheckout < PAYDUNYA_MIN_AMOUNT) {
+      console.log(`[${timestamp}] [create-paydunya-invoice] Amount ${amountCheckout} below minimum ${PAYDUNYA_MIN_AMOUNT}, adjusting...`);
+      amountCheckout = PAYDUNYA_MIN_AMOUNT;
+    }
 
     console.log(`[${timestamp}] [create-paydunya-invoice] Fee calculation:`, {
       field_price: fieldPrice,
