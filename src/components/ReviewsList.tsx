@@ -32,7 +32,8 @@ const ReviewsList: React.FC<ReviewsListProps> = ({ fieldId }) => {
           )
         `)
         .eq('field_id', fieldId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(5);
 
       if (error) throw error;
       return data as Review[];
