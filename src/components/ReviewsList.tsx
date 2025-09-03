@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Star, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Star, User, ChevronDown } from 'lucide-react';
 
 interface Review {
   id: string;
@@ -20,8 +21,10 @@ interface ReviewsListProps {
 }
 
 const ReviewsList: React.FC<ReviewsListProps> = ({ fieldId }) => {
-  const { data: reviews, isLoading } = useQuery({
-    queryKey: ['reviews', fieldId],
+  const [showAll, setShowAll] = useState(false);
+
+  const { data: limitedReviews, isLoading } = useQuery({
+    queryKey: ['reviews', fieldId, 'limited'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('reviews')
@@ -39,6 +42,42 @@ const ReviewsList: React.FC<ReviewsListProps> = ({ fieldId }) => {
       return data as Review[];
     }
   });
+
+  const { data: allReviews } = useQuery({
+    queryKey: ['reviews', fieldId, 'all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select(`
+          *,
+          profiles!reviews_user_id_fkey (
+            full_name
+          )
+        `)
+        .eq('field_id', fieldId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as Review[];
+    },
+    enabled: showAll
+  });
+
+  const { data: totalCount } = useQuery({
+    queryKey: ['reviews-count', fieldId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('reviews')
+        .select('*', { count: 'exact', head: true })
+        .eq('field_id', fieldId);
+
+      if (error) throw error;
+      return count || 0;
+    }
+  });
+
+  const reviews = showAll ? allReviews : limitedReviews;
+  const remainingCount = (totalCount || 0) - 5;
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
@@ -80,7 +119,7 @@ const ReviewsList: React.FC<ReviewsListProps> = ({ fieldId }) => {
     <Card>
       <CardHeader>
         <CardTitle>
-          Avis des utilisateurs ({reviews?.length || 0})
+          Avis des utilisateurs
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -120,6 +159,28 @@ const ReviewsList: React.FC<ReviewsListProps> = ({ fieldId }) => {
                 )}
               </div>
             ))}
+            
+            {totalCount && totalCount > 5 && (
+              <div className="pt-4 border-t">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowAll(!showAll)}
+                  className="w-full flex items-center justify-center gap-2 text-primary hover:text-primary/80"
+                >
+                  {showAll ? (
+                    <>
+                      Afficher moins
+                      <ChevronDown className={`w-4 h-4 transition-transform rotate-180`} />
+                    </>
+                  ) : (
+                    <>
+                      Afficher tous les avis (+{remainingCount})
+                      <ChevronDown className={`w-4 h-4 transition-transform`} />
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
