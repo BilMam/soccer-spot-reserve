@@ -9,12 +9,14 @@ import { generateTimeOptions } from '@/utils/timeUtils';
 interface TimeSlotSelectorProps {
   value: string;
   onChange: (timeSlot: string) => void;
+  selectedDate?: string;
   placeholder?: string;
 }
 
 const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
   value,
   onChange,
+  selectedDate,
   placeholder = 'Choisir un horaire'
 }) => {
   const [startTime, setStartTime] = useState('');
@@ -22,6 +24,27 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
   const [open, setOpen] = useState(false);
   
   const timeOptions = generateTimeOptions();
+  
+  // Filter out past times if selected date is today
+  const getAvailableStartTimes = () => {
+    if (!selectedDate) return timeOptions.slice(0, -1);
+    
+    const today = new Date().toISOString().split('T')[0];
+    const isToday = selectedDate === today;
+    
+    if (!isToday) return timeOptions.slice(0, -1);
+    
+    // If today, filter out past times
+    const now = new Date();
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    return timeOptions.slice(0, -1).filter(time => {
+      const [hours, minutes] = time.split(':').map(Number);
+      const timeMinutes = hours * 60 + minutes;
+      return timeMinutes > currentMinutes;
+    });
+  };
 
   // Parse existing value when component mounts or value changes
   useEffect(() => {
@@ -107,7 +130,7 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
                   <SelectValue placeholder="Heure" />
                 </SelectTrigger>
                 <SelectContent>
-                  {timeOptions.slice(0, -1).map(time => (
+                  {getAvailableStartTimes().map(time => (
                     <SelectItem key={time} value={time}>
                       {time.replace(':', 'h')}
                     </SelectItem>

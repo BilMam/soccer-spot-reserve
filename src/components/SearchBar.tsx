@@ -68,6 +68,7 @@ const SearchBar = () => {
           <TimeSlotSelector
             value={timeSlot}
             onChange={setTimeSlot}
+            selectedDate={date}
             placeholder="Choisir un horaire"
           />
         </div>
