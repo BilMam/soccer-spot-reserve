@@ -162,13 +162,6 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
             </div>
           </div>
 
-          {startTime && endTime && (
-            <div className="pt-2 border-t">
-              <div className="text-sm text-gray-600">
-                Durée sélectionnée : {startTime.replace(':', 'h')} - {endTime.replace(':', 'h')}
-              </div>
-            </div>
-          )}
 
           <div className="flex justify-end space-x-2 pt-2">
             <Button
