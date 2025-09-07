@@ -73,7 +73,11 @@ const Checkout = () => {
 
   const createBookingMutation = useMutation({
     mutationFn: async () => {
-      if (!user || !checkoutData || !field) {
+      if (!user) {
+        throw new Error('Vous devez vous inscrire ou vous connecter pour pouvoir réserver un terrain.');
+      }
+      
+      if (!checkoutData || !field) {
         throw new Error('Données manquantes pour la réservation');
       }
 
