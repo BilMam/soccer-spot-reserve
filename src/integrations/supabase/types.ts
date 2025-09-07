@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -1153,7 +1153,7 @@ export type Database = {
         Returns: undefined
       }
       calculate_search_similarity: {
-        Args: { search_term: string; field_text: string }
+        Args: { field_text: string; search_term: string }
         Returns: number
       }
       can_promote_user: {
@@ -1165,29 +1165,29 @@ export type Database = {
       }
       change_user_type: {
         Args: {
-          target_user_id: string
-          new_user_type: string
           new_role?: Database["public"]["Enums"]["user_role_type"]
+          new_user_type: string
           reason?: string
+          target_user_id: string
         }
         Returns: undefined
       }
       check_booking_conflict: {
         Args: {
-          p_field_id: string
           p_booking_date: string
-          p_start_time: string
-          p_end_time: string
           p_booking_id?: string
+          p_end_time: string
+          p_field_id: string
+          p_start_time: string
         }
         Returns: boolean
       }
       check_slot_booking_status: {
         Args: {
-          p_field_id: string
           p_date: string
-          p_start_time: string
           p_end_time: string
+          p_field_id: string
+          p_start_time: string
         }
         Returns: boolean
       }
@@ -1197,13 +1197,13 @@ export type Database = {
       }
       create_availability_for_period: {
         Args: {
-          p_field_id: string
-          p_start_date: string
           p_end_date: string
-          p_start_time: string
           p_end_time: string
-          p_slot_duration?: number
           p_exclude_days?: number[]
+          p_field_id: string
+          p_slot_duration?: number
+          p_start_date: string
+          p_start_time: string
           p_template_id?: string
         }
         Returns: number
@@ -1215,79 +1215,79 @@ export type Database = {
       get_all_owner_applications: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          user_id: string
-          full_name: string
-          phone: string
-          experience: string
-          motivation: string
-          status: string
           admin_notes: string
-          reviewed_by: string
-          reviewed_at: string
           created_at: string
+          experience: string
+          full_name: string
+          id: string
+          motivation: string
+          phone: string
+          reviewed_at: string
+          reviewed_by: string
+          status: string
           updated_at: string
           user_email: string
+          user_id: string
         }[]
       }
       get_field_bookings: {
-        Args: { p_field_id: string; p_start_date: string; p_end_date: string }
+        Args: { p_end_date: string; p_field_id: string; p_start_date: string }
         Returns: {
           booking_date: string
-          start_time: string
           end_time: string
-          status: string
           payment_status: string
+          start_time: string
+          status: string
         }[]
       }
       get_owner_recent_bookings: {
         Args: { owner_uuid: string }
         Returns: {
-          booking_id: string
-          field_name: string
-          user_name: string
           booking_date: string
-          start_time: string
+          booking_id: string
           end_time: string
+          field_name: string
+          player_count: number
+          start_time: string
           status: string
           total_price: number
-          player_count: number
+          user_name: string
         }[]
       }
       get_user_owner_application: {
         Args: { p_user_id: string }
         Returns: {
-          id: string
-          user_id: string
-          full_name: string
-          phone: string
-          experience: string
-          motivation: string
-          status: string
           admin_notes: string
-          reviewed_by: string
-          reviewed_at: string
           created_at: string
+          experience: string
+          full_name: string
+          id: string
+          motivation: string
+          phone: string
+          reviewed_at: string
+          reviewed_by: string
+          status: string
           updated_at: string
+          user_id: string
         }[]
       }
       get_users_with_roles: {
         Args: Record<PropertyKey, never>
         Returns: {
-          user_id: string
+          created_at: string
           email: string
           full_name: string
-          user_type: string
           roles: Database["public"]["Enums"]["user_role_type"][]
-          created_at: string
+          user_id: string
+          user_type: string
         }[]
       }
       grant_role_to_user: {
         Args: {
-          target_user_id: string
-          role_to_grant: Database["public"]["Enums"]["user_role_type"]
-          reason?: string
           expires_at?: string
+          reason?: string
+          role_to_grant: Database["public"]["Enums"]["user_role_type"]
+          target_user_id: string
         }
         Returns: undefined
       }
@@ -1313,27 +1313,27 @@ export type Database = {
       }
       has_role: {
         Args: {
-          user_uuid: string
           role_name: Database["public"]["Enums"]["user_role_type"]
+          user_uuid: string
         }
         Returns: boolean
       }
       intelligent_field_search: {
         Args: { search_query: string; similarity_threshold?: number }
         Returns: {
-          id: string
-          name: string
-          location: string
           address: string
-          city: string
-          price_per_hour: number
-          rating: number
-          total_reviews: number
-          images: string[]
           amenities: string[]
           capacity: number
+          city: string
           field_type: string
+          id: string
+          images: string[]
+          location: string
+          name: string
+          price_per_hour: number
+          rating: number
           relevance_score: number
+          total_reviews: number
         }[]
       }
       reject_owner_application: {
@@ -1342,9 +1342,9 @@ export type Database = {
       }
       revoke_role_from_user: {
         Args: {
-          target_user_id: string
-          role_to_revoke: Database["public"]["Enums"]["user_role_type"]
           reason?: string
+          role_to_revoke: Database["public"]["Enums"]["user_role_type"]
+          target_user_id: string
         }
         Returns: undefined
       }
@@ -1362,12 +1362,12 @@ export type Database = {
       }
       set_slots_unavailable: {
         Args: {
-          p_field_id: string
           p_date: string
-          p_start_time: string
           p_end_time: string
-          p_reason?: string
+          p_field_id: string
           p_notes?: string
+          p_reason?: string
+          p_start_time: string
         }
         Returns: number
       }
