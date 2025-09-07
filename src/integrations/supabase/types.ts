@@ -862,6 +862,7 @@ export type Database = {
           field_id: string
           id: string
           rating: number
+          reviewer_name: string | null
           user_id: string
         }
         Insert: {
@@ -871,6 +872,7 @@ export type Database = {
           field_id: string
           id?: string
           rating: number
+          reviewer_name?: string | null
           user_id: string
         }
         Update: {
@@ -880,6 +882,7 @@ export type Database = {
           field_id?: string
           id?: string
           rating?: number
+          reviewer_name?: string | null
           user_id?: string
         }
         Relationships: [

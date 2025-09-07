@@ -11,9 +11,7 @@ interface Review {
   rating: number;
   comment: string;
   created_at: string;
-  profiles: {
-    full_name: string;
-  };
+  reviewer_name: string;
 }
 
 interface ReviewsListProps {
@@ -29,10 +27,7 @@ const ReviewsList: React.FC<ReviewsListProps> = ({ fieldId }) => {
       const { data, error } = await supabase
         .from('reviews')
         .select(`
-          *,
-          profiles!reviews_user_id_fkey (
-            full_name
-          )
+          *
         `)
         .eq('field_id', fieldId)
         .order('created_at', { ascending: false })
@@ -49,10 +44,7 @@ const ReviewsList: React.FC<ReviewsListProps> = ({ fieldId }) => {
       const { data, error } = await supabase
         .from('reviews')
         .select(`
-          *,
-          profiles!reviews_user_id_fkey (
-            full_name
-          )
+          *
         `)
         .eq('field_id', fieldId)
         .order('created_at', { ascending: false });
@@ -140,7 +132,7 @@ const ReviewsList: React.FC<ReviewsListProps> = ({ fieldId }) => {
                     </div>
                     <div>
                       <div className="font-medium text-gray-900">
-                        {review.profiles?.full_name || 'Utilisateur anonyme'}
+                        {review.reviewer_name || 'Utilisateur anonyme'}
                       </div>
                       <div className="text-sm text-gray-500">
                         {formatDate(review.created_at)}
