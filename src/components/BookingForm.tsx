@@ -174,13 +174,15 @@ const BookingForm: React.FC<BookingFormProps> = ({
           amount: totalPrice
         });
 
-        // Lier le payment_intent_id à la réservation
+        // Lier le payment_intent_id à la réservation via edge function sécurisée
         if (paymentData.transaction_id) {
           console.log('🔗 Liaison payment_intent_id à la réservation...');
-          const { error: linkError } = await supabase
-            .from('bookings')
-            .update({ payment_intent_id: paymentData.transaction_id })
-            .eq('id', booking.id);
+          const { error: linkError } = await supabase.functions.invoke('link-payment-id', {
+            body: { 
+              booking_id: booking.id, 
+              payment_intent_id: paymentData.transaction_id 
+            }
+          });
           
           if (linkError) {
             console.error('❌ Erreur liaison payment_intent_id:', linkError);

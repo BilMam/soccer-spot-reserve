@@ -72,6 +72,9 @@ verify_jwt = false
 [functions.test-webhook-connectivity]
 verify_jwt = false
 
+[functions.link-payment-id]
+verify_jwt = false
+
 [realtime]
 enabled = true
 
