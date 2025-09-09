@@ -13,14 +13,15 @@ import CinetPayOnboarding from '@/components/CinetPayOnboarding';
 import AvailabilityManagement from '@/components/availability/AvailabilityManagement';
 import { PayoutAccountsManager } from '@/components/owner/PayoutAccountsManager';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useOwnerStats } from '@/hooks/useOwnerStats';
+import { useOwnerStats, TimeFilter } from '@/hooks/useOwnerStats';
 import { useOwnerFields } from '@/hooks/useOwnerFields';
 import { Calendar } from 'lucide-react';
 
 const OwnerDashboard = () => {
   const { user, loading } = useAuth();
   const { isOwner, loading: permissionsLoading } = usePermissions();
-  const { data: stats, isLoading: statsLoading } = useOwnerStats();
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
+  const { data: stats, isLoading: statsLoading } = useOwnerStats(timeFilter);
   const { data: fields, isLoading: fieldsLoading } = useOwnerFields();
   const [selectedFieldId, setSelectedFieldId] = useState<string>('');
 
@@ -73,7 +74,12 @@ const OwnerDashboard = () => {
 
           <TabsContent value="overview">
             <div className="space-y-6">
-              <OwnerStats stats={stats} isLoading={statsLoading} />
+              <OwnerStats 
+                stats={stats} 
+                isLoading={statsLoading} 
+                timeFilter={timeFilter}
+                onTimeFilterChange={setTimeFilter}
+              />
             </div>
           </TabsContent>
 
