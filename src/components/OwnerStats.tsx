@@ -154,11 +154,11 @@ const OwnerStats = ({
             <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">
               {isFieldView 
-                ? `Aucune réservation confirmée pour ${selectedField?.name || 'ce terrain'} sur la période sélectionnée.`
-                : 'Aucune réservation confirmée pour la période sélectionnée.'
+                ? `Aucune réservation pour ${selectedField?.name || 'ce terrain'} sur la période sélectionnée.`
+                : 'Aucune réservation pour la période sélectionnée.'
               }
             </p>
-            <p className="text-sm text-gray-400 mt-2">Les statistiques apparaîtront une fois que vous aurez des réservations payées.</p>
+            <p className="text-sm text-gray-400 mt-2">Les statistiques apparaîtront une fois que vous aurez des réservations.</p>
           </CardContent>
         </Card>
       </div>
@@ -272,7 +272,7 @@ const OwnerStats = ({
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
             <Users className="w-5 h-5 text-blue-600" />
-            <span className="text-sm font-medium text-blue-700">Réservations payées</span>
+            <span className="text-sm font-medium text-blue-700">Réservations</span>
           </div>
           <div className="text-2xl font-bold text-blue-900">
             {totalBookings}
@@ -409,7 +409,7 @@ const OwnerStats = ({
                 <thead>
                   <tr className="border-b">
                     <th className="text-left p-2">Terrain</th>
-                    <th className="text-right p-2">Réservations payées</th>
+                    <th className="text-right p-2">Réservations</th>
                     <th className="text-right p-2">Revenus nets</th>
                     <th className="text-right p-2">Note moyenne</th>
                     <th className="text-right p-2">Nombre d'avis</th>

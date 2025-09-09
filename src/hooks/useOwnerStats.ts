@@ -104,8 +104,8 @@ export const useOwnerStats = (filter: TimeFilterConfig, fieldId?: string) => {
           fields!inner(id, name, owner_id)
         `)
         .eq('fields.owner_id', user.id)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString())
+        .gte('booking_date', startDate.toISOString().split('T')[0])
+        .lte('booking_date', endDate.toISOString().split('T')[0])
         .in('status', ['confirmed', 'owner_confirmed', 'completed'])
         .eq('payment_status', 'paid');
 
