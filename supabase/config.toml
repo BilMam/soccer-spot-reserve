@@ -60,6 +60,12 @@ verify_jwt = false
 [functions.test-webhook-connectivity]
 verify_jwt = false
 
+[functions.simulate-paydunya-payment]
+verify_jwt = false
+
+[functions.fix-booking-payment-id]
+verify_jwt = false
+
 [realtime]
 enabled = true
 

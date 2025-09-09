@@ -165,6 +165,23 @@ serve(async (req) => {
 
     // PayDunya Invoice creation
     const invoiceToken = `invoice_${booking.id}_${Date.now()}`;
+    
+    // Update booking with PayDunya info FIRST - before creating invoice
+    const { error: updateError } = await supabaseClient
+      .from('bookings')
+      .update({
+        payment_intent_id: invoiceToken,
+        payment_provider: 'paydunya',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', booking.id);
+
+    if (updateError) {
+      console.error(`[${timestamp}] Failed to update booking with payment_intent_id:`, updateError);
+      throw new Error('Failed to link payment to booking');
+    }
+
+    console.log(`[${timestamp}] Payment intent linked successfully: ${invoiceToken}`);
     const baseUrl = supabaseUrl?.replace('.supabase.co', '.lovableproject.com');
     const returnUrl = `${baseUrl}/mes-reservations?success=true&ref=${invoiceToken}`;
     const cancelUrl = `${baseUrl}/field/${existingBooking.field_id}`;
@@ -232,27 +249,6 @@ serve(async (req) => {
     if (paydunyaResult.response_code !== '00') {
       throw new Error(`PayDunya error: ${paydunyaResult.response_text || 'Erreur inconnue'}`);
     }
-
-    // Update booking with PayDunya info
-    await supabaseClient
-      .from('bookings')
-      .update({
-        payment_intent_id: invoiceToken,
-        payment_provider: 'paydunya',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', booking.id);
-
-    const responseData: PaymentResponse = {
-      url: paydunyaResult.response_text,
-      invoice_token: invoiceToken,
-      amount_checkout: amountCheckout,
-      field_price: fieldPrice,
-      platform_fee_user: platformFeeUser,
-      platform_fee_owner: platformFeeOwner,
-      owner_amount: ownerAmount,
-      currency: 'XOF'
-    };
 
     console.log(`[${timestamp}] [create-paydunya-invoice] Success:`, responseData);
 
