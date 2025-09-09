@@ -188,7 +188,30 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Erreur webhook CinetPay:', error)
+    console.error('❌ ERREUR WEBHOOK CINETPAY CRITIQUE:', {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Enregistrer l'erreur pour diagnostic
+    try {
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      );
+      
+      await supabaseClient.from('payment_anomalies').insert({
+        payment_intent_id: 'webhook_error',
+        amount: 0,
+        error_type: 'webhook_processing_error',
+        error_message: error.message,
+        webhook_data: { error_stack: error.stack, timestamp: new Date().toISOString() }
+      });
+    } catch (logError) {
+      console.error('Failed to log webhook error:', logError);
+    }
+    
     return new Response(
       JSON.stringify({ error: error.message }),
       {
