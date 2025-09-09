@@ -5,11 +5,11 @@ import { useAuth } from '@/hooks/useAuth';
 
 export type TimeFilter = 'day' | 'week' | 'month';
 
-export const useOwnerStats = (timeFilter: TimeFilter = 'month') => {
+export const useOwnerStats = (timeFilter: TimeFilter = 'month', fieldId?: string) => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['owner-stats', user?.id, timeFilter],
+    queryKey: ['owner-stats', user?.id, timeFilter, fieldId],
     queryFn: async () => {
       if (!user) throw new Error('Utilisateur non connecté');
 
@@ -34,9 +34,8 @@ export const useOwnerStats = (timeFilter: TimeFilter = 'month') => {
           break;
       }
 
-      // Requête pour récupérer les statistiques avec filtrage temporel
-      // On récupère directement depuis les bookings pour avoir un contrôle plus fin
-      const { data: bookingsData, error: bookingsError } = await supabase
+      // Requête pour récupérer les statistiques avec filtrage temporel et par terrain
+      let query = supabase
         .from('bookings')
         .select(`
           id,
@@ -45,12 +44,22 @@ export const useOwnerStats = (timeFilter: TimeFilter = 'month') => {
           status,
           payment_status,
           created_at,
+          booking_date,
+          start_time,
+          end_time,
           fields!inner(id, name, owner_id)
         `)
         .eq('fields.owner_id', user.id)
         .gte('created_at', startDate.toISOString())
         .in('status', ['confirmed', 'owner_confirmed', 'completed'])
         .eq('payment_status', 'paid');
+
+      // Filtrer par terrain spécifique si demandé
+      if (fieldId) {
+        query = query.eq('field_id', fieldId);
+      }
+
+      const { data: bookingsData, error: bookingsError } = await query;
 
       if (bookingsError) throw bookingsError;
 
@@ -87,10 +96,17 @@ export const useOwnerStats = (timeFilter: TimeFilter = 'month') => {
       });
 
       // Récupérer les notes moyennes des terrains
-      const { data: ratingsData } = await supabase
+      let ratingsQuery = supabase
         .from('fields')
         .select('id, rating, total_reviews')
         .eq('owner_id', user.id);
+
+      // Filtrer par terrain spécifique si demandé
+      if (fieldId) {
+        ratingsQuery = ratingsQuery.eq('id', fieldId);
+      }
+
+      const { data: ratingsData } = await ratingsQuery;
 
       // Mettre à jour les notes
       ratingsData?.forEach(field => {
@@ -101,7 +117,28 @@ export const useOwnerStats = (timeFilter: TimeFilter = 'month') => {
         }
       });
 
-      return Array.from(fieldStats.values());
+      const statsArray = Array.from(fieldStats.values());
+      
+      // Si on filtre par terrain, récupérer aussi les détails des réservations
+      if (fieldId && bookingsData) {
+        const bookingDetails = bookingsData.map(booking => ({
+          id: booking.id,
+          booking_date: booking.booking_date,
+          start_time: booking.start_time,
+          end_time: booking.end_time,
+          total_price: Number(booking.total_price || 0),
+          owner_amount: Number(booking.owner_amount || 0),
+          status: booking.status,
+          created_at: booking.created_at
+        }));
+
+        return {
+          stats: statsArray,
+          bookingDetails
+        };
+      }
+
+      return { stats: statsArray, bookingDetails: null };
     },
     enabled: !!user
   });

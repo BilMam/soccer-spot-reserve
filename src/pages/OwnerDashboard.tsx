@@ -15,15 +15,25 @@ import { PayoutAccountsManager } from '@/components/owner/PayoutAccountsManager'
 import { usePermissions } from '@/hooks/usePermissions';
 import { useOwnerStats, TimeFilter } from '@/hooks/useOwnerStats';
 import { useOwnerFields } from '@/hooks/useOwnerFields';
+import { ViewMode } from '@/components/OwnerStats';
 import { Calendar } from 'lucide-react';
 
 const OwnerDashboard = () => {
   const { user, loading } = useAuth();
   const { isOwner, loading: permissionsLoading } = usePermissions();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
-  const { data: stats, isLoading: statsLoading } = useOwnerStats(timeFilter);
-  const { data: fields, isLoading: fieldsLoading } = useOwnerFields();
+  const [viewMode, setViewMode] = useState<ViewMode>('global');
   const [selectedFieldId, setSelectedFieldId] = useState<string>('');
+  
+  const { data: statsResponse, isLoading: statsLoading } = useOwnerStats(
+    timeFilter, 
+    viewMode === 'field' ? selectedFieldId : undefined
+  );
+  const { data: fields, isLoading: fieldsLoading } = useOwnerFields();
+  
+  // Adapter la réponse du hook
+  const stats = statsResponse?.stats;
+  const bookingDetails = statsResponse?.bookingDetails;
 
   if (loading || permissionsLoading) {
     return (
@@ -79,6 +89,12 @@ const OwnerDashboard = () => {
                 isLoading={statsLoading} 
                 timeFilter={timeFilter}
                 onTimeFilterChange={setTimeFilter}
+                fields={fields?.map(f => ({ id: f.id, name: f.name, location: f.location }))}
+                bookingDetails={bookingDetails}
+                viewMode={viewMode}
+                selectedFieldId={selectedFieldId}
+                onViewModeChange={setViewMode}
+                onFieldSelect={setSelectedFieldId}
               />
             </div>
           </TabsContent>
