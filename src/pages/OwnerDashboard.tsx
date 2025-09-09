@@ -13,7 +13,7 @@ import CinetPayOnboarding from '@/components/CinetPayOnboarding';
 import AvailabilityManagement from '@/components/availability/AvailabilityManagement';
 import { PayoutAccountsManager } from '@/components/owner/PayoutAccountsManager';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useOwnerStats, TimeFilter } from '@/hooks/useOwnerStats';
+import { useOwnerStats, TimeFilterConfig } from '@/hooks/useOwnerStats';
 import { useOwnerFields } from '@/hooks/useOwnerFields';
 import { ViewMode } from '@/components/OwnerStats';
 import { Calendar } from 'lucide-react';
@@ -21,7 +21,10 @@ import { Calendar } from 'lucide-react';
 const OwnerDashboard = () => {
   const { user, loading } = useAuth();
   const { isOwner, loading: permissionsLoading } = usePermissions();
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('month');
+  const [timeFilter, setTimeFilter] = useState<TimeFilterConfig>({ 
+    type: 'last30days', 
+    label: '30 derniers jours' 
+  });
   const [viewMode, setViewMode] = useState<ViewMode>('global');
   const [selectedFieldId, setSelectedFieldId] = useState<string>('');
   

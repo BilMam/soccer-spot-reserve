@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { formatXOF } from '@/lib/utils';
 import { Calendar, TrendingUp, Users, ArrowLeft, MapPin, Star } from 'lucide-react';
+import TimeFilterSelector from './TimeFilterSelector';
+import { TimeFilterConfig } from '@/hooks/useOwnerStats';
 
 interface OwnerStat {
   field_id: string;
@@ -19,7 +20,6 @@ interface OwnerStat {
   total_reviews: number;
 }
 
-export type TimeFilter = 'day' | 'week' | 'month';
 export type ViewMode = 'global' | 'field';
 
 interface Field {
@@ -42,8 +42,8 @@ interface BookingDetail {
 interface OwnerStatsProps {
   stats: OwnerStat[] | undefined;
   isLoading: boolean;
-  timeFilter: TimeFilter;
-  onTimeFilterChange: (filter: TimeFilter) => void;
+  timeFilter: TimeFilterConfig;
+  onTimeFilterChange: (filter: TimeFilterConfig) => void;
   fields?: Field[];
   bookingDetails?: BookingDetail[] | null;
   viewMode: ViewMode;
@@ -64,6 +64,9 @@ const OwnerStats = ({
   onViewModeChange,
   onFieldSelect 
 }: OwnerStatsProps) => {
+  const selectedField = fields?.find(f => f.id === selectedFieldId);
+  const isFieldView = viewMode === 'field' && selectedFieldId;
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -80,16 +83,6 @@ const OwnerStats = ({
       </div>
     );
   }
-
-  // Filtres temporels
-  const timeFilterLabels = {
-    day: 'Aujourd\'hui',
-    week: '7 derniers jours', 
-    month: '30 derniers jours'
-  };
-
-  const selectedField = fields?.find(f => f.id === selectedFieldId);
-  const isFieldView = viewMode === 'field' && selectedFieldId;
 
   if (!stats || stats.length === 0) {
     return (
@@ -108,18 +101,14 @@ const OwnerStats = ({
                     </Badge>
                   )}
                 </CardTitle>
-                <div className="flex gap-2">
-                  {(Object.keys(timeFilterLabels) as TimeFilter[]).map((filter) => (
-                    <Button
-                      key={filter}
-                      variant={timeFilter === filter ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => onTimeFilterChange(filter)}
-                    >
-                      {timeFilterLabels[filter]}
-                    </Button>
-                  ))}
-                </div>
+              </div>
+
+              {/* Nouveau sélecteur temporel */}
+              <div className="flex flex-col gap-3">
+                <TimeFilterSelector
+                  currentFilter={timeFilter}
+                  onFilterChange={onTimeFilterChange}
+                />
               </div>
 
               {/* Sélecteur de vue et terrain */}
@@ -148,7 +137,7 @@ const OwnerStats = ({
                       <SelectTrigger className="w-48">
                         <SelectValue placeholder="Sélectionner un terrain..." />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white">
                         {fields.map((field) => (
                           <SelectItem key={field.id} value={field.id}>
                             {field.name}
@@ -189,11 +178,6 @@ const OwnerStats = ({
     bookings: stat.confirmed_bookings
   }));
 
-  // Données simplifiées pour le graphique (plus de pending)
-  const bookingStatusData = [
-    { name: 'Confirmées & Payées', value: totalBookings, color: '#10B981' }
-  ];
-
   return (
     <div className="space-y-6">
       {/* En-tête avec contrôles */}
@@ -218,22 +202,19 @@ const OwnerStats = ({
                   </Button>
                 )}
               </div>
-              <div className="flex gap-2">
-                {(Object.keys(timeFilterLabels) as TimeFilter[]).map((filter) => (
-                  <Button
-                    key={filter}
-                    variant={timeFilter === filter ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => onTimeFilterChange(filter)}
-                  >
-                    {timeFilterLabels[filter]}
-                  </Button>
-                ))}
-              </div>
+              <Badge variant="outline">{timeFilter.label}</Badge>
+            </div>
+
+            {/* Nouveau sélecteur temporel */}
+            <div className="border-t pt-4">
+              <TimeFilterSelector
+                currentFilter={timeFilter}
+                onFilterChange={onTimeFilterChange}
+              />
             </div>
 
             {/* Sélecteur de vue et terrain */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 border-t pt-4">
               <div className="flex gap-2">
                 <Button
                   variant={viewMode === 'global' ? "default" : "outline"}
@@ -285,7 +266,7 @@ const OwnerStats = ({
           <div className="text-2xl font-bold text-green-900">
             {formatXOF(totalRevenue)}
           </div>
-          <p className="text-xs text-green-600 mt-1">{timeFilterLabels[timeFilter]}</p>
+          <p className="text-xs text-green-600 mt-1">{timeFilter.label}</p>
         </div>
         
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4">
@@ -296,7 +277,7 @@ const OwnerStats = ({
           <div className="text-2xl font-bold text-blue-900">
             {totalBookings}
           </div>
-          <p className="text-xs text-blue-600 mt-1">{timeFilterLabels[timeFilter]}</p>
+          <p className="text-xs text-blue-600 mt-1">{timeFilter.label}</p>
         </div>
         
         <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg p-4">

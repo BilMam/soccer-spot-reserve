@@ -3,36 +3,90 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
-export type TimeFilter = 'day' | 'week' | 'month';
+export type TimeFilter = 'today' | 'last30days' | 'alltime' | 'currentYear' | 'lastYear' | 'currentMonth' | 'specificMonth' | 'specificYear';
 
-export const useOwnerStats = (timeFilter: TimeFilter = 'month', fieldId?: string) => {
+export interface TimeFilterConfig {
+  type: TimeFilter;
+  value?: string; // For specific month (YYYY-MM) or year (YYYY)
+  label: string;
+}
+
+// Fonction utilitaire pour calculer les dates selon le filtre
+const getDateRange = (filter: TimeFilterConfig): { startDate: Date; endDate: Date } => {
+  const now = new Date();
+  let startDate: Date;
+  let endDate = now;
+
+  switch (filter.type) {
+    case 'today':
+      startDate = new Date(now);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(now);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    
+    case 'last30days':
+      startDate = new Date(now);
+      startDate.setDate(now.getDate() - 30);
+      startDate.setHours(0, 0, 0, 0);
+      break;
+    
+    case 'alltime':
+      startDate = new Date('2020-01-01'); // Date suffisamment ancienne
+      break;
+    
+    case 'currentYear':
+      startDate = new Date(now.getFullYear(), 0, 1);
+      break;
+    
+    case 'lastYear':
+      startDate = new Date(now.getFullYear() - 1, 0, 1);
+      endDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+      break;
+    
+    case 'currentMonth':
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+    
+    case 'specificMonth':
+      if (filter.value) {
+        const [year, month] = filter.value.split('-').map(Number);
+        startDate = new Date(year, month - 1, 1);
+        endDate = new Date(year, month, 0, 23, 59, 59, 999); // Dernier jour du mois
+      } else {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      }
+      break;
+    
+    case 'specificYear':
+      if (filter.value) {
+        const year = Number(filter.value);
+        startDate = new Date(year, 0, 1);
+        endDate = new Date(year, 11, 31, 23, 59, 59, 999);
+      } else {
+        startDate = new Date(now.getFullYear(), 0, 1);
+      }
+      break;
+    
+    default:
+      startDate = new Date(now);
+      startDate.setDate(now.getDate() - 30);
+      startDate.setHours(0, 0, 0, 0);
+  }
+
+  return { startDate, endDate };
+};
+
+export const useOwnerStats = (filter: TimeFilterConfig, fieldId?: string) => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['owner-stats', user?.id, timeFilter, fieldId],
+    queryKey: ['owner-stats', user?.id, filter, fieldId],
     queryFn: async () => {
       if (!user) throw new Error('Utilisateur non connecté');
 
-      // Calculer la date de début selon le filtre
-      const now = new Date();
-      let startDate: Date;
-      
-      switch (timeFilter) {
-        case 'day':
-          startDate = new Date(now);
-          startDate.setHours(0, 0, 0, 0);
-          break;
-        case 'week':
-          startDate = new Date(now);
-          startDate.setDate(now.getDate() - 7);
-          startDate.setHours(0, 0, 0, 0);
-          break;
-        case 'month':
-          startDate = new Date(now);
-          startDate.setDate(now.getDate() - 30);
-          startDate.setHours(0, 0, 0, 0);
-          break;
-      }
+      // Calculer la plage de dates selon le filtre
+      const { startDate, endDate } = getDateRange(filter);
 
       // Requête pour récupérer les statistiques avec filtrage temporel et par terrain
       let query = supabase
@@ -51,6 +105,7 @@ export const useOwnerStats = (timeFilter: TimeFilter = 'month', fieldId?: string
         `)
         .eq('fields.owner_id', user.id)
         .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
         .in('status', ['confirmed', 'owner_confirmed', 'completed'])
         .eq('payment_status', 'paid');
 
