@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { formatXOF } from '@/lib/utils';
-import { Calendar, TrendingUp, Users, ArrowLeft, MapPin, Star } from 'lucide-react';
+import { Calendar, TrendingUp, Users, ArrowLeft, MapPin, Star, ChevronDown, ChevronUp } from 'lucide-react';
 import TimeFilterSelector from './TimeFilterSelector';
 import { TimeFilterConfig } from '@/hooks/useOwnerStats';
+import { format, parseISO, startOfDay, eachDayOfInterval, eachMonthOfInterval, startOfMonth } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface OwnerStat {
   field_id: string;
@@ -64,8 +66,56 @@ const OwnerStats = ({
   onViewModeChange,
   onFieldSelect 
 }: OwnerStatsProps) => {
+  const [showAllBookings, setShowAllBookings] = useState(false);
   const selectedField = fields?.find(f => f.id === selectedFieldId);
   const isFieldView = viewMode === 'field' && selectedFieldId;
+
+  // Créer les données temporelles pour les graphiques
+  const timeSeriesData = useMemo(() => {
+    if (!bookingDetails || !isFieldView) return [];
+    
+    // Grouper les réservations par date
+    const groupedByDate = bookingDetails.reduce((acc, booking) => {
+      const date = booking.booking_date;
+      if (!acc[date]) {
+        acc[date] = { revenue: 0, bookings: 0 };
+      }
+      acc[date].revenue += Number(booking.owner_amount);
+      acc[date].bookings += 1;
+      return acc;
+    }, {} as Record<string, { revenue: number; bookings: number }>);
+
+    // Convertir en tableau trié par date
+    return Object.entries(groupedByDate)
+      .map(([date, data]) => ({
+        date,
+        revenue: data.revenue,
+        bookings: data.bookings,
+        formattedDate: format(parseISO(date), 'dd/MM', { locale: fr })
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [bookingDetails, isFieldView]);
+
+  // Données pour les créneaux horaires
+  const timeSlotData = useMemo(() => {
+    if (!bookingDetails || !isFieldView) return [];
+    
+    const groupedByTime = bookingDetails.reduce((acc, booking) => {
+      const timeSlot = `${booking.start_time.substring(0, 5)}-${booking.end_time.substring(0, 5)}`;
+      if (!acc[timeSlot]) {
+        acc[timeSlot] = 0;
+      }
+      acc[timeSlot] += 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(groupedByTime)
+      .map(([timeSlot, count]) => ({
+        timeSlot,
+        count
+      }))
+      .sort((a, b) => a.timeSlot.localeCompare(b.timeSlot));
+  }, [bookingDetails, isFieldView]);
 
   if (isLoading) {
     return (
@@ -362,13 +412,35 @@ const OwnerStats = ({
                 <CardTitle>Évolution des revenus</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8">
-                  <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Graphique temporel des revenus</p>
-                  <p className="text-sm text-gray-400 mt-2">
-                    Affichage détaillé pour {selectedField?.name}
-                  </p>
-                </div>
+                {timeSeriesData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={timeSeriesData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="formattedDate"
+                        fontSize={12}
+                      />
+                      <YAxis 
+                        tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip 
+                        formatter={(value: number) => [formatXOF(value), 'Revenus']}
+                        labelFormatter={(label) => `Date: ${label}`}
+                      />
+                      <Line 
+                        dataKey="revenue" 
+                        stroke="#10B981" 
+                        strokeWidth={2}
+                        dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-center py-8">
+                    <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">Aucune donnée pour la période sélectionnée</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -378,13 +450,28 @@ const OwnerStats = ({
                 <CardTitle>Réservations par créneaux</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8">
-                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Analyse des créneaux populaires</p>
-                  <p className="text-sm text-gray-400 mt-2">
-                    Données de fréquentation détaillées
-                  </p>
-                </div>
+                {timeSlotData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={timeSlotData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="timeSlot"
+                        fontSize={12}
+                      />
+                      <YAxis />
+                      <Tooltip 
+                        formatter={(value: number) => [`${value}`, 'Réservations']}
+                        labelFormatter={(label) => `Créneau: ${label}`}
+                      />
+                      <Bar dataKey="count" fill="#3B82F6" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-center py-8">
+                    <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">Aucune donnée pour la période sélectionnée</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </>
@@ -456,46 +543,71 @@ const OwnerStats = ({
             ) : (
               // Vue terrain - Table des réservations
               bookingDetails && bookingDetails.length > 0 ? (
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">Date</th>
-                      <th className="text-left p-2">Créneau</th>
-                      <th className="text-right p-2">Prix total</th>
-                      <th className="text-right p-2">Revenus nets</th>
-                      <th className="text-center p-2">Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bookingDetails.map((booking) => (
-                      <tr key={booking.id} className="border-b hover:bg-gray-50">
-                        <td className="p-2">
-                          {new Date(booking.booking_date).toLocaleDateString('fr-FR')}
-                        </td>
-                        <td className="p-2">
-                          {booking.start_time} - {booking.end_time}
-                        </td>
-                        <td className="p-2 text-right font-medium">
-                          {formatXOF(booking.total_price)}
-                        </td>
-                        <td className="p-2 text-right font-bold text-green-700">
-                          {formatXOF(booking.owner_amount)}
-                        </td>
-                        <td className="p-2 text-center">
-                          <Badge 
-                            variant={booking.status === 'completed' ? 'default' : 'secondary'}
-                            className="capitalize"
-                          >
-                            {booking.status === 'confirmed' ? 'Confirmé' :
-                             booking.status === 'completed' ? 'Terminé' :
-                             booking.status === 'owner_confirmed' ? 'Confirmé' :
-                             booking.status}
-                          </Badge>
-                        </td>
+                <div>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-2">Date</th>
+                        <th className="text-left p-2">Créneau</th>
+                        <th className="text-right p-2">Prix total</th>
+                        <th className="text-right p-2">Revenus nets</th>
+                        <th className="text-center p-2">Statut</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {(showAllBookings ? bookingDetails : bookingDetails.slice(0, 5)).map((booking) => (
+                        <tr key={booking.id} className="border-b hover:bg-gray-50">
+                          <td className="p-2">
+                            {new Date(booking.booking_date).toLocaleDateString('fr-FR')}
+                          </td>
+                          <td className="p-2">
+                            {booking.start_time.substring(0, 5)} - {booking.end_time.substring(0, 5)}
+                          </td>
+                          <td className="p-2 text-right font-medium">
+                            {formatXOF(booking.total_price)}
+                          </td>
+                          <td className="p-2 text-right font-bold text-green-700">
+                            {formatXOF(booking.owner_amount)}
+                          </td>
+                          <td className="p-2 text-center">
+                            <Badge 
+                              variant={booking.status === 'completed' ? 'default' : 'secondary'}
+                              className="capitalize"
+                            >
+                              {booking.status === 'confirmed' ? 'Confirmé' :
+                               booking.status === 'completed' ? 'Terminé' :
+                               booking.status === 'owner_confirmed' ? 'Confirmé' :
+                               booking.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  
+                  {bookingDetails.length > 5 && (
+                    <div className="flex justify-center mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAllBookings(!showAllBookings)}
+                        className="flex items-center gap-2"
+                      >
+                        {showAllBookings ? (
+                          <>
+                            <ChevronUp className="w-4 h-4" />
+                            Voir moins
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="w-4 h-4" />
+                            Voir plus ({bookingDetails.length - 5} autres)
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="text-center py-8">
                   <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
