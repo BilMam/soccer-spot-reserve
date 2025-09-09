@@ -61,22 +61,45 @@ serve(async (req) => {
       payload = {};
     }
 
+    console.log("[paydunya-ipn] Raw payload received:", {
+      contentType: ct,
+      keys: Object.keys(payload || {}),
+      payload: payload
+    });
+
+    // PayDunya envoie les données sous forme data[...] dans form-urlencoded
+    // Il faut extraire les valeurs correctement
+    let status, invoice_token, total_amount;
+    
+    if (payload['data[status]']) {
+      // Format form-urlencoded avec clés data[...]
+      status = payload['data[status]'];
+      invoice_token = payload['data[invoice][token]'] || payload['data[custom_data][invoice_token]'];
+      total_amount = payload['data[invoice][total_amount]'];
+    } else if (payload.data) {
+      // Format JSON avec objet data
+      status = payload.data.status;
+      invoice_token = payload.data.invoice?.token || payload.data.custom_data?.invoice_token;
+      total_amount = payload.data.invoice?.total_amount;
+    } else {
+      // Format direct
+      status = payload.status;
+      invoice_token = payload.token || payload.invoice_token;
+      total_amount = payload.total_amount;
+    }
+
     const master = Deno.env.get("PAYDUNYA_MASTER_KEY") ?? "";
-    const receivedHash = (payload.hash || payload.signature || "").toString().toLowerCase();
+    const receivedHash = (payload['data[hash]'] || payload.hash || payload.signature || "").toString().toLowerCase();
     const expected = master ? (await sha512(master)).toLowerCase() : "";
     const hashVerified = Boolean(master) && Boolean(receivedHash) && receivedHash === expected;
 
-    console.log("[paydunya-ipn] received", {
+    console.log("[paydunya-ipn] Parsed data:", {
       hashVerified,
-      contentType: ct,
-      keys: Object.keys(payload || {}),
-      status: payload?.status,
-      token: payload?.token,
-      invoice_token: payload?.invoice_token,
+      status,
+      invoice_token,
+      total_amount,
+      receivedHash: receivedHash ? 'present' : 'missing'
     });
-
-    // Extract PayDunya data
-    const { status, invoice_token, total_amount } = payload;
 
     if (!invoice_token) {
       console.error('🚨 AUCUN TOKEN TROUVÉ DANS LE WEBHOOK PayDunya!');

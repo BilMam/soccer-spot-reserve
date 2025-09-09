@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Clock, Users, CreditCard, AlertCircle, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Users, CreditCard, Loader2 } from 'lucide-react';
 
 interface BookingFormProps {
   fieldId: string;
@@ -39,36 +38,26 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const [specialRequests, setSpecialRequests] = useState('');
 
   const createBookingAndPayMutation = useMutation({
-    mutationFn: async (bookingData: any) => {
-      console.log('🚀 Démarrage mutation avec données:', {
-        fieldId,
-        fieldName,
-        pricePerHour,
-        selectedDate: selectedDate.toISOString(),
-        selectedStartTime,
-        selectedEndTime,
-        totalPrice,
-        playerCount: parseInt(playerCount)
-      });
-      
+    mutationFn: async () => {
       if (!user) {
-        console.error('❌ Utilisateur non connecté');
         throw new Error('Vous devez être connecté pour effectuer une réservation');
       }
 
-      console.log('✅ Utilisateur authentifié:', user.id);
+      console.log('🚀 Début création réservation PayDunya...');
 
-      const platformFee = Math.round(totalPrice * 0.05); // 5% de commission
-      const ownerAmount = totalPrice - platformFee;
-
-      console.log('💰 Calcul prix:', {
-        totalPrice,
-        platformFee,
-        ownerAmount
+      // Vérifier conflits de créneaux
+      const { data: conflictCheck } = await supabase.rpc('check_booking_conflict', {
+        p_field_id: fieldId,
+        p_booking_date: selectedDate.toISOString().split('T')[0],
+        p_start_time: selectedStartTime,
+        p_end_time: selectedEndTime
       });
 
-      // Créer la réservation AVEC STATUT PROVISIONAL V3-2025072215
-      console.log('📝 V3-2025072215: Création réservation PROVISIONAL (JAMAIS PENDING)...');
+      if (conflictCheck) {
+        throw new Error('Ce créneau est déjà réservé');
+      }
+
+      // Créer la réservation
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert({
@@ -79,166 +68,58 @@ const BookingForm: React.FC<BookingFormProps> = ({
           end_time: selectedEndTime,
           player_count: parseInt(playerCount),
           total_price: totalPrice,
-          platform_fee: platformFee,
-          owner_amount: ownerAmount,
           special_requests: specialRequests || null,
-          status: 'provisional' as const, // UNIQUEMENT PROVISIONAL - JAMAIS PENDING
-          payment_status: 'pending' as const,  // Sera changé en 'paid' par webhook
-          currency: 'XOF'
+          status: 'pending',
+          payment_status: 'pending',
+          field_price: totalPrice
         })
         .select()
         .single();
 
-      if (bookingError) {
+      if (bookingError || !booking) {
         console.error('❌ Erreur création réservation:', bookingError);
-        throw new Error(`Impossible de créer la réservation: ${bookingError.message}`);
+        throw new Error('Impossible de créer la réservation');
       }
 
-      console.log('✅ Réservation créée avec succès:', {
-        id: booking.id,
-        total_price: booking.total_price,
-        platform_fee: booking.platform_fee,
-        owner_amount: booking.owner_amount
+      console.log('✅ Réservation créée:', booking.id);
+
+      // Initier le paiement PayDunya
+      console.log('💳 Initiation paiement PayDunya...');
+      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-paydunya-invoice', {
+        body: {
+          booking_id: booking.id,
+          amount: totalPrice,
+          field_name: fieldName,
+          date: formatDate(selectedDate),
+          time: `${selectedStartTime} - ${selectedEndTime}`
+        }
       });
 
-      // Préparer les données pour le paiement CinetPay
-      const paymentRequestData = {
-        booking_id: booking.id,
-        amount: totalPrice,
-        field_name: fieldName,
-        date: selectedDate.toLocaleDateString('fr-FR'),
-        time: `${selectedStartTime} - ${selectedEndTime}`
-      };
-
-      console.log('💳 Appel Edge Function:', paymentRequestData);
-
-      try {
-        console.log('🔧 Test Edge Function avec timeout 30s...');
-        
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Timeout - L\'Edge Function met trop de temps à répondre')), 30000);
-        });
-
-        const functionPromise = supabase.functions.invoke('create-cinetpay-payment', {
-          body: paymentRequestData,
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-
-        const { data: paymentData, error: paymentError } = await Promise.race([
-          functionPromise,
-          timeoutPromise
-        ]) as any;
-
-        console.log('📡 Réponse Edge Function reçue:', {
-          data: paymentData,
-          error: paymentError,
-          hasData: !!paymentData,
-          hasError: !!paymentError
-        });
-
-        if (paymentError) {
-          console.error('❌ Erreur Edge Function détaillée:', {
-            message: paymentError.message,
-            details: paymentError.details,
-            hint: paymentError.hint,
-            code: paymentError.code
-          });
-          
-          if (paymentError.message?.includes('FunctionsHttpError')) {
-            throw new Error('Service de paiement temporairement indisponible. Veuillez réessayer dans quelques minutes.');
-          } else if (paymentError.message?.includes('timeout')) {
-            throw new Error('Le traitement du paiement prend trop de temps. Veuillez réessayer.');
-          } else if (paymentError.message?.includes('not found')) {
-            throw new Error('Service de paiement non configuré. Contactez le support.');
-          } else {
-            throw new Error(`Erreur de paiement: ${paymentError.message || 'Erreur inconnue'}`);
-          }
-        }
-
-        if (!paymentData) {
-          console.error('❌ Aucune donnée retournée par l\'Edge Function');
-          throw new Error('Le service de paiement n\'a pas répondu correctement. Veuillez réessayer.');
-        }
-
-        if (!paymentData.url) {
-          console.error('❌ URL de paiement manquante:', paymentData);
-          throw new Error('URL de paiement non générée. Veuillez contacter le support.');
-        }
-
-        console.log('✅ URL de paiement générée avec succès:', {
-          url: paymentData.url,
-          transaction_id: paymentData.transaction_id,
-          booking_id: booking.id,
-          amount: totalPrice
-        });
-
-        // Lier le payment_intent_id à la réservation via edge function sécurisée
-        if (paymentData.transaction_id) {
-          console.log('🔗 Liaison payment_intent_id à la réservation...');
-          const { error: linkError } = await supabase.functions.invoke('link-payment-id', {
-            body: { 
-              booking_id: booking.id, 
-              payment_intent_id: paymentData.transaction_id 
-            }
-          });
-          
-          if (linkError) {
-            console.error('❌ Erreur liaison payment_intent_id:', linkError);
-            // Continue malgré l'erreur de liaison
-          } else {
-            console.log('✅ payment_intent_id lié avec succès');
-          }
-        }
-        
-        console.log('🔄 Redirection vers CinetPay...');
-        
-        // V3-2025072215: Redirection immédiate + vérification backup
-        setTimeout(() => {
-          window.location.href = paymentData.url;
-        }, 1000);
-
-        return {
-          booking,
-          paymentUrl: paymentData.url,
-          success: true
-        };
-
-      } catch (functionError: any) {
-        console.error('💥 Erreur critique lors de l\'appel Edge Function:', {
-          name: functionError.name,
-          message: functionError.message,
-          stack: functionError.stack
-        });
-        
-        if (functionError.message?.includes('Failed to fetch')) {
-          throw new Error('Impossible de contacter le service de paiement. Vérifiez votre connexion internet et réessayez.');
-        } else if (functionError.message?.includes('NetworkError')) {
-          throw new Error('Erreur de réseau. Veuillez vérifier votre connexion et réessayer.');
-        } else if (functionError.message?.includes('Timeout')) {
-          throw new Error('Le service de paiement met trop de temps à répondre. Veuillez réessayer dans quelques minutes.');
-        } else {
-          throw new Error(functionError.message || 'Erreur inconnue lors du traitement du paiement. Veuillez contacter le support.');
-        }
+      if (paymentError || !paymentData?.url) {
+        console.error('❌ Erreur création facture PayDunya:', paymentError);
+        throw new Error('Impossible de créer la facture de paiement');
       }
+
+      console.log('✅ Facture PayDunya créée, redirection...');
+      
+      // Redirection vers PayDunya
+      window.location.href = paymentData.url;
+      
+      return { booking, paymentUrl: paymentData.url };
     },
-    onSuccess: (result) => {
-      console.log('🎉 Mutation réussie - redirection en cours vers:', result?.paymentUrl);
+    onSuccess: () => {
       toast({
         title: "Redirection vers le paiement",
-        description: `Vous allez être redirigé vers CinetPay pour payer ${totalPrice.toLocaleString()} XOF`,
+        description: `Vous allez être redirigé vers PayDunya pour payer ${totalPrice.toLocaleString()} XOF`,
         duration: 2000
       });
+      onSuccess?.();
     },
-    onError: (error: any) => {
-      console.error('💥 Erreur mutation finale:', {
-        message: error.message,
-        stack: error.stack
-      });
+    onError: (error: Error) => {
+      console.error('❌ Erreur réservation/paiement:', error);
       toast({
         title: "Erreur de réservation",
-        description: error.message || "Impossible de créer la réservation. Veuillez réessayer.",
+        description: error.message,
         variant: "destructive",
         duration: 5000
       });
@@ -248,19 +129,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('📋 Validation formulaire:', {
-      fieldId,
-      fieldName,
-      pricePerHour,
-      selectedDate: selectedDate.toISOString(),
-      selectedStartTime,
-      selectedEndTime,
-      totalPrice,
-      playerCount
-    });
-
     if (!playerCount || parseInt(playerCount) < 1) {
-      console.error('❌ Nombre de joueurs invalide:', playerCount);
       toast({
         title: "Erreur de validation",
         description: "Veuillez sélectionner un nombre de joueurs valide (minimum 1)",
@@ -270,7 +139,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
     }
 
     if (totalPrice <= 0) {
-      console.error('❌ Prix total invalide:', totalPrice);
       toast({
         title: "Erreur de calcul",
         description: "Le prix total calculé est invalide. Veuillez rafraîchir la page.",
@@ -279,8 +147,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
       return;
     }
 
-    console.log('✅ Validation réussie - lancement mutation avec prix:', totalPrice);
-    createBookingAndPayMutation.mutate({});
+    console.log('✅ Validation réussie - lancement mutation');
+    createBookingAndPayMutation.mutate();
   };
 
   const formatDate = (date: Date) => {
@@ -359,7 +227,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
             {pricePerHour.toLocaleString()} XOF/heure × {calculateDurationHours()} heure(s)
           </div>
           <div className="text-xs text-green-700 mt-1">
-            Commission plateforme (5%): {Math.round(totalPrice * 0.05).toLocaleString()} XOF
+            Commission plateforme (3%): {Math.round(totalPrice * 0.03).toLocaleString()} XOF
           </div>
         </div>
       </div>
@@ -371,7 +239,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
           Processus de réservation sécurisé
         </h4>
         <ol className="text-sm text-blue-800 space-y-1">
-          <li>1. Vous payez maintenant via CinetPay (sécurisé)</li>
+          <li>1. Vous payez maintenant via PayDunya (sécurisé)</li>
           <li>2. Vos fonds sont protégés sur notre plateforme</li>
           <li>3. Le propriétaire confirme votre réservation</li>
           <li>4. Les fonds sont transférés au propriétaire</li>
