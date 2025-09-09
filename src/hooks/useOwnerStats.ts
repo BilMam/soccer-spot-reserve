@@ -15,7 +15,8 @@ export interface TimeFilterConfig {
 const getDateRange = (filter: TimeFilterConfig): { startDate: Date; endDate: Date } => {
   const now = new Date();
   let startDate: Date;
-  let endDate = now;
+  let endDate = new Date(now);
+  endDate.setHours(23, 59, 59, 999);
 
   switch (filter.type) {
     case 'today':
@@ -32,7 +33,8 @@ const getDateRange = (filter: TimeFilterConfig): { startDate: Date; endDate: Dat
       break;
     
     case 'alltime':
-      startDate = new Date('2020-01-01'); // Date suffisamment ancienne
+      startDate = new Date('1900-01-01'); // Date très ancienne
+      endDate = new Date('2100-12-31'); // Date très future
       break;
     
     case 'currentYear':
@@ -104,10 +106,17 @@ export const useOwnerStats = (filter: TimeFilterConfig, fieldId?: string) => {
           fields!inner(id, name, owner_id)
         `)
         .eq('fields.owner_id', user.id)
-        .gte('booking_date', startDate.toISOString().split('T')[0])
-        .lte('booking_date', endDate.toISOString().split('T')[0])
         .in('status', ['confirmed', 'owner_confirmed', 'completed'])
         .eq('payment_status', 'paid');
+
+      // Ajouter le filtrage temporel seulement si ce n'est pas "alltime"
+      if (filter.type !== 'alltime') {
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+        query = query
+          .gte('booking_date', startDateStr)
+          .lte('booking_date', endDateStr);
+      }
 
       // Filtrer par terrain spécifique si demandé
       if (fieldId) {
