@@ -247,8 +247,25 @@ serve(async (req) => {
     console.log(`[${timestamp}] [create-paydunya-invoice] PayDunya response:`, paydunyaResult);
 
     if (paydunyaResult.response_code !== '00') {
+      console.error(`[${timestamp}] PayDunya API Error:`, {
+        code: paydunyaResult.response_code,
+        text: paydunyaResult.response_text,
+        details: paydunyaResult
+      });
       throw new Error(`PayDunya error: ${paydunyaResult.response_text || 'Erreur inconnue'}`);
     }
+
+    // Construct successful response data
+    const responseData: PaymentResponse = {
+      url: paydunyaResult.response_text,
+      invoice_token: invoiceToken,
+      amount_checkout: amountCheckout,
+      field_price: fieldPrice,
+      platform_fee_user: platformFeeUser,
+      platform_fee_owner: platformFeeOwner,
+      owner_amount: ownerAmount,
+      currency: 'XOF'
+    };
 
     console.log(`[${timestamp}] [create-paydunya-invoice] Success:`, responseData);
 
