@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import OwnerStats from '@/components/OwnerStats';
 import OwnerFields from '@/components/OwnerFields';
 import OwnerBookings from '@/components/OwnerBookings';
-import CinetPayOnboarding from '@/components/CinetPayOnboarding';
+import PaymentOnboarding from '@/components/PaymentOnboarding';
 import AvailabilityManagement from '@/components/availability/AvailabilityManagement';
 import { PayoutAccountsManager } from '@/components/owner/PayoutAccountsManager';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -187,7 +187,7 @@ const OwnerDashboard = () => {
                       <li>• Wave, Orange Money, MTN Money, Moov Money</li>
                       <li>• Cartes Visa, Mastercard</li>
                       <li>• Virements bancaires locaux</li>
-                      <li>• Commission CinetPay : ~2.5%</li>
+                      <li>• Commission de paiement : ~2.5%</li>
                       <li>• Exemple : 10 000 XOF → 9 250 XOF nets</li>
                     </ul>
                   </div>

@@ -58,7 +58,7 @@ const AdminDashboard = () => {
             </TabsTrigger>
             <TabsTrigger value="pending-owners" className="flex items-center space-x-2">
               <Users className="w-4 h-4" />
-              <span>Propriétaires (CinetPay)</span>
+              <span>Configuration paiements</span>
             </TabsTrigger>
             <TabsTrigger value="fields" className="flex items-center space-x-2">
               <MapPin className="w-4 h-4" />

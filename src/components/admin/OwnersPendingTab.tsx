@@ -5,7 +5,7 @@ import { CheckCircle, Phone, Calendar, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import { approveOwnerWithCinetPay } from '@/utils/approveOwner';
+import { approveOwnerWithPayment } from '@/utils/approveOwner';
 
 interface PendingOwner {
   id: string;
@@ -92,7 +92,7 @@ export const OwnersPendingTab: React.FC<OwnersPendingTabProps> = ({ hasAdminPerm
       // Vérifier que le propriétaire a un numéro de téléphone
       const owner = pendingOwners?.find(o => o.id === ownerId);
       if (!owner?.phone || owner.phone === 'Non renseigné') {
-        throw new Error('Le propriétaire doit avoir un numéro de téléphone pour créer un contact CinetPay');
+        throw new Error('Le propriétaire doit avoir un numéro de téléphone pour configurer les paiements');
       }
       
       const { data, error } = await supabase.functions.invoke('admin-approve-owner', {
@@ -120,7 +120,7 @@ export const OwnersPendingTab: React.FC<OwnersPendingTabProps> = ({ hasAdminPerm
     onSuccess: (data) => {
       toast({
         title: "Propriétaire approuvé",
-        description: `Contact CinetPay créé avec succès (ID: ${data.cinetpay_contact_id})`,
+        description: `Contact de paiement créé avec succès (ID: ${data.contact_id})`,
       });
       queryClient.invalidateQueries({ queryKey: ['owners-pending'] });
     },
@@ -202,7 +202,7 @@ export const OwnersPendingTab: React.FC<OwnersPendingTabProps> = ({ hasAdminPerm
           Propriétaires en attente de finalisation
         </CardTitle>
         <p className="text-sm text-gray-600">
-          Ces propriétaires ont été approuvés mais n'ont pas encore de contact CinetPay.
+          Ces propriétaires ont été approuvés mais n'ont pas encore configuré leurs paiements.
         </p>
       </CardHeader>
       <CardContent>
@@ -259,7 +259,7 @@ export const OwnersPendingTab: React.FC<OwnersPendingTabProps> = ({ hasAdminPerm
                       className="bg-green-600 hover:bg-green-700"
                     >
                       <CheckCircle className="w-4 h-4 mr-2" />
-                      {approveOwnerMutation.isPending ? 'Création CinetPay...' : 'Créer Contact CinetPay'}
+                      {approveOwnerMutation.isPending ? 'Configuration paiement...' : 'Configurer paiements'}
                     </Button>
                   )}
                 </div>

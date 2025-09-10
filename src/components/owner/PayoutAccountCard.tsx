@@ -12,7 +12,7 @@ interface PayoutAccount {
   label: string
   phone: string
   is_active: boolean
-  cinetpay_contact_id: string | null
+  payment_contact_id: string | null
 }
 
 interface PayoutAccountCardProps {
@@ -124,10 +124,10 @@ export function PayoutAccountCard({ account, isDefault, onUpdate }: PayoutAccoun
       </CardHeader>
       
       <CardContent>        
-        {account.cinetpay_contact_id && (
+        {account.payment_contact_id && (
           <div className="mt-2">
             <Badge variant="outline" className="text-xs">
-              Contact CinetPay configuré
+              Paiement configuré
             </Badge>
           </div>
         )}

@@ -17,7 +17,7 @@ interface PayoutAccount {
   label: string
   phone: string
   is_active: boolean
-  cinetpay_contact_id: string | null
+  payment_contact_id: string | null
 }
 
 interface Owner {
@@ -73,7 +73,10 @@ export function PayoutAccountsManager() {
       }
 
       console.log('📊 Payout accounts found:', data?.length || 0)
-      return data as PayoutAccount[]
+      return data ? data.map((account: any) => ({
+        ...account,
+        payment_contact_id: account.cinetpay_contact_id
+      })) as PayoutAccount[] : []
     },
     staleTime: 0, // Always refetch
     gcTime: 0 // Don't cache

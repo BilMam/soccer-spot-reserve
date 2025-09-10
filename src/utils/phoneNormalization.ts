@@ -81,7 +81,7 @@ export function isValidIvorianPhoneNumber(phone: string): boolean {
 
 /**
  * Extracts the raw 8-digit number without country code
- * Used for CinetPay API calls which expect format without +225
+ * Used for payment API calls which expect format without +225
  * @param phone - Phone number in any supported format
  * @returns 8-digit number string, or null if invalid
  */

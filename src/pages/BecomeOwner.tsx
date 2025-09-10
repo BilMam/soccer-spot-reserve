@@ -177,7 +177,7 @@ const BecomeOwner = () => {
         let errorDescription = data.message || "Impossible de finaliser l'inscription";
         
         // Customize error message based on error code
-        if (data.code === 'CINETPAY_ERROR') {
+        if (data.code === 'PAYMENT_ERROR') {
           errorTitle = "Service temporairement indisponible";
           errorDescription = "Problème avec le service de paiement. Veuillez réessayer dans quelques minutes.";
         } else if (data.code === 'DUPLICATE_APPLICATION' || data.code === 'APPLICATION_EXISTS') {

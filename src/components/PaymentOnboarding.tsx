@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +9,7 @@ import { AlertCircle, CheckCircle, Clock, Smartphone, CreditCard } from 'lucide-
 import { useToast } from '@/hooks/use-toast';
 import { useOwnerPaymentAccount } from '@/hooks/useOwnerPaymentAccount';
 
-const CinetPayOnboarding = () => {
+const PaymentOnboarding = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
@@ -249,4 +248,4 @@ const CinetPayOnboarding = () => {
   );
 };
 
-export default CinetPayOnboarding;
+export default PaymentOnboarding;

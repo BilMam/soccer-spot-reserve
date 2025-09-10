@@ -15,14 +15,14 @@ interface CreateOwnerContactResponse {
   success: boolean;
   message: string;
   already_exists?: boolean;
-  cinetpay_status?: string;
+  payment_status?: string;
   owner_id?: string;
 }
 
 export const useOwnerContactCreation = () => {
   return useMutation({
     mutationFn: async (data: CreateOwnerContactData): Promise<CreateOwnerContactResponse> => {
-      console.log('🔄 Création contact propriétaire CinetPay:', data);
+      console.log('🔄 Création contact propriétaire:', data);
 
       const { data: response, error } = await supabase.functions.invoke('create-owner-contact', {
         body: data
@@ -41,7 +41,7 @@ export const useOwnerContactCreation = () => {
         if (data.already_exists) {
           toast.success('Contact propriétaire déjà configuré');
         } else {
-          toast.success('Contact propriétaire créé avec succès dans CinetPay');
+          toast.success('Contact propriétaire créé avec succès');
         }
       }
     },
@@ -62,7 +62,7 @@ export const createOwnerContactOnApproval = async (
   }
 ) => {
   if (!ownerProfile.full_name || !ownerProfile.email || !ownerProfile.phone) {
-    console.warn('⚠️ Informations propriétaire incomplètes pour création contact CinetPay');
+    console.warn('⚠️ Informations propriétaire incomplètes pour création contact paiement');
     return;
   }
 

@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 
-export const approveOwnerWithCinetPay = async (ownerId: string, adminNotes?: string) => {
+export const approveOwnerWithPayment = async (ownerId: string, adminNotes?: string) => {
   const { data, error } = await supabase.functions.invoke('admin-approve-owner', {
     body: { 
       owner_id: ownerId,

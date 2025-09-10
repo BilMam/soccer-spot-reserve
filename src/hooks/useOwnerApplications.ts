@@ -104,7 +104,7 @@ export const useOwnerApplications = (hasAdminPermissions: boolean) => {
     onSuccess: (data) => {
       toast({
         title: "Demande approuvée",
-        description: "L'utilisateur est maintenant propriétaire et son compte CinetPay a été configuré.",
+        description: "L'utilisateur est maintenant propriétaire et son compte de paiement a été configuré.",
       });
       queryClient.invalidateQueries({ queryKey: ['owner-applications-admin'] });
     },
