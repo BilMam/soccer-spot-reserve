@@ -74,17 +74,20 @@ serve(async (req) => {
     if (payload['data[status]']) {
       // Format form-urlencoded avec clés data[...]
       status = payload['data[status]'];
-      invoice_token = payload['data[invoice][token]'] || payload['data[custom_data][invoice_token]'];
+      // CORRECTION CRITIQUE: Utiliser le custom_data[invoice_token] qui correspond à ce qu'on sauvegarde
+      invoice_token = payload['data[custom_data][invoice_token]'] || payload['data[invoice][token]'];
       total_amount = payload['data[invoice][total_amount]'];
     } else if (payload.data) {
       // Format JSON avec objet data
       status = payload.data.status;
-      invoice_token = payload.data.invoice?.token || payload.data.custom_data?.invoice_token;
+      // CORRECTION CRITIQUE: Utiliser le custom_data[invoice_token] qui correspond à ce qu'on sauvegarde
+      invoice_token = payload.data.custom_data?.invoice_token || payload.data.invoice?.token;
       total_amount = payload.data.invoice?.total_amount;
     } else {
       // Format direct
       status = payload.status;
-      invoice_token = payload.token || payload.invoice_token;
+      // CORRECTION CRITIQUE: Prioriser invoice_token (notre format) avant token (PayDunya format)
+      invoice_token = payload.invoice_token || payload.token;
       total_amount = payload.total_amount;
     }
 
