@@ -149,6 +149,7 @@ export type Database = {
           owner_amount: number | null
           paid_at: string | null
           payment_intent_id: string | null
+          payment_provider: string | null
           payment_status: string | null
           payout_sent: boolean | null
           platform_fee: number | null
@@ -178,6 +179,7 @@ export type Database = {
           owner_amount?: number | null
           paid_at?: string | null
           payment_intent_id?: string | null
+          payment_provider?: string | null
           payment_status?: string | null
           payout_sent?: boolean | null
           platform_fee?: number | null
@@ -207,6 +209,7 @@ export type Database = {
           owner_amount?: number | null
           paid_at?: string | null
           payment_intent_id?: string | null
+          payment_provider?: string | null
           payment_status?: string | null
           payout_sent?: boolean | null
           platform_fee?: number | null
