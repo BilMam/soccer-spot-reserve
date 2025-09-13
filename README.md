@@ -1,6 +1,6 @@
-# MySport - Plateforme de Réservation de Terrains de Sport
+# PISport - Plateforme de Réservation de Terrains de Sport
 
-MySport est une plateforme moderne de réservation de terrains de sport construite avec React, Supabase et intégrée avec CinetPay pour les paiements en Afrique de l'Ouest.
+PISport est une plateforme moderne de réservation de terrains de sport construite avec React, Supabase et intégrée avec CinetPay pour les paiements en Afrique de l'Ouest.
 
 ## 🏗️ Architecture
 

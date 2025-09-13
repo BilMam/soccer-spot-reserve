@@ -34,10 +34,8 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-              <MapPin className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-gray-900">MySport</span>
+            <img src="/pisport-logo.png" alt="PISport" className="w-8 h-8" />
+            <span className="text-xl font-bold text-gray-900">PISport</span>
           </div>
 
           {/* Navigation Links - Hidden on mobile */}

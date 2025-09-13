@@ -52,7 +52,7 @@ const Auth = () => {
     } else {
       toast({
         title: "Connexion réussie",
-        description: "Bienvenue sur MySport !"
+        description: "Bienvenue sur PISport !"
       });
     }
     
@@ -96,10 +96,8 @@ const Auth = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-              <MapPin className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-gray-900">MySport</span>
+            <img src="/pisport-logo.png" alt="PISport" className="w-10 h-10" />
+            <span className="text-2xl font-bold text-gray-900">PISport</span>
           </div>
           <p className="text-gray-600">Votre plateforme de réservation de terrains</p>
         </div>
@@ -174,7 +172,7 @@ const Auth = () => {
               <CardHeader className="text-center pb-4">
                 <CardTitle>Créer un compte</CardTitle>
                 <CardDescription>
-                  Rejoignez MySport et découvrez des terrains incroyables
+                  Rejoignez PISport et découvrez des terrains incroyables
                 </CardDescription>
               </CardHeader>
               <CardContent>
