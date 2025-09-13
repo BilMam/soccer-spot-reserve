@@ -182,9 +182,15 @@ serve(async (req) => {
     }
 
     console.log(`[${timestamp}] Payment intent linked successfully: ${invoiceToken}`);
-    const baseUrl = supabaseUrl?.replace('.supabase.co', '.lovableproject.com');
-    const returnUrl = `${baseUrl}/mes-reservations?success=true&ref=${invoiceToken}`;
-    const cancelUrl = `${baseUrl}/field/${existingBooking.field_id}`;
+    
+    // Utiliser l'URL de production pour les redirections
+    const frontendBaseUrl = Deno.env.get('FRONTEND_BASE_URL');
+    if (!frontendBaseUrl) {
+      throw new Error('Missing FRONTEND_BASE_URL environment variable');
+    }
+    
+    const returnUrl = `${frontendBaseUrl}/reservations`;
+    const cancelUrl = `${frontendBaseUrl}/reservations`;
     const callbackUrl = `${supabaseUrl}/functions/v1/paydunya-ipn`;
 
     // PayDunya Invoice API call - Utiliser l'API de production
