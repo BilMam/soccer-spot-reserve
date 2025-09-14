@@ -208,8 +208,8 @@ serve(async (req) => {
         tagline: "Réservation de terrains de sport",
         postal_address: "Abidjan, Côte d'Ivoire",
         phone_number: "+225 0707070707",
-        website_url: baseUrl,
-        logo_url: `${baseUrl}/logo.png`
+        website_url: frontendBaseUrl,
+        logo_url: `${frontendBaseUrl}/logo.png`
       },
       actions: {
         cancel_url: cancelUrl,
