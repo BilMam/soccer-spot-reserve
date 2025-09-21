@@ -1,10 +1,7 @@
-
 import React from 'react';
 import { MapPin, Mail, Phone, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
-
 const Footer = () => {
-  return (
-    <footer className="bg-gray-900 text-white">
+  return <footer className="bg-gray-900 text-white">
       <div className="max-w-7xl mx-auto px-4 py-16">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Logo and Description */}
@@ -73,13 +70,9 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-gray-800 mt-12 pt-8 text-center">
-          <p className="text-gray-400">
-            © 2024 PISport. Tous droits réservés. Fait avec ❤️ pour les passionnés de football.
-          </p>
+          <p className="text-gray-400">© 2025 PISport. Tous droits réservés. Fait avec ❤️ pour les passionnés de football.</p>
         </div>
       </div>
-    </footer>
-  );
+    </footer>;
 };
-
 export default Footer;
