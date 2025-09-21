@@ -189,8 +189,8 @@ serve(async (req) => {
       throw new Error('Missing FRONTEND_BASE_URL environment variable');
     }
     
-    const returnUrl = `${frontendBaseUrl}/reservations`;
-    const cancelUrl = `${frontendBaseUrl}/reservations`;
+    const returnUrl = `${frontendBaseUrl}/mes-reservations`;
+    const cancelUrl = `${frontendBaseUrl}/mes-reservations`;
     const callbackUrl = `${supabaseUrl}/functions/v1/paydunya-ipn`;
 
     // PayDunya Invoice API call - Utiliser l'API de production
