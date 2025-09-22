@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import Index from '@/pages/Index';
 import Auth from '@/pages/Auth';
+import AuthConfirm from '@/pages/AuthConfirm';
 import Profile from '@/pages/Profile';
 import Search from '@/pages/Search';
 import FieldDetail from '@/pages/FieldDetail';
@@ -32,6 +33,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/confirm" element={<AuthConfirm />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/search" element={<Search />} />
               <Route path="/field/:id" element={<FieldDetail />} />
