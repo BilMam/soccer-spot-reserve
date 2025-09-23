@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -20,6 +20,7 @@ const BecomeOwner = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
@@ -38,7 +39,7 @@ const BecomeOwner = () => {
       // Chercher d'abord dans owner_applications (nouveau flux)
       const { data: applicationData, error: appError } = await supabase
         .from('owner_applications')
-        .select('id, phone, status, full_name, created_at, admin_notes')
+        .select('id, phone, phone_payout, status, full_name, created_at, admin_notes')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -215,8 +216,21 @@ const BecomeOwner = () => {
         description: "Votre demande de propriétaire est en attente de validation admin.",
       });
       
-      // Refresh owner status to show pending state
-      window.location.reload();
+      // Refresh owner status to show pending state without full page reload
+      setShowOtpDialog(false)
+      
+      // Reset form to prevent resubmission
+      setFormData({
+        full_name: '',
+        phone: '',
+        experience: '',
+        motivation: ''
+      })
+      
+      // Force re-fetch of owner status
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['owner-application-status'] })
+      }, 500)
       
     } catch (error: any) {
       console.error('Owner signup error:', error);
@@ -297,7 +311,7 @@ const BecomeOwner = () => {
                     Un administrateur doit valider votre profil avant l'activation.
                   </p>
                   <p className="text-sm text-gray-600">
-                    Numéro de téléphone: {ownerStatus.phone}
+                    Numéro de téléphone: {ownerStatus.phone || (ownerStatus as any).phone_payout || 'Non renseigné'}
                   </p>
 
                   <div className="pt-4">

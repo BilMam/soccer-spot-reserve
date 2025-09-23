@@ -54,22 +54,26 @@ export function OtpDialog({ open, onOpenChange, phone, onVerified }: OtpDialogPr
     setIsVerifying(true)
     
     try {
-      const { data, error } = await supabase.functions.invoke('verify-owner-otp', {
-        body: { phone, token: otp }
+      // Simple OTP verification via Supabase Auth
+      const { error } = await supabase.auth.verifyOtp({
+        phone,
+        token: otp,
+        type: 'sms'
       })
 
-      if (error) throw error
-
-      if (data.success) {
-        toast({
-          title: "Numéro vérifié",
-          description: "Votre numéro de téléphone a été vérifié avec succès"
-        })
-        onVerified()
-        onOpenChange(false)
-      } else {
-        throw new Error(data.error || 'Erreur de vérification')
+      if (error) {
+        console.error('OTP verification error:', error)
+        throw new Error('Code OTP invalide ou expiré')
       }
+
+      toast({
+        title: "Code vérifié",
+        description: "Votre code OTP a été vérifié avec succès"
+      })
+      
+      onVerified()
+      onOpenChange(false)
+      
     } catch (error: any) {
       toast({
         variant: "destructive",

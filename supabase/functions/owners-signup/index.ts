@@ -235,7 +235,9 @@ serve(async (req) => {
       user_id: userId,
       full_name: full_name.trim(),
       phone: normalizedPhone, // Use normalized phone
-      phone_payout: normalizedPhonePayout, // Use normalized payout phone
+      phone_payout: normalizedPhonePayout, // Always ensure payout phone is filled
+      experience: '', // Default empty experience
+      motivation: '', // Default empty motivation
       phone_verified_at: new Date().toISOString(), // OTP was validated
       status: 'pending',
       created_at: new Date().toISOString()
