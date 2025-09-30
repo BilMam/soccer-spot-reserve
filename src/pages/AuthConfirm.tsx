@@ -20,8 +20,15 @@ const AuthConfirm = () => {
         
         if (errorParam || errorCode) {
           console.error('Erreur dans les paramètres:', { errorParam, errorCode });
-          setError(errorCode === 'otp_expired' ? 'Lien expiré' : 'Lien invalide');
-          setTimeout(() => navigate('/auth?confirm=error'), 2000);
+          
+          // Cas spécifique : token déjà utilisé (lien déjà cliqué)
+          if (errorParam === 'access_denied' || errorCode === 'otp_expired') {
+            setError('Ce lien a déjà été utilisé ou a expiré. Veuillez vous connecter.');
+          } else {
+            setError('Lien invalide');
+          }
+          
+          setTimeout(() => navigate('/auth'), 2000);
           return;
         }
 
