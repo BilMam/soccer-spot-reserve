@@ -21,7 +21,6 @@ const AuthConfirm = () => {
         if (errorParam || errorCode) {
           console.error('Erreur dans les paramètres:', { errorParam, errorCode });
           
-          // Cas spécifique : token déjà utilisé (lien déjà cliqué)
           if (errorParam === 'access_denied' || errorCode === 'otp_expired') {
             setError('Ce lien a déjà été utilisé ou a expiré. Veuillez vous connecter.');
           } else {
@@ -32,51 +31,30 @@ const AuthConfirm = () => {
           return;
         }
 
-        // Essayer de récupérer la session depuis l'URL
-        const { data, error: sessionError } = await supabase.auth.getSession();
+        // Supabase gère automatiquement l'échange du code de confirmation en tokens
+        // Il suffit de vérifier si la session a été établie
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
           console.error('Erreur récupération session:', sessionError.message);
           setError('Erreur de confirmation');
-          setTimeout(() => navigate('/auth?confirm=error'), 2000);
+          setTimeout(() => navigate('/auth'), 2000);
           return;
         }
 
-        // Si on a une session, l'utilisateur est confirmé
-        if (data.session) {
-          console.log('Session confirmée avec succès');
-          setTimeout(() => navigate('/?confirmed=true'), 1000);
+        if (session) {
+          console.log('✅ Email confirmé et session établie avec succès');
+          // Redirection immédiate vers la page d'accueil avec l'utilisateur connecté
+          navigate('/');
         } else {
-          // Essayer de traiter les tokens depuis l'URL hash
-          const hashParams = new URLSearchParams(window.location.hash.substring(1));
-          const accessToken = hashParams.get('access_token');
-          const refreshToken = hashParams.get('refresh_token');
-          const type = hashParams.get('type');
-
-          if (accessToken && type === 'signup') {
-            // Définir la session manuellement
-            const { error: setSessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken || ''
-            });
-
-            if (setSessionError) {
-              console.error('Erreur définition session:', setSessionError.message);
-              setError('Erreur de confirmation');
-              setTimeout(() => navigate('/auth?confirm=error'), 2000);
-            } else {
-              console.log('Session définie avec succès');
-              setTimeout(() => navigate('/?confirmed=true'), 1000);
-            }
-          } else {
-            setError('Paramètres de confirmation manquants');
-            setTimeout(() => navigate('/auth?confirm=error'), 2000);
-          }
+          // Si pas de session après confirmation, rediriger vers login
+          console.log('Confirmation réussie mais session non établie, redirection vers login');
+          setTimeout(() => navigate('/auth?message=confirmed'), 1000);
         }
       } catch (e) {
         console.error('Erreur confirmation:', e);
         setError('Erreur de confirmation');
-        setTimeout(() => navigate('/auth?confirm=error'), 2000);
+        setTimeout(() => navigate('/auth'), 2000);
       } finally {
         setLoading(false);
       }
