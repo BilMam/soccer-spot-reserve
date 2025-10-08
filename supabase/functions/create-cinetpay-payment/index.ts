@@ -126,7 +126,7 @@ serve(async (req) => {
 
     // CinetPay Checkout v2
     const transactionId = `checkout_${booking.id}_${Date.now()}`;
-    const baseUrl = supabaseUrl?.replace('.supabase.co', '.lovableproject.com');
+    const baseUrl = 'https://pisport.app';
     const returnUrl = `${baseUrl}/mes-reservations?success=true&ref=${transactionId}`;
     const notifyUrl = `https://zldawmyoscicxoiqvfpu.supabase.co/functions/v1/cinetpay-webhook`;
 
