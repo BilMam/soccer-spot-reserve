@@ -10,10 +10,7 @@ const Footer = () => {
               <img src="/pisport-logo.png" alt="PISport" className="w-8 h-8" />
               <span className="text-2xl font-bold">PISport</span>
             </div>
-            <p className="text-gray-400 leading-relaxed">
-              La première plateforme de réservation de terrains de football en Côte d'Ivoire. 
-              Trouvez et réservez le terrain parfait près de chez vous.
-            </p>
+            <p className="text-gray-400 leading-relaxed">La première plateforme de réservation de terrains de football partout en Côte d'Ivoire. Trouvez et réservez le terrain parfait près de chez vous.</p>
             <div className="flex space-x-4">
               <Facebook className="w-5 h-5 text-gray-400 hover:text-white cursor-pointer transition-colors" />
               <Twitter className="w-5 h-5 text-gray-400 hover:text-white cursor-pointer transition-colors" />
