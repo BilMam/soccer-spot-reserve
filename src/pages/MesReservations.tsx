@@ -5,12 +5,14 @@ import Navbar from '@/components/Navbar';
 import UserBookings from '@/components/UserBookings';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 const MesReservations = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Vérifier si on arrive depuis un paiement
   useEffect(() => {
@@ -50,8 +52,13 @@ const MesReservations = () => {
       };
 
       checkBookingStatus();
+      
+      // Forcer le rafraîchissement des réservations après vérification du paiement
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['user-bookings', user.id] });
+      }, 300);
     }
-  }, [searchParams, user, toast]);
+  }, [searchParams, user, toast, queryClient]);
 
   if (!user) {
     return (
