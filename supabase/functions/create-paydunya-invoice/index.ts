@@ -183,11 +183,8 @@ serve(async (req) => {
 
     console.log(`[${timestamp}] Payment intent linked successfully: ${invoiceToken}`);
     
-    // Utiliser l'URL de production pour les redirections
-    const frontendBaseUrl = Deno.env.get('FRONTEND_BASE_URL');
-    if (!frontendBaseUrl) {
-      throw new Error('Missing FRONTEND_BASE_URL environment variable');
-    }
+    // URL de retour après paiement
+    const frontendBaseUrl = 'https://pisport.app';
     
     const returnUrl = `${frontendBaseUrl}/mes-reservations`;
     const cancelUrl = `${frontendBaseUrl}/mes-reservations`;
