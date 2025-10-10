@@ -5,9 +5,10 @@ import BookingCard from './BookingCard';
 
 interface AllBookingsSectionProps {
   bookings: any[];
+  isOwnerView?: boolean;
 }
 
-const AllBookingsSection: React.FC<AllBookingsSectionProps> = ({ bookings }) => {
+const AllBookingsSection: React.FC<AllBookingsSectionProps> = ({ bookings, isOwnerView = false }) => {
   // Filtrer pour ne montrer que les réservations confirmées/terminées/annulées
   const activeBookings = bookings.filter(booking => 
     ['confirmed', 'owner_confirmed', 'completed', 'cancelled'].includes(booking.status)
@@ -20,7 +21,7 @@ const AllBookingsSection: React.FC<AllBookingsSectionProps> = ({ bookings }) => 
       </h3>
       <div className="space-y-4">
         {activeBookings.map((booking) => (
-          <BookingCard key={booking.id} booking={booking} />
+          <BookingCard key={booking.id} booking={booking} isOwnerView={isOwnerView} />
         ))}
 
         {activeBookings.length === 0 && (

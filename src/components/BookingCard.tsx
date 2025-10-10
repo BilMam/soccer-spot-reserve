@@ -10,9 +10,10 @@ import BookingStatusBadge from './BookingStatusBadge';
 
 interface BookingCardProps {
   booking: any;
+  isOwnerView?: boolean;
 }
 
-const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
+const BookingCard: React.FC<BookingCardProps> = ({ booking, isOwnerView = false }) => {
   return (
     <Card>
       <CardHeader>
@@ -66,12 +67,14 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
           </div>
         )}
 
-        {/* Nouveau workflow status */}
-        <BookingWorkflowStatus 
-          status={booking.status} 
-          paymentStatus={booking.payment_status}
-          showDetails={true}
-        />
+        {/* Nouveau workflow status - uniquement pour les clients */}
+        {!isOwnerView && (
+          <BookingWorkflowStatus 
+            status={booking.status} 
+            paymentStatus={booking.payment_status}
+            showDetails={true}
+          />
+        )}
 
         {/* Message informatif pour les paiements en cours */}
         {booking.status === 'provisional' && (

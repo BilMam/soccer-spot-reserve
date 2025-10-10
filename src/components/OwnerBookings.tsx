@@ -49,7 +49,7 @@ const OwnerBookings: React.FC<OwnerBookingsProps> = ({ ownerId }) => {
 
   return (
     <div className="space-y-6">
-      <AllBookingsSection bookings={bookings || []} />
+      <AllBookingsSection bookings={bookings || []} isOwnerView={true} />
     </div>
   );
 };
