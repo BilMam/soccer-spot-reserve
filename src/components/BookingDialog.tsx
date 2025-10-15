@@ -66,7 +66,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
           special_requests: specialRequests || null,
           status: 'pending_approval', // Nouveau statut : en attente d'approbation
           payment_status: 'pending',
-          payment_provider: 'paydunya'
+          payment_provider: 'cinetpay'
         })
         .select()
         .single();

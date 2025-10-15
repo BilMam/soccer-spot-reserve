@@ -43,7 +43,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
         throw new Error('Vous devez être connecté pour effectuer une réservation');
       }
 
-      console.log('🚀 Début création réservation PayDunya...');
+      console.log('🚀 Début création réservation CinetPay...');
 
       // Vérifier conflits de créneaux
       const { data: conflictCheck } = await supabase.rpc('check_booking_conflict', {
@@ -83,9 +83,9 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
       console.log('✅ Réservation créée:', booking.id);
 
-      // Initier le paiement PayDunya
-      console.log('💳 Initiation paiement PayDunya...');
-      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-paydunya-invoice', {
+      // Initier le paiement CinetPay
+      console.log('💳 Initiation paiement CinetPay...');
+      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-cinetpay-payment', {
         body: {
           booking_id: booking.id,
           amount: totalPrice,
@@ -96,13 +96,13 @@ const BookingForm: React.FC<BookingFormProps> = ({
       });
 
       if (paymentError || !paymentData?.url) {
-        console.error('❌ Erreur création facture PayDunya:', paymentError);
-        throw new Error('Impossible de créer la facture de paiement');
+        console.error('❌ Erreur création paiement CinetPay:', paymentError);
+        throw new Error('Impossible de créer le paiement');
       }
 
-      console.log('✅ Facture PayDunya créée, redirection...');
+      console.log('✅ Paiement CinetPay créé, redirection...');
       
-      // Redirection vers PayDunya
+      // Redirection vers CinetPay
       window.location.href = paymentData.url;
       
       return { booking, paymentUrl: paymentData.url };
@@ -110,7 +110,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
     onSuccess: () => {
       toast({
         title: "Redirection vers le paiement",
-        description: `Vous allez être redirigé vers PayDunya pour payer ${totalPrice.toLocaleString()} XOF`,
+        description: `Vous allez être redirigé vers CinetPay pour payer ${totalPrice.toLocaleString()} XOF`,
         duration: 2000
       });
       onSuccess?.();
@@ -239,7 +239,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
           Processus de réservation sécurisé
         </h4>
         <ol className="text-sm text-blue-800 space-y-1">
-          <li>1. Vous payez maintenant via PayDunya (sécurisé)</li>
+          <li>1. Vous payez maintenant via CinetPay (sécurisé)</li>
           <li>2. Vos fonds sont protégés sur notre plateforme</li>
           <li>3. Le propriétaire confirme votre réservation</li>
           <li>4. Les fonds sont transférés au propriétaire</li>

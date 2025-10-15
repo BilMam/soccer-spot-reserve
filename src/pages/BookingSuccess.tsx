@@ -212,7 +212,7 @@ const BookingSuccess = () => {
                 <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
                 <p className="text-gray-700">
                   <Smartphone className="w-4 h-4 inline mr-1" />
-                  Paiement sécurisé traité par PayDunya (Mobile Money & cartes bancaires)
+                  Paiement sécurisé traité par CinetPay (Mobile Money & cartes bancaires)
                 </p>
               </div>
               <div className="flex items-start space-x-3">

@@ -107,7 +107,7 @@ const Checkout = () => {
         throw new Error(`Impossible de créer la réservation: ${bookingError.message}`);
       }
 
-      // Créer le paiement PayDunya avec la bonne URL
+      // Créer le paiement CinetPay avec la bonne URL
       const paymentRequestData = {
         booking_id: booking.id,
         amount: checkoutData.totalPrice,
@@ -116,22 +116,22 @@ const Checkout = () => {
         time: `${checkoutData.selectedStartTime} - ${checkoutData.selectedEndTime}`
       };
 
-      console.log('🔍 Debug paymentRequestData PayDunya:', paymentRequestData);
+      console.log('🔍 Debug paymentRequestData CinetPay:', paymentRequestData);
 
       // Utiliser l'API Supabase directement au lieu d'une URL externe
-      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-paydunya-invoice', {
+      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-cinetpay-payment', {
         body: paymentRequestData
       });
 
       if (paymentError) {
-        throw new Error(`Erreur de paiement PayDunya: ${paymentError.message}`);
+        throw new Error(`Erreur de paiement CinetPay: ${paymentError.message}`);
       }
 
       if (!paymentData?.url) {
-        throw new Error('URL de paiement PayDunya non générée');
+        throw new Error('URL de paiement CinetPay non générée');
       }
 
-      // Rediriger vers PayDunya
+      // Rediriger vers CinetPay
       setTimeout(() => {
         window.location.href = paymentData.url;
       }, 1500);
@@ -141,7 +141,7 @@ const Checkout = () => {
     onSuccess: () => {
       toast({
         title: "Redirection vers le paiement",
-        description: `Vous allez être redirigé vers PayDunya pour payer ${checkoutData?.totalPrice.toLocaleString()} XOF`,
+        description: `Vous allez être redirigé vers CinetPay pour payer ${checkoutData?.totalPrice.toLocaleString()} XOF`,
         duration: 2000
       });
     },
@@ -230,7 +230,7 @@ const Checkout = () => {
                     <CreditCard className="w-5 h-5 text-green-600 mt-0.5" />
                     <div className="text-sm text-green-800">
                       <p className="font-medium mb-1">Tous les moyens de paiement disponibles</p>
-                      <p>Orange Money, MTN Mobile Money, Moov Money, Wave, Visa/Mastercard - Choisissez directement sur la page de paiement PayDunya.</p>
+                      <p>Orange Money, MTN Mobile Money, Moov Money, Wave, Visa/Mastercard - Choisissez directement sur la page de paiement CinetPay.</p>
                     </div>
                   </div>
                 </div>
