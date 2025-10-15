@@ -53,16 +53,10 @@ const MesReservations = () => {
 
       checkBookingStatus();
       
-      // Forcer le rafraîchissement avec plusieurs tentatives
+      // Forcer le rafraîchissement des réservations après vérification du paiement
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['user-bookings', user.id] });
-        queryClient.refetchQueries({ queryKey: ['user-bookings', user.id] });
-      }, 2000); // 2 secondes pour laisser le temps au webhook de traiter
-
-      // Tentative supplémentaire après 4 secondes au cas où le webhook serait lent
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ['user-bookings', user.id] });
-      }, 4000);
+      }, 300);
     }
   }, [searchParams, user, toast, queryClient]);
 
