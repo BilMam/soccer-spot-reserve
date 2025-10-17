@@ -1,223 +1,249 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 serve(async (req) => {
-  console.log('🎯 WEBHOOK CINETPAY DÉCLENCHÉ!', {
-    timestamp: new Date().toISOString(),
-    method: req.method,
-    url: req.url,
-    user_agent: req.headers.get('user-agent'),
-    content_type: req.headers.get('content-type'),
-    origin: req.headers.get('origin'),
-  })
+  const timestamp = new Date().toISOString();
+  console.log(`🎯 [${timestamp}] Webhook CinetPay déclenché — ${req.method}`);
 
   if (req.method === 'OPTIONS') {
-    console.log('📋 OPTIONS request - CORS preflight')
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    )
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    console.log('📊 CONTENT TYPE:', req.headers.get('content-type'))
-    
-    // CinetPay envoie les données en form-data, pas en JSON
-    let requestBody
-    const contentType = req.headers.get('content-type') || ''
-    
-    if (contentType.includes('application/x-www-form-urlencoded')) {
-      const formData = await req.formData()
-      requestBody = {}
-      for (const [key, value] of formData.entries()) {
-        requestBody[key] = value
-      }
-      console.log('📋 FORM DATA PARSED:', requestBody)
-    } else if (contentType.includes('application/json')) {
-      requestBody = await req.json()
-      console.log('📋 JSON DATA:', requestBody)  
+    const cinetpayApiKey = Deno.env.get('CINETPAY_API_KEY');
+    const cinetpaySiteId = Deno.env.get('CINETPAY_SITE_ID');
+
+    // =======================
+    // 🔍 Parsing flexible du corps
+    // =======================
+    const contentType = req.headers.get('content-type') || '';
+    let body: Record<string, any> = {};
+
+    if (contentType.includes('application/json')) {
+      body = await req.json();
+    } else if (contentType.includes('application/x-www-form-urlencoded')) {
+      const formData = await req.formData();
+      for (const [key, value] of formData.entries()) body[key] = value;
     } else {
-      // Essayer les deux formats
+      const text = await req.text();
       try {
-        requestBody = await req.json()
+        body = JSON.parse(text);
       } catch {
-        const text = await req.text()
-        console.log('📋 RAW TEXT:', text)
-        // Parser en form-data manuel si nécessaire
-        const params = new URLSearchParams(text)
-        requestBody = Object.fromEntries(params)
+        const params = new URLSearchParams(text);
+        body = Object.fromEntries(params);
       }
     }
-    const { cpm_trans_id, cpm_amount } = requestBody
 
-    console.log('🎯 WEBHOOK CINETPAY DONNÉES REÇUES!', {
-      timestamp: new Date().toISOString(),
-      trans_id: cpm_trans_id,
-      amount: cpm_amount,
-      full_body: requestBody
-    })
+    console.log('📦 Données reçues du webhook:', body);
 
-    // Vérifier la signature du webhook si nécessaire
-    const cinetpayApiKey = Deno.env.get('CINETPAY_API_KEY')
-    
-    // Vérifier le statut de la transaction via l'API CinetPay
-    const verificationResponse = await fetch('https://api-checkout.cinetpay.com/v2/payment/check', {
+    const transactionId =
+      body.transaction_id || body.cpm_trans_id || body?.data?.transaction_id;
+    if (!transactionId) throw new Error('transaction_id manquant dans le webhook');
+
+    // =======================
+    // 🔒 Vérification côté serveur
+    // =======================
+    const checkPayload = {
+      apikey: cinetpayApiKey,
+      site_id: cinetpaySiteId,
+      transaction_id: transactionId,
+    };
+
+    const checkResponse = await fetch('https://api-checkout.cinetpay.com/v2/payment/check', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        apikey: cinetpayApiKey,
-        site_id: Deno.env.get('CINETPAY_SITE_ID'),
-        transaction_id: cpm_trans_id
-      })
-    })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(checkPayload),
+    });
 
-    const verification = await verificationResponse.json()
+    const checkData = await checkResponse.json();
+    console.log('🧾 Réponse /payment/check:', checkData);
 
-    if (verification.code !== '00') {
-      throw new Error(`Erreur vérification transaction: ${verification.message}`)
+    const status = (checkData?.data?.status || '').toUpperCase();
+    const code = checkData?.code;
+
+    // =======================
+    // 🧠 Détermination du statut réel
+    // =======================
+    let bookingStatus = 'pending';
+    let paymentStatus = 'pending';
+
+    if (code === '00' && status === 'ACCEPTED') {
+      bookingStatus = 'confirmed';
+      paymentStatus = 'paid';
+    } else if (status === 'REFUSED' || code === '201') {
+      bookingStatus = 'cancelled';
+      paymentStatus = 'failed';
+    } else if (status === 'PENDING') {
+      bookingStatus = 'pending';
+      paymentStatus = 'pending';
     }
 
-    // Workflow simplifié - plus de statut initiated/pending
-    let bookingStatus = 'cancelled'  // Par défaut, annuler la tentative
-    let paymentStatus = 'failed'
-
-    const paymentAccepted = verification.code === '00' && verification.data?.status === 'ACCEPTED'
-    if (paymentAccepted) {
-      // ✅ PAIEMENT RÉUSSI - créneau bloqué définitivement
-      bookingStatus = 'confirmed'
-      paymentStatus = 'paid'
-      console.log('🔥 PAIEMENT CONFIRMÉ - Créneau bloqué définitivement')
-    } else {
-      // ❌ PAIEMENT ÉCHOUÉ/REFUSÉ - créneau immédiatement libre
-      bookingStatus = 'cancelled'
-      paymentStatus = 'failed'
-      console.log('💥 PAIEMENT ÉCHOUÉ - Créneau immédiatement libre pour autres joueurs')
-    }
-
-    // Chercher d'abord la réservation
-    const { data: bookingRow } = await supabaseClient
+    // =======================
+    // 🔍 Recherche de la réservation associée
+    //  (et récupération des infos nécessaires au payout planifié)
+    // =======================
+    const { data: booking, error: bookingErr } = await supabase
       .from('bookings')
-      .select('id, status, payment_status')
-      .eq('payment_intent_id', cpm_trans_id)
-      .maybeSingle()
+      .select(`
+        id,
+        status,
+        payment_status,
+        owner_amount,
+        start_time,
+        fields!inner (
+          name,
+          owners!inner ( id, cinetpay_contact_id )
+        )
+      `)
+      .eq('payment_intent_id', transactionId)
+      .maybeSingle();
 
-    if (!bookingRow) {
-      console.error('🚨 AUCUNE RÉSERVATION TROUVÉE POUR CE PAIEMENT!')
-      console.error('Transaction ID:', cpm_trans_id)
-      
-      // Enregistrer l'anomalie pour monitoring
-      await supabaseClient.from('payment_anomalies').insert({
-        payment_intent_id: cpm_trans_id,
-        amount: parseInt(cpm_amount),
+    if (bookingErr) throw bookingErr;
+
+    if (!booking) {
+      console.warn('⚠️ Aucune réservation trouvée pour transaction:', transactionId);
+      await supabase.from('payment_anomalies').insert({
+        payment_intent_id: transactionId,
         error_type: 'no_booking_found',
-        error_message: 'No booking found for this payment_intent_id',
-        webhook_data: { cpm_trans_id, cpm_amount }
-      })
-      
+        error_message: 'No booking found for this transaction_id',
+        webhook_data: body,
+      });
+
       return new Response(
-        JSON.stringify({ success: false, error: 'Booking not found' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      )
+        JSON.stringify({ success: false, reason: 'booking_not_found' }),
+        { headers: corsHeaders, status: 200 }
+      );
     }
 
-    console.log(`[WEBHOOK] Booking found:`, bookingRow)
-
-    // Mettre à jour la réservation (sans filtre de statut strict)
-    const { data: booking, error: updateError } = await supabaseClient
+    // =======================
+    // 💾 Mise à jour de la réservation
+    // =======================
+    const { error: updateError } = await supabase
       .from('bookings')
       .update({
         status: bookingStatus,
         payment_status: paymentStatus,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
-      .eq('id', bookingRow.id)
-      .select('id')
-      .single()
+      .eq('id', booking.id);
 
-    console.log(`✅ Réservation mise à jour: ${booking?.id} → ${bookingStatus}/${paymentStatus}`)
+    if (updateError) throw updateError;
 
-    if (updateError) {
-      console.error('Erreur mise à jour réservation:', updateError)
-      throw updateError
-    }
+    console.log(`✅ Réservation ${booking.id} mise à jour → ${bookingStatus}/${paymentStatus}`);
 
-    // Déclencher automatiquement le payout si le paiement est confirmé
-    let payoutTriggered = false;
-    if (paymentStatus === 'paid' && booking) {
-      console.log(`💰 Déclenchement payout automatique pour booking ${booking.id}`)
-      try {
-        const { data: payoutResult, error: payoutError } = await supabaseClient.functions.invoke('create-owner-payout', {
-          body: { booking_id: booking.id }
-        });
+    // =======================
+    // 🗓️ PLANIFICATION AUTOMATIQUE DU PAYOUT
+    // =======================
+    let payoutPlanned = false;
+    let payoutTriggeredNow = false;
 
-        if (payoutError) {
-          console.error('❌ Erreur déclenchement payout:', payoutError);
+    if (paymentStatus === 'paid') {
+      // vérifs de base
+      const ownerAmount = Math.round(Number(booking.owner_amount) || 0);
+      const contactId: string | null = booking.fields?.owners?.cinetpay_contact_id ?? null;
+      if (!ownerAmount) {
+        console.warn('⚠️ owner_amount invalide ou nul, pas de payout créé');
+      } else if (!contactId) {
+        console.warn('⚠️ cinetpay_contact_id manquant pour le propriétaire, pas de payout créé');
+      } else {
+        // Idempotence : existe-t-il déjà un payout pour cette booking ?
+        const { data: existingPayout } = await supabase
+          .from('payouts')
+          .select('id, status, scheduled_at')
+          .eq('booking_id', booking.id)
+          .maybeSingle();
+
+        const scheduledAtIso = new Date(booking.start_time).toISOString(); // ⚠️ supposé déjà en UTC
+        const now = new Date();
+        const start = new Date(scheduledAtIso);
+
+        if (!existingPayout) {
+          const { error: insErr } = await supabase.from('payouts').insert({
+            booking_id: booking.id,
+            owner_id: booking.fields.owners.id,
+            amount: ownerAmount,
+            amount_net: ownerAmount,
+            status: 'scheduled',
+            scheduled_at: scheduledAtIso
+          });
+          if (insErr) throw new Error('Failed to schedule payout: ' + insErr.message);
+          payoutPlanned = true;
+          console.log(`🗓️ Payout planifié pour ${scheduledAtIso} (XOF ${ownerAmount})`);
+        } else if (existingPayout.status === 'pending') {
+          await supabase.from('payouts').update({
+            status: 'scheduled',
+            scheduled_at: scheduledAtIso
+          }).eq('id', existingPayout.id);
+          payoutPlanned = true;
+          console.log(`🗓️ Payout existant basculé en scheduled → ${scheduledAtIso}`);
         } else {
-          console.log('✅ Payout déclenché avec succès:', payoutResult);
-          payoutTriggered = true;
+          console.log(`ℹ️ Payout déjà présent (status=${existingPayout.status})`);
         }
-      } catch (payoutError) {
-        console.error('❌ Erreur payout:', payoutError);
-        // Ne pas faire échouer le webhook principal
+
+        // 🟢 Si l’heure est déjà passée (ou très proche), déclencher tout de suite
+        if (start.getTime() <= now.getTime()) {
+          try {
+            const { data: payoutResult, error: payoutError } = await supabase.functions.invoke(
+              'create-owner-payout',
+              { body: { booking_id: booking.id } }
+            );
+            if (payoutError) {
+              console.error('Erreur lors du payout immédiat:', payoutError);
+            } else {
+              payoutTriggeredNow = true;
+              console.log('💸 Payout immédiat exécuté (heure déjà passée):', payoutResult);
+            }
+          } catch (err) {
+            console.error('Erreur invocation payout immédiat:', err);
+          }
+        }
       }
     }
 
-    // Email de confirmation désactivé - flux automatique silencieux
-    // L'utilisateur sera notifié via d'autres canaux si nécessaire
-
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        booking_id: booking?.id, 
+      JSON.stringify({
+        success: true,
+        transaction_id: transactionId,
+        booking_id: booking.id,
         status: bookingStatus,
-        payout_triggered: payoutTriggered
+        payment_status: paymentStatus,
+        payout_planned: payoutPlanned,
+        payout_triggered_now: payoutTriggeredNow
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      },
-    )
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+    );
+  } catch (error: any) {
+    console.error('❌ Erreur critique dans le webhook CinetPay:', error);
 
-  } catch (error) {
-    console.error('❌ ERREUR WEBHOOK CINETPAY CRITIQUE:', {
-      error: error.message,
-      stack: error.stack,
-      timestamp: new Date().toISOString()
-    });
-    
-    // Enregistrer l'erreur pour diagnostic
+    // Log en base pour analyse
     try {
-      const supabaseClient = createClient(
+      const supabase = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
       );
-      
-      await supabaseClient.from('payment_anomalies').insert({
+
+      await supabase.from('payment_anomalies').insert({
         payment_intent_id: 'webhook_error',
-        amount: 0,
         error_type: 'webhook_processing_error',
         error_message: error.message,
-        webhook_data: { error_stack: error.stack, timestamp: new Date().toISOString() }
+        webhook_data: { stack: error.stack, time: new Date().toISOString() },
       });
-    } catch (logError) {
-      console.error('Failed to log webhook error:', logError);
+    } catch (err) {
+      console.error('Échec enregistrement erreur webhook:', err);
     }
-    
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      },
-    )
+
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500,
+    });
   }
-})
+});

@@ -84,7 +84,7 @@ const Checkout = () => {
       const platformFee = Math.round(checkoutData.totalPrice * 0.05);
       const ownerAmount = checkoutData.totalPrice - platformFee;
 
-      // Créer la réservation
+      // 1) Créer la réservation (status pending) et marquer le provider = cinetpay
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert({
@@ -94,11 +94,12 @@ const Checkout = () => {
           start_time: checkoutData.selectedStartTime,
           end_time: checkoutData.selectedEndTime,
           total_price: checkoutData.totalPrice,
-          platform_fee: platformFee,
+          platform_fee: platformFee,     // si tu utilises plutôt platform_fee_user/owner, garde la cohérence avec ta DB
           owner_amount: ownerAmount,
           status: 'pending',
           payment_status: 'pending',
-          currency: 'XOF'
+          currency: 'XOF',
+          payment_provider: 'cinetpay'
         })
         .select()
         .single();
@@ -107,41 +108,40 @@ const Checkout = () => {
         throw new Error(`Impossible de créer la réservation: ${bookingError.message}`);
       }
 
-      // Créer le paiement PayDunya avec la bonne URL
+      // 2) Créer la session de paiement CinetPay via l’Edge Function
       const paymentRequestData = {
         booking_id: booking.id,
-        amount: checkoutData.totalPrice,
+        amount: checkoutData.totalPrice, // le serveur recalcule + applique les frais
         field_name: field.name,
         date: checkoutData.selectedDate.toLocaleDateString('fr-FR'),
         time: `${checkoutData.selectedStartTime} - ${checkoutData.selectedEndTime}`
       };
 
-      console.log('🔍 Debug paymentRequestData PayDunya:', paymentRequestData);
+      console.log('🔍 Debug paymentRequestData CinetPay:', paymentRequestData);
 
-      // Utiliser l'API Supabase directement au lieu d'une URL externe
-      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-paydunya-invoice', {
+      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-cinetpay-payment', {
         body: paymentRequestData
       });
 
       if (paymentError) {
-        throw new Error(`Erreur de paiement PayDunya: ${paymentError.message}`);
+        throw new Error(`Erreur de paiement CinetPay: ${paymentError.message}`);
       }
 
       if (!paymentData?.url) {
-        throw new Error('URL de paiement PayDunya non générée');
+        throw new Error('URL de paiement CinetPay non générée');
       }
 
-      // Rediriger vers PayDunya
+      // 3) Rediriger vers CinetPay
       setTimeout(() => {
         window.location.href = paymentData.url;
-      }, 1500);
+      }, 1200);
 
       return { booking, paymentUrl: paymentData.url };
     },
     onSuccess: () => {
       toast({
         title: "Redirection vers le paiement",
-        description: `Vous allez être redirigé vers PayDunya pour payer ${checkoutData?.totalPrice.toLocaleString()} XOF`,
+        description: `Vous allez être redirigé vers CinetPay pour payer ${checkoutData?.totalPrice.toLocaleString()} XOF`,
         duration: 2000
       });
     },
@@ -230,7 +230,7 @@ const Checkout = () => {
                     <CreditCard className="w-5 h-5 text-green-600 mt-0.5" />
                     <div className="text-sm text-green-800">
                       <p className="font-medium mb-1">Tous les moyens de paiement disponibles</p>
-                      <p>Orange Money, MTN Mobile Money, Moov Money, Wave, Visa/Mastercard - Choisissez directement sur la page de paiement PayDunya.</p>
+                      <p>Mobile Money & cartes (Visa/Mastercard). Vous choisirez le moyen sur la page CinetPay.</p>
                     </div>
                   </div>
                 </div>
@@ -241,7 +241,7 @@ const Checkout = () => {
                     <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
                     <div className="text-sm text-blue-800">
                       <p className="font-medium mb-1">Paiement 100% sécurisé</p>
-                      <p>Vos fonds sont protégés jusqu'à confirmation de votre réservation par le propriétaire.</p>
+                      <p>Vos fonds sont protégés jusqu'à la confirmation de votre réservation par le propriétaire.</p>
                     </div>
                   </div>
                 </div>
