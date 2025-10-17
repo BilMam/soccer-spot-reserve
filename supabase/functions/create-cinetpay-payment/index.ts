@@ -1,4 +1,4 @@
-
+// supabase/functions/create-cinetpay-payment/index.ts
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -28,76 +28,74 @@ interface PaymentResponse {
 
 serve(async (req) => {
   const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] [create-cinetpay-payment] Function started`);
+  console.log(`[${timestamp}] [create-cinetpay-payment] ▶️ Fonction démarrée`);
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Environment variables
+    // === ENVIRONNEMENT ===
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const cinetpayApiKey = Deno.env.get('CINETPAY_API_KEY');
     const cinetpaySiteId = Deno.env.get('CINETPAY_SITE_ID');
+    const notifyUrl =
+      Deno.env.get('CINETPAY_NOTIFY_URL') ||
+      'https://zldawmyoscicxoiqvfpu.supabase.co/functions/v1/cinetpay-webhook';
+    const baseUrl = Deno.env.get('PUBLIC_BASE_URL') || 'https://pisport.app';
 
     if (!supabaseUrl || !supabaseServiceKey || !cinetpayApiKey || !cinetpaySiteId) {
-      throw new Error('Configuration manquante');
+      throw new Error('❌ Variables d’environnement manquantes');
     }
 
-    // Authentication
-    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+    // === AUTHENTIFICATION ===
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) throw new Error('Authorization header manquant');
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
     if (userError || !userData.user) throw new Error('Authentification échouée');
 
-    // Parse request data
+    // === DONNÉES REÇUES ===
     const paymentData: PaymentData = await req.json();
     const { booking_id, amount, field_name, date, time } = paymentData;
+    console.log(`[${timestamp}] [create-cinetpay-payment] Données reçues:`, paymentData);
 
-    console.log(`[${timestamp}] [create-cinetpay-payment] Payment data:`, paymentData);
-
-    // Parse time range (format: "13:00 - 14:00")
     const [start_time, end_time] = time.split(' - ');
-    
-    // Get booking from database to get field_id and user verification
-    const { data: existingBooking, error: bookingFetchError } = await supabaseClient
+
+    // === VÉRIF RÉSERVATION ===
+    const { data: existingBooking, error: bookingFetchError } = await supabase
       .from('bookings')
       .select('field_id, user_id, field_price')
       .eq('id', booking_id)
       .single();
 
-    if (bookingFetchError || !existingBooking) {
-      throw new Error('Réservation introuvable');
-    }
+    if (bookingFetchError || !existingBooking) throw new Error('Réservation introuvable');
 
-    // Verify user owns this booking
-    if (existingBooking.user_id !== userData.user.id) {
+    if (existingBooking.user_id !== userData.user.id)
       throw new Error('Accès non autorisé à cette réservation');
-    }
 
     const price = existingBooking.field_price || amount;
 
-    // Calculate fees - Modèle simplifié 100 → 103 (CinetPay ajoute ses frais automatiquement)
-    const fieldPrice = price;                            // T (prix terrain) 
-    const platformFeeUser = Math.round(price * 0.03);    // 3% frais utilisateur MySport
-    const platformFeeOwner = Math.round(price * 0.05);   // 5% commission plateforme
-    const ownerAmount = price - platformFeeOwner;        // 95% pour le propriétaire
-    const amountCheckout = price + platformFeeUser;      // Montant envoyé à CinetPay (103 XOF)
+    // === CALCUL FRAIS ===
+    const fieldPrice = price;
+    const platformFeeUser = Math.round(price * 0.03); // frais utilisateur
+    const platformFeeOwner = Math.round(price * 0.05); // commission plateforme
+    const ownerAmount = price - platformFeeOwner;
+    const amountCheckout = price + platformFeeUser;
 
-    console.log(`[${timestamp}] [create-cinetpay-payment] Fee calculation:`, {
+    console.log(`[${timestamp}] [create-cinetpay-payment] 💰 Calcul des frais :`, {
       field_price: fieldPrice,
       platform_fee_user: platformFeeUser,
       platform_fee_owner: platformFeeOwner,
       owner_amount: ownerAmount,
-      amount_checkout: amountCheckout
+      amount_checkout: amountCheckout,
     });
 
-    // Update existing booking with payment info
-    const { data: booking, error: bookingError } = await supabaseClient
+    // === MISE À JOUR BOOKING ===
+    const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .update({
         field_price: fieldPrice,
@@ -105,30 +103,26 @@ serve(async (req) => {
         platform_fee_owner: platformFeeOwner,
         owner_amount: ownerAmount,
         total_price: amountCheckout,
-        payment_status: 'pending',  // Sera changé en 'paid' par le webhook
-        payout_sent: false          // Initialiser le contrôle de payout
+        payment_status: 'pending',
+        payment_provider: 'cinetpay',
+        payout_sent: false,
       })
       .eq('id', booking_id)
       .select()
       .single();
 
-    if (bookingError || !booking) {
-      console.error(`[${timestamp}] [create-cinetpay-payment] Booking update failed:`, bookingError);
-      throw new Error('Mise à jour réservation échouée');
-    }
+    if (bookingError || !booking) throw new Error('Échec mise à jour réservation');
 
-    // Get field info
-    const { data: field } = await supabaseClient
+    // === INFO TERRAIN ===
+    const { data: field } = await supabase
       .from('fields')
       .select('name')
       .eq('id', existingBooking.field_id)
       .single();
 
-    // CinetPay Checkout v2
+    // === CINETPAY CHECKOUT ===
     const transactionId = `checkout_${booking.id}_${Date.now()}`;
-    const baseUrl = 'https://pisport.app';
-    const returnUrl = `${baseUrl}/mes-reservations?success=true&ref=${transactionId}`;
-    const notifyUrl = `https://zldawmyoscicxoiqvfpu.supabase.co/functions/v1/cinetpay-webhook`;
+    const returnUrl = `${baseUrl}/booking-success?transaction_id=${transactionId}`;
 
     const cinetpayData = {
       apikey: cinetpayApiKey,
@@ -140,63 +134,59 @@ serve(async (req) => {
       return_url: returnUrl,
       notify_url: notifyUrl,
       customer_name: userData.user.user_metadata?.full_name || 'Client',
-      customer_email: userData.user.email
+      customer_email: userData.user.email,
     };
 
-    console.log(`[${timestamp}] [create-cinetpay-payment] WEBHOOK URL:`, notifyUrl);
-    console.log(`[${timestamp}] [create-cinetpay-payment] CinetPay request:`, cinetpayData);
+    console.log(`[${timestamp}] [create-cinetpay-payment] 🌐 CinetPay request:`, cinetpayData);
 
-    const cinetpayResponse = await fetch('https://api-checkout.cinetpay.com/v2/payment', {
+    const response = await fetch('https://api-checkout.cinetpay.com/v2/payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(cinetpayData)
+      body: JSON.stringify(cinetpayData),
     });
 
-    const cinetpayResult = await cinetpayResponse.json();
-    console.log(`[${timestamp}] [create-cinetpay-payment] CinetPay response:`, cinetpayResult);
+    const result = await response.json();
+    console.log(`[${timestamp}] [create-cinetpay-payment] 🔁 Réponse CinetPay:`, result);
 
-    if (cinetpayResult.code !== '201') {
-      throw new Error(`CinetPay error: ${cinetpayResult.message}`);
+    if (result.code !== '201' || !result.data?.payment_url) {
+      throw new Error(`Erreur CinetPay: ${result.message || 'aucune URL retournée'}`);
     }
 
-    // Update booking with payment info
-    await supabaseClient
+    // === SAUVEGARDE TRANSACTION_ID ===
+    await supabase
       .from('bookings')
       .update({
         payment_intent_id: transactionId,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', booking.id);
 
+    // === RÉPONSE FRONTEND ===
     const responseData: PaymentResponse = {
-      url: cinetpayResult.data.payment_url,
+      url: result.data.payment_url,
       transaction_id: transactionId,
       amount_checkout: amountCheckout,
       field_price: fieldPrice,
       platform_fee_user: platformFeeUser,
       platform_fee_owner: platformFeeOwner,
       owner_amount: ownerAmount,
-      currency: 'XOF'
+      currency: 'XOF',
     };
 
-    console.log(`[${timestamp}] [create-cinetpay-payment] Success:`, responseData);
+    console.log(`[${timestamp}] ✅ Paiement CinetPay créé:`, responseData);
 
-    return new Response(
-      JSON.stringify(responseData),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      },
-    );
-
+    return new Response(JSON.stringify(responseData), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    });
   } catch (error) {
-    console.error(`[${timestamp}] [create-cinetpay-payment] Error:`, error);
-    
+    console.error(`[${timestamp}] ❌ Erreur create-cinetpay-payment:`, error);
+
     return new Response(
-      JSON.stringify({ 
-        error: error.message,
+      JSON.stringify({
+        error: error.message || 'Erreur inconnue',
         timestamp,
-        function: 'create-cinetpay-payment'
+        function: 'create-cinetpay-payment',
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

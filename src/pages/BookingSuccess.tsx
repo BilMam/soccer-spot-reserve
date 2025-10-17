@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,51 +12,58 @@ import { fr } from 'date-fns/locale';
 const BookingSuccess = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const sessionId = searchParams.get('session_id');
+
+  // Nouveau flow (CinetPay)
+  const transactionId = searchParams.get('transaction_id');
+
+  // Fallback ancien flow (au cas où)
+  const legacySessionId = searchParams.get('session_id');
+  const legacyBookingId = legacySessionId?.startsWith('booking_')
+    ? legacySessionId.replace('booking_', '')
+    : null;
 
   const { data: booking, isLoading } = useQuery({
-    queryKey: ['booking-success', sessionId],
+    queryKey: ['booking-success', transactionId, legacyBookingId],
     queryFn: async () => {
-      if (!sessionId) throw new Error('ID de session manquant');
-
-      // Récupérer la réservation via l'ID de session
-      const bookingId = sessionId.replace('booking_', '');
-      
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          fields (name, location, address),
-          profiles (full_name, email)
-        `)
-        .eq('id', bookingId)
-        .single();
-
-      if (error) throw error;
-
-      // Marquer le paiement comme confirmé si ce n'est pas déjà fait
-      if (data.payment_status !== 'paid') {
-        await supabase
+      // Priorité au nouveau param CinetPay
+      if (transactionId) {
+        const { data, error } = await supabase
           .from('bookings')
-          .update({ 
-            payment_status: 'paid',
-            status: 'confirmed',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', data.id);
-
-        // Envoyer l'email de confirmation
-        await supabase.functions.invoke('send-booking-email', {
-          body: {
-            booking_id: data.id,
-            notification_type: 'payment_confirmation'
-          }
-        });
+          .select(`
+            *,
+            fields (name, location, address),
+            profiles (full_name, email)
+          `)
+          .eq('payment_intent_id', transactionId)
+          .single();
+        if (error) throw error;
+        return data;
       }
 
-      return data;
+      // Fallback legacy (à retirer quand plus utile)
+      if (legacyBookingId) {
+        const { data, error } = await supabase
+          .from('bookings')
+          .select(`
+            *,
+            fields (name, location, address),
+            profiles (full_name, email)
+          `)
+          .eq('id', legacyBookingId)
+          .single();
+        if (error) throw error;
+        return data;
+      }
+
+      throw new Error('Aucun identifiant de transaction fourni');
     },
-    enabled: !!sessionId
+    // On peut rafraîchir régulièrement tant que le paiement n’est pas confirmé
+    refetchInterval: (query) => {
+      const b = query.state.data as any;
+      return b && b.payment_status !== 'paid' ? 2500 : false; // stop polling quand payé
+    },
+    staleTime: 0,
+    enabled: !!transactionId || !!legacyBookingId
   });
 
   if (isLoading) {
@@ -104,23 +110,27 @@ const BookingSuccess = () => {
     );
   }
 
+  const paid = booking.payment_status === 'paid';
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
-          {/* Confirmation de succès */}
+          {/* Bandeau de statut */}
           <Card className="mb-8">
             <CardContent className="p-8 text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-green-600" />
+              <div className={`w-16 h-16 ${paid ? 'bg-green-100' : 'bg-yellow-100'} rounded-full flex items-center justify-center mx-auto mb-4`}>
+                <CheckCircle className={`w-8 h-8 ${paid ? 'text-green-600' : 'text-yellow-600'}`} />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Réservation confirmée !
+                {paid ? 'Réservation confirmée !' : 'Paiement en cours de confirmation…'}
               </h1>
               <p className="text-gray-600">
-                Votre paiement a été traité avec succès et votre réservation est confirmée.
+                {paid
+                  ? "Votre paiement a été validé par CinetPay et la réservation est confirmée."
+                  : "Nous avons bien reçu votre retour de CinetPay. La confirmation arrive sous peu (quelques secondes)."}
               </p>
             </CardContent>
           </Card>
@@ -134,15 +144,17 @@ const BookingSuccess = () => {
               <div className="flex items-center space-x-3">
                 <MapPin className="w-5 h-5 text-gray-500" />
                 <div>
-                  <div className="font-medium">{booking.fields.name}</div>
-                  <div className="text-gray-600 text-sm">{booking.fields.location}</div>
+                  <div className="font-medium">{booking.fields?.name}</div>
+                  <div className="text-gray-600 text-sm">{booking.fields?.location}</div>
                 </div>
               </div>
 
               <div className="flex items-center space-x-3">
                 <Calendar className="w-5 h-5 text-gray-500" />
                 <span>
-                  {format(new Date(booking.booking_date), 'EEEE dd MMMM yyyy', { locale: fr })}
+                  {booking.booking_date
+                    ? format(new Date(booking.booking_date), 'EEEE dd MMMM yyyy', { locale: fr })
+                    : ''}
                 </span>
               </div>
 
@@ -153,21 +165,25 @@ const BookingSuccess = () => {
 
               <div className="border-t pt-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">Prix total payé</span>
+                  <span className="font-medium">Prix total</span>
                   <span className="text-xl font-bold text-green-600">
-                    {Math.round(booking.total_price).toLocaleString()} XOF
+                    {Math.round(booking.total_price || 0).toLocaleString()} XOF
                   </span>
                 </div>
-                {booking.platform_fee && (
+
+                {/* Si tu utilises platform_fee / owner_amount */}
+                {(booking.platform_fee || booking.owner_amount) && (
                   <div className="text-sm text-gray-600 space-y-1">
                     <div className="flex justify-between">
                       <span>Montant terrain :</span>
                       <span>{Math.round(booking.owner_amount || 0).toLocaleString()} XOF</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Commission plateforme :</span>
-                      <span>{Math.round(booking.platform_fee).toLocaleString()} XOF</span>
-                    </div>
+                    {typeof booking.platform_fee === 'number' && (
+                      <div className="flex justify-between">
+                        <span>Commission plateforme :</span>
+                        <span>{Math.round(booking.platform_fee).toLocaleString()} XOF</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -193,32 +209,32 @@ const BookingSuccess = () => {
               <div className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
                 <p className="text-gray-700">
-                  Un email de confirmation a été envoyé à votre adresse email
+                  Un email de confirmation vous sera envoyé. {/* (peut déjà être géré par une Edge Function) */}
                 </p>
               </div>
               <div className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
                 <p className="text-gray-700">
-                  Vous recevrez un rappel 24h avant votre réservation
+                  Vous recevrez un rappel 24h avant votre réservation.
                 </p>
               </div>
               <div className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
                 <p className="text-gray-700">
-                  En cas de besoin, contactez le propriétaire via votre profil
+                  En cas de besoin, contactez le propriétaire via votre profil.
                 </p>
               </div>
               <div className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
                 <p className="text-gray-700">
                   <Smartphone className="w-4 h-4 inline mr-1" />
-                  Paiement sécurisé traité par PayDunya (Mobile Money & cartes bancaires)
+                  Paiement sécurisé traité par <strong>CinetPay</strong>.
                 </p>
               </div>
               <div className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
                 <p className="text-gray-700">
-                  Le propriétaire recevra automatiquement 95% du montant
+                  Le propriétaire recevra automatiquement 95% du montant (après confirmation).
                 </p>
               </div>
             </CardContent>

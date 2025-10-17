@@ -43,7 +43,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
         throw new Error('Vous devez être connecté pour effectuer une réservation');
       }
 
-      console.log('🚀 Début création réservation PayDunya...');
+      console.log('🚀 Début création réservation (CinetPay)...');
 
       // Vérifier conflits de créneaux
       const { data: conflictCheck } = await supabase.rpc('check_booking_conflict', {
@@ -57,7 +57,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
         throw new Error('Ce créneau est déjà réservé');
       }
 
-      // Créer la réservation
+      // Créer la réservation côté DB (status en pending)
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert({
@@ -71,7 +71,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
           special_requests: specialRequests || null,
           status: 'pending',
           payment_status: 'pending',
-          field_price: totalPrice
+          field_price: totalPrice,
+          payment_provider: 'cinetpay'
         })
         .select()
         .single();
@@ -83,12 +84,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
       console.log('✅ Réservation créée:', booking.id);
 
-      // Initier le paiement PayDunya
-      console.log('💳 Initiation paiement PayDunya...');
-      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-paydunya-invoice', {
+      // Initier le paiement CinetPay
+      console.log('💳 Initiation paiement CinetPay...');
+      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-cinetpay-payment', {
         body: {
           booking_id: booking.id,
-          amount: totalPrice,
+          amount: totalPrice, // le serveur recalculera et appliquera les frais
           field_name: fieldName,
           date: formatDate(selectedDate),
           time: `${selectedStartTime} - ${selectedEndTime}`
@@ -96,13 +97,13 @@ const BookingForm: React.FC<BookingFormProps> = ({
       });
 
       if (paymentError || !paymentData?.url) {
-        console.error('❌ Erreur création facture PayDunya:', paymentError);
-        throw new Error('Impossible de créer la facture de paiement');
+        console.error('❌ Erreur création paiement CinetPay:', paymentError);
+        throw new Error('Impossible de créer la session de paiement');
       }
 
-      console.log('✅ Facture PayDunya créée, redirection...');
+      console.log('✅ Paiement CinetPay créé, redirection...');
       
-      // Redirection vers PayDunya
+      // Redirection vers la page de paiement CinetPay
       window.location.href = paymentData.url;
       
       return { booking, paymentUrl: paymentData.url };
@@ -110,7 +111,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
     onSuccess: () => {
       toast({
         title: "Redirection vers le paiement",
-        description: `Vous allez être redirigé vers PayDunya pour payer ${totalPrice.toLocaleString()} XOF`,
+        description: `Vous allez être redirigé vers CinetPay pour payer ${totalPrice.toLocaleString()} XOF`,
         duration: 2000
       });
       onSuccess?.();
@@ -227,7 +228,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
             {pricePerHour.toLocaleString()} XOF/heure × {calculateDurationHours()} heure(s)
           </div>
           <div className="text-xs text-green-700 mt-1">
-            Commission plateforme (3%): {Math.round(totalPrice * 0.03).toLocaleString()} XOF
+            Commission plateforme (3%) : {Math.round(totalPrice * 0.03).toLocaleString()} XOF
           </div>
         </div>
       </div>
@@ -239,7 +240,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
           Processus de réservation sécurisé
         </h4>
         <ol className="text-sm text-blue-800 space-y-1">
-          <li>1. Vous payez maintenant via PayDunya (sécurisé)</li>
+          <li>1. Vous payez maintenant via <strong>CinetPay</strong> (sécurisé)</li>
           <li>2. Vos fonds sont protégés sur notre plateforme</li>
           <li>3. Le propriétaire confirme votre réservation</li>
           <li>4. Les fonds sont transférés au propriétaire</li>
