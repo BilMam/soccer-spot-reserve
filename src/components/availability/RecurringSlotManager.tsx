@@ -41,15 +41,30 @@ const RecurringSlotManager: React.FC<RecurringSlotManagerProps> = ({
 
   const handleSubmit = (data: Omit<RecurringSlot, 'id'>, selectedDays: number[]) => {
     if (editingSlot?.id) {
-      updateRecurringSlot.mutate(
-        { id: editingSlot.id, ...data },
-        {
+      // En mode édition avec plusieurs jours sélectionnés, on supprime et recrée
+      if (selectedDays.length > 1) {
+        deleteRecurringSlot.mutate(editingSlot.id, {
           onSuccess: () => {
-            setIsDialogOpen(false);
-            setEditingSlot(null);
+            createRecurringSlot.mutate({ slotData: data, days: selectedDays }, {
+              onSuccess: () => {
+                setIsDialogOpen(false);
+                setEditingSlot(null);
+              }
+            });
           }
-        }
-      );
+        });
+      } else {
+        // Si un seul jour, on fait une simple mise à jour
+        updateRecurringSlot.mutate(
+          { id: editingSlot.id, ...data, day_of_week: selectedDays[0] },
+          {
+            onSuccess: () => {
+              setIsDialogOpen(false);
+              setEditingSlot(null);
+            }
+          }
+        );
+      }
     } else {
       createRecurringSlot.mutate({ slotData: data, days: selectedDays }, {
         onSuccess: () => {
