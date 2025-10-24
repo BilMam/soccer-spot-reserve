@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { generateAvailabilityForSingleRecurringSlot, removeGeneratedSlotsForRecurringSlot } from '@/utils/recurringSlotGenerator';
+import { generateAvailabilityForRecurringSlot, removeGeneratedSlotsForRecurringSlot } from '@/utils/recurringSlotGenerator';
 
 export interface RecurringSlot {
   id?: string;
@@ -60,10 +60,10 @@ export const useRecurringSlots = (fieldId: string) => {
 
       if (error) throw error;
       
-      // Générer les créneaux d'indisponibilité pour les 6 prochains mois
+      // Générer les créneaux d'indisponibilité sur toute la période définie
       if (data && data.length > 0) {
         for (const slot of data) {
-          await generateAvailabilityForSingleRecurringSlot(slot as RecurringSlot, 6);
+          await generateAvailabilityForRecurringSlot(slot as RecurringSlot);
         }
       }
       
@@ -112,7 +112,7 @@ export const useRecurringSlots = (fieldId: string) => {
       }
       
       if (data) {
-        await generateAvailabilityForSingleRecurringSlot(data as RecurringSlot, 6);
+        await generateAvailabilityForRecurringSlot(data as RecurringSlot);
       }
       
       return data;
@@ -186,8 +186,8 @@ export const useRecurringSlots = (fieldId: string) => {
       
       if (slot) {
         if (is_active) {
-          // Si on active, générer les créneaux d'indisponibilité
-          await generateAvailabilityForSingleRecurringSlot({ ...slot, is_active: true } as RecurringSlot, 6);
+          // Si on active, générer les créneaux d'indisponibilité sur toute la période
+          await generateAvailabilityForRecurringSlot({ ...slot, is_active: true } as RecurringSlot);
         } else {
           // Si on désactive, supprimer les créneaux générés
           await removeGeneratedSlotsForRecurringSlot(
