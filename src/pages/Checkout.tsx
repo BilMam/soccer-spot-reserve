@@ -24,6 +24,8 @@ interface CheckoutState {
   selectedDate: Date;
   selectedStartTime: string;
   selectedEndTime: string;
+  subtotal: number;
+  serviceFee: number;
   totalPrice: number;
 }
 
@@ -309,29 +311,18 @@ const Checkout = () => {
 
                  {/* Calcul prix */}
                  <div className="space-y-3 py-4">
-                   {(() => {
-                     const duration = calculateDuration();
-                     const subtotal = field.price_per_hour * duration.hoursFloat;
-                     const serviceFee = Math.ceil(subtotal * 0.03);
-                     const total = subtotal + serviceFee;
-                     
-                     return (
-                       <>
-                         <div className="flex justify-between text-sm">
-                           <span>Prix : {field.price_per_hour.toLocaleString()} XOF/heure</span>
-                           <span>{subtotal.toLocaleString()} XOF</span>
-                         </div>
-                         <div className="flex justify-between text-sm text-gray-600">
-                           <span>Frais de service (3%)</span>
-                           <span>{serviceFee.toLocaleString()} XOF</span>
-                         </div>
-                         <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                           <span>Total</span>
-                           <span className="text-green-600">{total.toLocaleString()} XOF</span>
-                         </div>
-                       </>
-                     );
-                   })()}
+                   <div className="flex justify-between text-sm">
+                     <span>Sous-total</span>
+                     <span>{checkoutData.subtotal.toLocaleString()} XOF</span>
+                   </div>
+                   <div className="flex justify-between text-sm text-gray-600">
+                     <span>Frais de service (3%)</span>
+                     <span>{checkoutData.serviceFee.toLocaleString()} XOF</span>
+                   </div>
+                   <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                     <span>Total</span>
+                     <span className="text-green-600">{checkoutData.totalPrice.toLocaleString()} XOF</span>
+                   </div>
                  </div>
 
                 {/* Bouton paiement */}

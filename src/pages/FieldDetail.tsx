@@ -80,25 +80,29 @@ const FieldDetail = () => {
     }
   };
 
-  const handleTimeSlotSelect = (date: Date, startTime: string, endTime: string, price: number) => {
+  const handleTimeSlotSelect = (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => {
     console.log('🎯 Sélection créneau dans FieldDetail:', {
       date: date.toISOString(),
       startTime,
       endTime,
-      price
+      subtotal,
+      serviceFee,
+      total
     });
     
     setSelectedDate(date);
     setSelectedStartTime(startTime);
     setSelectedEndTime(endTime);
-    setTotalPrice(price);
+    setTotalPrice(total);
     
     navigate(`/checkout/${id}`, {
       state: {
         selectedDate: date,
         selectedStartTime: startTime,
         selectedEndTime: endTime,
-        totalPrice: price
+        subtotal: subtotal,
+        serviceFee: serviceFee,
+        totalPrice: total
       }
     });
   };

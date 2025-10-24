@@ -32,7 +32,7 @@ interface SlotBookingInterfaceProps {
   price2h?: number | null;
   availableSlots: AvailabilitySlot[];
   isLoading: boolean;
-  onTimeSlotSelect: (date: Date, startTime: string, endTime: string, price: number) => void;
+  onTimeSlotSelect: (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => void;
 }
 
 const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({

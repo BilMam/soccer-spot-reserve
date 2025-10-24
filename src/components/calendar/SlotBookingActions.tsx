@@ -26,7 +26,7 @@ interface SlotBookingActionsProps {
   fieldPrice: number;
   price1h30?: number | null;
   price2h?: number | null;
-  onTimeSlotSelect: (date: Date, startTime: string, endTime: string, price: number) => void;
+  onTimeSlotSelect: (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => void;
 }
 
 const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
@@ -66,7 +66,7 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
     }
     
     const priceCalculation = priceCalculator.calculateTotalPriceWithFees(selectedStartTime, selectedEndTime);
-    onTimeSlotSelect(selectedDate, selectedStartTime, selectedEndTime, priceCalculation.total);
+    onTimeSlotSelect(selectedDate, selectedStartTime, selectedEndTime, priceCalculation.subtotal, priceCalculation.serviceFee, priceCalculation.total);
   };
 
   const rangeIsAvailable = validator.isRangeAvailable(selectedStartTime, selectedEndTime);
