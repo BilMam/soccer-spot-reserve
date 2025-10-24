@@ -34,7 +34,11 @@ const RecurringSlotForm: React.FC<RecurringSlotFormProps> = ({
   isLoading
 }) => {
   const [selectedDays, setSelectedDays] = useState<string[]>(
-    initialData ? [String(initialData.day_of_week)] : []
+    initialData 
+      ? ((initialData as any).days 
+          ? (initialData as any).days.map(String) 
+          : [String(initialData.day_of_week)])
+      : []
   );
 
   const { register, handleSubmit, formState: { errors } } = useForm({

@@ -34,7 +34,7 @@ const RecurringSlotManager: React.FC<RecurringSlotManagerProps> = ({
     setIsDialogOpen(true);
   };
 
-  const handleEdit = (slot: RecurringSlot) => {
+  const handleEdit = (slot: RecurringSlot & { days?: number[] }) => {
     setEditingSlot(slot);
     setIsDialogOpen(true);
   };
