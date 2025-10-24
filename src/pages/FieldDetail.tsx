@@ -21,6 +21,8 @@ interface Field {
   address: string;
   city: string;
   price_per_hour: number;
+  price_1h30?: number | null;
+  price_2h?: number | null;
   rating: number;
   total_reviews: number;
   images: string[];
@@ -221,6 +223,8 @@ const FieldDetail = () => {
               <FieldCalendar
                 fieldId={field.id}
                 fieldPrice={field.price_per_hour}
+                price1h30={field.price_1h30}
+                price2h={field.price_2h}
                 onTimeSlotSelect={handleTimeSlotSelect}
               />
             </div>

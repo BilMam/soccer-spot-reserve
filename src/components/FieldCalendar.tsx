@@ -8,12 +8,16 @@ import SlotBookingInterface from '@/components/calendar/SlotBookingInterface';
 interface FieldCalendarProps {
   fieldId: string;
   fieldPrice: number;
+  price1h30?: number | null;
+  price2h?: number | null;
   onTimeSlotSelect: (date: Date, startTime: string, endTime: string, price: number) => void;
 }
 
 const FieldCalendar: React.FC<FieldCalendarProps> = ({
   fieldId,
   fieldPrice,
+  price1h30,
+  price2h,
   onTimeSlotSelect
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -37,6 +41,8 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
           selectedDate={selectedDate}
           fieldId={fieldId}
           fieldPrice={fieldPrice}
+          price1h30={price1h30}
+          price2h={price2h}
           availableSlots={availableSlots}
           isLoading={isLoading}
           onTimeSlotSelect={onTimeSlotSelect}
