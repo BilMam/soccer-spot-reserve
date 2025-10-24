@@ -11,6 +11,9 @@ interface BookingSummaryProps {
   serviceFee: number;
   total: number;
   fieldPrice: number;
+  price1h30?: number | null;
+  price2h?: number | null;
+  durationMinutes: number;
   rangeIsAvailable: boolean;
   durationDisplay: string;
 }
@@ -22,10 +25,30 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
   serviceFee,
   total,
   fieldPrice,
+  price1h30,
+  price2h,
+  durationMinutes,
   rangeIsAvailable,
   durationDisplay
 }) => {
   if (!selectedStartTime || !selectedEndTime) return null;
+
+  const getPriceLabel = () => {
+    if (durationMinutes === 60) {
+      return `${subtotal.toLocaleString()} XOF pour 1h`;
+    } else if (durationMinutes === 90 && price1h30) {
+      return `${subtotal.toLocaleString()} XOF pour 1h30`;
+    } else if (durationMinutes === 120 && price2h) {
+      return `${subtotal.toLocaleString()} XOF pour 2h`;
+    } else {
+      const hours = Math.floor(durationMinutes / 60);
+      const minutes = durationMinutes % 60;
+      let durationText = '';
+      if (hours > 0) durationText += `${hours}h`;
+      if (minutes > 0) durationText += `${minutes}min`;
+      return `${subtotal.toLocaleString()} XOF pour ${durationText}`;
+    }
+  };
 
   return (
     <Card className="bg-gray-50">
@@ -40,9 +63,9 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
             <span className="font-medium">{selectedStartTime} - {selectedEndTime}</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Prix :</span>
-            <span className="text-sm text-gray-500">
-              {fieldPrice.toLocaleString()} XOF/heure
+            <span className="text-sm text-gray-600">Tarif appliqué :</span>
+            <span className="text-sm font-medium text-green-700">
+              {getPriceLabel()}
             </span>
           </div>
           <div className="flex justify-between items-center">

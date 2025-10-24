@@ -159,6 +159,9 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               serviceFee={priceCalculation.serviceFee}
               total={priceCalculation.total}
               fieldPrice={fieldPrice}
+              price1h30={price1h30}
+              price2h={price2h}
+              durationMinutes={priceCalculation.durationMinutes}
               rangeIsAvailable={rangeIsAvailable}
               durationDisplay={durationDisplay}
             />
