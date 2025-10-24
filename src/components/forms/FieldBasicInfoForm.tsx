@@ -15,6 +15,8 @@ interface FieldBasicInfoFormProps {
     field_type: string;
     capacity: string;
     price_per_hour: string;
+    price_1h30?: string;
+    price_2h?: string;
   };
   onInputChange: (field: string, value: string) => void;
 }
@@ -90,18 +92,77 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="price_per_hour">Prix par heure (XOF) *</Label>
-          <Input
-            id="price_per_hour"
-            type="number"
-            min="0"
-            step="1"
-            value={formData.price_per_hour}
-            onChange={(e) => onInputChange('price_per_hour', e.target.value)}
-            placeholder="Ex: 25000"
-            required
-          />
+        <div className="md:col-span-2">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 mb-3">Tarification adaptative</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Définissez vos tarifs pour les durées les plus courantes. 
+                Les autres durées seront calculées automatiquement à partir du tarif 1h.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="price_per_hour" className="flex items-center">
+                  Prix 1 heure (XOF) *
+                </Label>
+                <Input
+                  id="price_per_hour"
+                  type="number"
+                  min="0"
+                  step="1000"
+                  value={formData.price_per_hour}
+                  onChange={(e) => onInputChange('price_per_hour', e.target.value)}
+                  placeholder="Ex: 25000"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="price_1h30" className="flex items-center">
+                  Prix 1h30 (XOF) *
+                </Label>
+                <Input
+                  id="price_1h30"
+                  type="number"
+                  min="0"
+                  step="1000"
+                  value={formData.price_1h30 || ''}
+                  onChange={(e) => onInputChange('price_1h30', e.target.value)}
+                  placeholder="Ex: 35000"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="price_2h" className="flex items-center">
+                  Prix 2 heures (XOF) *
+                </Label>
+                <Input
+                  id="price_2h"
+                  type="number"
+                  min="0"
+                  step="1000"
+                  value={formData.price_2h || ''}
+                  onChange={(e) => onInputChange('price_2h', e.target.value)}
+                  placeholder="Ex: 45000"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">💡 Comment ça marche :</p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>Pour 1h, 1h30 et 2h : vos prix fixes s'appliquent</li>
+                  <li>Pour les autres durées (ex: 2h30, 3h, 4h) : calcul automatique basé sur le tarif 1h</li>
+                  <li>Exemple : Si 1h = 25000 XOF, alors 3h = 75000 XOF (25000 × 3)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-2">

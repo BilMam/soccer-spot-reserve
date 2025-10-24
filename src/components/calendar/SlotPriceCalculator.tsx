@@ -1,5 +1,6 @@
 
 import { timeToMinutes, minutesToTime, normalizeTime } from '@/utils/timeUtils';
+import { calculateAdaptivePrice, calculatePriceWithFees } from '@/utils/adaptivePricing';
 
 interface AvailabilitySlot {
   id: string;
@@ -13,46 +14,39 @@ interface AvailabilitySlot {
   notes?: string;
 }
 
+interface PricingData {
+  price_per_hour: number;
+  price_1h30?: number | null;
+  price_2h?: number | null;
+}
+
 export class SlotPriceCalculator {
   private availableSlots: AvailabilitySlot[];
-  private fieldPrice: number;
+  private fieldPricing: PricingData;
 
-  constructor(availableSlots: AvailabilitySlot[], fieldPrice: number) {
+  constructor(availableSlots: AvailabilitySlot[], fieldPrice: number, price1h30?: number | null, price2h?: number | null) {
     this.availableSlots = availableSlots;
-    this.fieldPrice = fieldPrice;
+    this.fieldPricing = {
+      price_per_hour: fieldPrice,
+      price_1h30: price1h30,
+      price_2h: price2h
+    };
   }
 
-  // Calculer le prix total pour une plage horaire avec frais de service
+  // Calculer le prix total pour une plage horaire avec le système adaptatif
   calculateTotalPrice(startTime: string, endTime: string): number {
     if (!startTime || !endTime) return 0;
+    
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
-    let totalPrice = 0;
-
-    console.log('🔍 calculateTotalPrice - Calcul pour:', `${startTime}-${endTime}`);
-
-    // Additionner le prix de chaque créneau de 30 minutes
-    for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
-      const slotStartTime = minutesToTime(minutes);
-      const slotEndTime = minutesToTime(minutes + 30);
-      
-      // Normaliser les temps pour la comparaison
-      const normalizedSlotStart = normalizeTime(slotStartTime);
-      const normalizedSlotEnd = normalizeTime(slotEndTime);
-      
-      const slot = this.availableSlots.find(s => {
-        const normalizedDbStart = normalizeTime(s.start_time);
-        const normalizedDbEnd = normalizeTime(s.end_time);
-        return normalizedDbStart === normalizedSlotStart && normalizedDbEnd === normalizedSlotEnd;
-      });
-      
-      const slotPrice = slot?.price_override || this.fieldPrice / 2; // Prix par défaut pour 30 min
-      totalPrice += slotPrice;
-      
-      console.log('🔍 Prix créneau:', `${normalizedSlotStart}-${normalizedSlotEnd}`, 'prix:', slotPrice);
-    }
+    const durationMinutes = endMinutes - startMinutes;
     
-    console.log('🔍 Prix total calculé:', totalPrice);
+    console.log('🔍 calculateTotalPrice - Calcul pour:', `${startTime}-${endTime}`, `(${durationMinutes} min)`);
+    
+    // Utiliser le système de tarification adaptative
+    const totalPrice = calculateAdaptivePrice(durationMinutes, this.fieldPricing);
+    
+    console.log('🔍 Prix total calculé (adaptatif):', totalPrice);
     return totalPrice;
   }
 
@@ -71,27 +65,12 @@ export class SlotPriceCalculator {
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
     const durationMinutes = endMinutes - startMinutes;
-    const durationHoursFloat = durationMinutes / 60;
     
-    // Calcul basé sur le prix par heure et la durée exacte
-    const subtotal = this.fieldPrice * durationHoursFloat;
-    const serviceFee = Math.ceil(subtotal * serviceFeeRate); // Arrondi à l'XOF supérieur
-    const total = subtotal + serviceFee;
+    // Utiliser le système de tarification adaptative
+    const result = calculatePriceWithFees(durationMinutes, this.fieldPricing, serviceFeeRate);
 
-    console.log('🔍 Calcul détaillé:', {
-      durationMinutes,
-      durationHoursFloat,
-      subtotal,
-      serviceFee,
-      total
-    });
+    console.log('🔍 Calcul détaillé (adaptatif):', result);
 
-    return {
-      subtotal,
-      serviceFee,
-      total,
-      durationMinutes,
-      durationHoursFloat
-    };
+    return result;
   }
 }

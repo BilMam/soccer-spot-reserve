@@ -18,6 +18,8 @@ interface FieldFormData {
   address: string;
   city: string;
   price_per_hour: number;
+  price_1h30?: number;
+  price_2h?: number;
   capacity: number;
   field_type: 'natural_grass' | 'synthetic' | 'street';
   availability_start: string;
@@ -103,6 +105,8 @@ const AddField = () => {
           address: fieldData.address,
           city: fieldData.city,
           price_per_hour: fieldData.price_per_hour,
+          price_1h30: fieldData.price_1h30,
+          price_2h: fieldData.price_2h,
           capacity: fieldData.capacity,
           field_type: fieldData.field_type,
           amenities: fieldData.amenities,

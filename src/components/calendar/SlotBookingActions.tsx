@@ -24,6 +24,8 @@ interface SlotBookingActionsProps {
   availableSlots: AvailabilitySlot[];
   bookedSlots: string[];
   fieldPrice: number;
+  price1h30?: number | null;
+  price2h?: number | null;
   onTimeSlotSelect: (date: Date, startTime: string, endTime: string, price: number) => void;
 }
 
@@ -34,12 +36,14 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
   availableSlots,
   bookedSlots,
   fieldPrice,
+  price1h30,
+  price2h,
   onTimeSlotSelect
 }) => {
   const { toast } = useToast();
 
   const validator = new SlotValidationLogic(availableSlots, bookedSlots);
-  const priceCalculator = new SlotPriceCalculator(availableSlots, fieldPrice);
+  const priceCalculator = new SlotPriceCalculator(availableSlots, fieldPrice, price1h30, price2h);
 
   const handleConfirmBooking = () => {
     if (!selectedDate || !selectedStartTime || !selectedEndTime) {

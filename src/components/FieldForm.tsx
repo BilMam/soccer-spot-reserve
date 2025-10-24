@@ -19,6 +19,8 @@ interface FieldFormData {
   address: string;
   city: string;
   price_per_hour: number;
+  price_1h30?: number;
+  price_2h?: number;
   capacity: number;
   field_type: 'natural_grass' | 'synthetic' | 'street';
   availability_start: string;
@@ -45,6 +47,8 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     field_type: 'synthetic',
     capacity: '',
     price_per_hour: '',
+    price_1h30: '',
+    price_2h: '',
     availability_start: '08:00',
     availability_end: '22:00',
     amenities: [] as string[],

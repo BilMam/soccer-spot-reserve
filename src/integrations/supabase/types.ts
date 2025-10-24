@@ -320,6 +320,8 @@ export type Database = {
           name: string
           owner_id: string
           payout_account_id: string | null
+          price_1h30: number | null
+          price_2h: number | null
           price_per_hour: number
           rating: number | null
           total_reviews: number | null
@@ -345,6 +347,8 @@ export type Database = {
           name: string
           owner_id: string
           payout_account_id?: string | null
+          price_1h30?: number | null
+          price_2h?: number | null
           price_per_hour: number
           rating?: number | null
           total_reviews?: number | null
@@ -370,6 +374,8 @@ export type Database = {
           name?: string
           owner_id?: string
           payout_account_id?: string | null
+          price_1h30?: number | null
+          price_2h?: number | null
           price_per_hour?: number
           rating?: number | null
           total_reviews?: number | null
@@ -917,7 +923,7 @@ export type Database = {
           action_type: string
           created_at: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           new_value: string | null
           old_value: string | null
           performed_by: string
@@ -929,7 +935,7 @@ export type Database = {
           action_type: string
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_value?: string | null
           old_value?: string | null
           performed_by: string
@@ -941,7 +947,7 @@ export type Database = {
           action_type?: string
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_value?: string | null
           old_value?: string | null
           performed_by?: string
@@ -1154,10 +1160,7 @@ export type Database = {
         Args: { application_id: string; notes?: string }
         Returns: undefined
       }
-      award_reviewer_badge: {
-        Args: { p_user_id: string }
-        Returns: undefined
-      }
+      award_reviewer_badge: { Args: { p_user_id: string }; Returns: undefined }
       calculate_search_similarity: {
         Args: { field_text: string; search_term: string }
         Returns: number
@@ -1197,10 +1200,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      cleanup_expired_bookings: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      cleanup_expired_bookings: { Args: never; Returns: undefined }
       create_availability_for_period: {
         Args: {
           p_end_date: string
@@ -1214,12 +1214,9 @@ export type Database = {
         }
         Returns: number
       }
-      generate_unique_confirmation_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_unique_confirmation_code: { Args: never; Returns: string }
       get_all_owner_applications: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           admin_notes: string
           created_at: string
@@ -1278,7 +1275,7 @@ export type Database = {
         }[]
       }
       get_users_with_roles: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           created_at: string
           email: string
@@ -1296,26 +1293,6 @@ export type Database = {
           target_user_id: string
         }
         Returns: undefined
-      }
-      gtrgm_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_decompress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_options: {
-        Args: { "": unknown }
-        Returns: undefined
-      }
-      gtrgm_out: {
-        Args: { "": unknown }
-        Returns: unknown
       }
       has_role: {
         Args: {
@@ -1362,10 +1339,6 @@ export type Database = {
         Args: { p_booking_id: string }
         Returns: undefined
       }
-      set_limit: {
-        Args: { "": number }
-        Returns: number
-      }
       set_slots_unavailable: {
         Args: {
           p_date: string
@@ -1377,18 +1350,9 @@ export type Database = {
         }
         Returns: number
       }
-      show_limit: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      show_trgm: {
-        Args: { "": string }
-        Returns: string[]
-      }
-      test_role_system: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
+      test_role_system: { Args: never; Returns: boolean }
       update_owner_stats_for_field: {
         Args: { field_uuid: string }
         Returns: undefined

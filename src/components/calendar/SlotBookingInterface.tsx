@@ -28,6 +28,8 @@ interface SlotBookingInterfaceProps {
   selectedDate: Date;
   fieldId: string;
   fieldPrice: number;
+  price1h30?: number | null;
+  price2h?: number | null;
   availableSlots: AvailabilitySlot[];
   isLoading: boolean;
   onTimeSlotSelect: (date: Date, startTime: string, endTime: string, price: number) => void;
@@ -37,6 +39,8 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   selectedDate,
   fieldId,
   fieldPrice,
+  price1h30,
+  price2h,
   availableSlots,
   isLoading,
   onTimeSlotSelect
@@ -84,7 +88,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
 
   // Initialize utility classes
   const validator = new SlotValidationLogic(availableSlots, bookedSlots);
-  const priceCalculator = new SlotPriceCalculator(availableSlots, fieldPrice);
+  const priceCalculator = new SlotPriceCalculator(availableSlots, fieldPrice, price1h30, price2h);
 
   const rangeIsAvailable = validator.isRangeAvailable(selectedStartTime, selectedEndTime);
   const priceCalculation = priceCalculator.calculateTotalPriceWithFees(selectedStartTime, selectedEndTime);
@@ -166,6 +170,8 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               availableSlots={availableSlots}
               bookedSlots={bookedSlots}
               fieldPrice={fieldPrice}
+              price1h30={price1h30}
+              price2h={price2h}
               onTimeSlotSelect={onTimeSlotSelect}
             />
           </>
