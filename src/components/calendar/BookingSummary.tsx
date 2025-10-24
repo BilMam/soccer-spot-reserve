@@ -35,18 +35,14 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
 
   const getPriceLabel = () => {
     if (durationMinutes === 60) {
-      return `${subtotal.toLocaleString()} XOF pour 1h`;
+      return `${subtotal.toLocaleString()} XOF/h`;
     } else if (durationMinutes === 90 && price1h30) {
-      return `${subtotal.toLocaleString()} XOF pour 1h30`;
+      return `${subtotal.toLocaleString()} XOF/1h30`;
     } else if (durationMinutes === 120 && price2h) {
-      return `${subtotal.toLocaleString()} XOF pour 2h`;
+      return `${subtotal.toLocaleString()} XOF/2h`;
     } else {
-      const hours = Math.floor(durationMinutes / 60);
-      const minutes = durationMinutes % 60;
-      let durationText = '';
-      if (hours > 0) durationText += `${hours}h`;
-      if (minutes > 0) durationText += `${minutes}min`;
-      return `${subtotal.toLocaleString()} XOF pour ${durationText}`;
+      // Pour les durées personnalisées, afficher le prix horaire de base
+      return `${fieldPrice.toLocaleString()} XOF/h`;
     }
   };
 
