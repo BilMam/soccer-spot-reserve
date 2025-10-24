@@ -111,7 +111,7 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
                   id="price_per_hour"
                   type="number"
                   min="0"
-                  step="1000"
+                  step="100"
                   value={formData.price_per_hour}
                   onChange={(e) => onInputChange('price_per_hour', e.target.value)}
                   placeholder="Ex: 25000"
@@ -127,7 +127,7 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
                   id="price_1h30"
                   type="number"
                   min="0"
-                  step="1000"
+                  step="100"
                   value={formData.price_1h30 || ''}
                   onChange={(e) => onInputChange('price_1h30', e.target.value)}
                   placeholder="Ex: 35000"
@@ -143,7 +143,7 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
                   id="price_2h"
                   type="number"
                   min="0"
-                  step="1000"
+                  step="100"
                   value={formData.price_2h || ''}
                   onChange={(e) => onInputChange('price_2h', e.target.value)}
                   placeholder="Ex: 45000"
