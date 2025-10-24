@@ -39,25 +39,31 @@ export const useRecurringSlots = (fieldId: string) => {
     });
   };
 
-  // Créer un nouveau créneau récurrent
+  // Créer un ou plusieurs créneaux récurrents
   const createRecurringSlot = useMutation({
-    mutationFn: async (slot: Omit<RecurringSlot, 'id'>) => {
+    mutationFn: async ({ slotData, days }: { slotData: Omit<RecurringSlot, 'id'>; days: number[] }) => {
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+      
+      // Créer un créneau pour chaque jour sélectionné
+      const slotsToCreate = days.map(day => ({
+        ...slotData,
+        day_of_week: day,
+        created_by: userId
+      }));
+
       const { data, error } = await supabase
         .from('recurring_slots')
-        .insert({
-          ...slot,
-          created_by: (await supabase.auth.getUser()).data.user?.id
-        })
-        .select()
-        .single();
+        .insert(slotsToCreate)
+        .select();
 
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['recurring-slots', fieldId] });
       queryClient.invalidateQueries({ queryKey: ['field-availability-period', fieldId] });
-      toast.success('Créneau récurrent créé avec succès');
+      const count = data?.length || 1;
+      toast.success(`${count} créneau${count > 1 ? 'x' : ''} récurrent${count > 1 ? 's' : ''} créé${count > 1 ? 's' : ''}`);
     },
     onError: (error) => {
       console.error('Erreur création créneau récurrent:', error);

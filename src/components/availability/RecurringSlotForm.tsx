@@ -1,16 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Calendar } from 'lucide-react';
 import { RecurringSlot } from '@/hooks/useRecurringSlots';
 
 interface RecurringSlotFormProps {
   fieldId: string;
-  onSubmit: (data: Omit<RecurringSlot, 'id'>) => void;
+  onSubmit: (data: Omit<RecurringSlot, 'id'>, selectedDays: number[]) => void;
   onCancel: () => void;
   initialData?: RecurringSlot;
   isLoading?: boolean;
@@ -33,9 +33,12 @@ const RecurringSlotForm: React.FC<RecurringSlotFormProps> = ({
   initialData,
   isLoading
 }) => {
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
+  const [selectedDays, setSelectedDays] = useState<string[]>(
+    initialData ? [String(initialData.day_of_week)] : []
+  );
+
+  const { register, handleSubmit, formState: { errors } } = useForm({
     defaultValues: {
-      day_of_week: initialData?.day_of_week ?? 1,
       start_time: initialData?.start_time ?? '08:00',
       end_time: initialData?.end_time ?? '22:00',
       start_date: initialData?.start_date ?? new Date().toISOString().split('T')[0],
@@ -45,12 +48,14 @@ const RecurringSlotForm: React.FC<RecurringSlotFormProps> = ({
     }
   });
 
-  const dayOfWeek = watch('day_of_week');
-
   const handleFormSubmit = (data: any) => {
+    if (selectedDays.length === 0) {
+      return; // Ne rien faire si aucun jour n'est sélectionné
+    }
+
     onSubmit({
       field_id: fieldId,
-      day_of_week: Number(data.day_of_week),
+      day_of_week: Number(selectedDays[0]), // Pour la compatibilité, mais pas utilisé
       start_time: data.start_time,
       end_time: data.end_time,
       start_date: data.start_date,
@@ -58,31 +63,39 @@ const RecurringSlotForm: React.FC<RecurringSlotFormProps> = ({
       label: data.label || null,
       notes: data.notes || null,
       is_active: true
-    });
+    }, selectedDays.map(Number));
   };
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+      {/* Jours de la semaine */}
+      <div className="space-y-3">
+        <Label>Jours de la semaine *</Label>
+        <ToggleGroup 
+          type="multiple" 
+          value={selectedDays}
+          onValueChange={setSelectedDays}
+          className="grid grid-cols-7 gap-2"
+        >
+          {DAYS_OF_WEEK.map((day) => (
+            <ToggleGroupItem
+              key={day.value}
+              value={String(day.value)}
+              aria-label={day.label}
+              className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+            >
+              {day.label.slice(0, 3)}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        {selectedDays.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            Sélectionnez au moins un jour
+          </p>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Jour de la semaine */}
-        <div className="space-y-2">
-          <Label htmlFor="day_of_week">Jour de la semaine *</Label>
-          <Select
-            value={String(dayOfWeek)}
-            onValueChange={(value) => setValue('day_of_week', Number(value))}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {DAYS_OF_WEEK.map((day) => (
-                <SelectItem key={day.value} value={String(day.value)}>
-                  {day.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
 
         {/* Label optionnel */}
         <div className="space-y-2">
@@ -170,7 +183,7 @@ const RecurringSlotForm: React.FC<RecurringSlotFormProps> = ({
         <Button type="button" variant="outline" onClick={onCancel}>
           Annuler
         </Button>
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" disabled={isLoading || selectedDays.length === 0}>
           {isLoading ? 'Enregistrement...' : initialData ? 'Mettre à jour' : 'Créer'}
         </Button>
       </div>

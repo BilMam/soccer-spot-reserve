@@ -39,7 +39,7 @@ const RecurringSlotManager: React.FC<RecurringSlotManagerProps> = ({
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = (data: Omit<RecurringSlot, 'id'>) => {
+  const handleSubmit = (data: Omit<RecurringSlot, 'id'>, selectedDays: number[]) => {
     if (editingSlot?.id) {
       updateRecurringSlot.mutate(
         { id: editingSlot.id, ...data },
@@ -51,7 +51,7 @@ const RecurringSlotManager: React.FC<RecurringSlotManagerProps> = ({
         }
       );
     } else {
-      createRecurringSlot.mutate(data, {
+      createRecurringSlot.mutate({ slotData: data, days: selectedDays }, {
         onSuccess: () => {
           setIsDialogOpen(false);
         }
