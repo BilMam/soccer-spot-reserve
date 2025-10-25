@@ -82,7 +82,47 @@ export const getRecurringSlotsForPeriod = async (
 };
 
 /**
+ * Vérifie si un créneau donné chevauche un créneau récurrent pour une date spécifique
+ */
+export const isSlotInRecurringRange = (
+  recurringSlots: any[],
+  date: string,
+  slotStartTime: string,
+  slotEndTime: string
+): { isRecurring: boolean; recurringLabel?: string } => {
+  const dateObj = new Date(date);
+  const dayOfWeek = dateObj.getDay();
+
+  for (const slot of recurringSlots) {
+    // Vérifier si ce slot s'applique à ce jour de la semaine
+    if (slot.day_of_week !== dayOfWeek) {
+      continue;
+    }
+
+    // Vérifier si la date est dans la période de validité
+    if (date < slot.start_date) {
+      continue;
+    }
+    if (slot.end_date && date > slot.end_date) {
+      continue;
+    }
+
+    // Vérifier le chevauchement horaire
+    // Chevauchement si : slotStart < recurringEnd ET slotEnd > recurringStart
+    if (slotStartTime < slot.end_time && slotEndTime > slot.start_time) {
+      return {
+        isRecurring: true,
+        recurringLabel: slot.label || 'Créneau récurrent'
+      };
+    }
+  }
+
+  return { isRecurring: false };
+};
+
+/**
  * Génère les créneaux bloqués par les récurrences pour une date spécifique
+ * @deprecated Utiliser isSlotInRecurringRange pour marquer les créneaux existants
  */
 export const generateBlockedSlotsForDate = (
   recurringSlots: any[],

@@ -1,6 +1,6 @@
 
 import { format } from 'date-fns';
-import { generateBlockedSlotsForDate } from './recurringSlotChecker';
+import { isSlotInRecurringRange } from './recurringSlotChecker';
 
 interface AvailabilitySlot {
   id?: string;
@@ -65,31 +65,38 @@ export const generateCalendarGrid = (
     const dateStr = format(day, 'yyyy-MM-dd');
     const daySlots = slotsByDate[dateStr] || [];
     
-    // Générer les créneaux récurrents bloqués pour cette date
-    const recurringBlockedSlots = generateBlockedSlotsForDate(recurringSlots, dateStr);
-    
-    // Convertir les créneaux récurrents en AvailabilitySlot
-    const recurringAvailabilitySlots: AvailabilitySlot[] = recurringBlockedSlots.map(blocked => ({
-      date: dateStr,
-      start_time: blocked.start_time,
-      end_time: blocked.end_time,
-      is_available: false,
-      is_recurring: true,
-      recurring_label: blocked.reason,
-      unavailability_reason: `🔁 ${blocked.reason}`
-    }));
-    
-    // Fusionner les créneaux normaux avec les créneaux récurrents
-    const allSlots = [...daySlots, ...recurringAvailabilitySlots];
+    // Marquer les créneaux existants comme récurrents s'ils chevauchent un créneau récurrent
+    const processedSlots = daySlots.map(slot => {
+      const recurringCheck = isSlotInRecurringRange(
+        recurringSlots,
+        dateStr,
+        slot.start_time,
+        slot.end_time
+      );
+
+      if (recurringCheck.isRecurring) {
+        // Marquer le créneau comme récurrent
+        return {
+          ...slot,
+          is_available: false,
+          is_recurring: true,
+          recurring_label: recurringCheck.recurringLabel,
+          unavailability_reason: `🔁 ${recurringCheck.recurringLabel}`
+        };
+      }
+
+      return slot;
+    });
     
     grid.push({
       date: day,
       dateStr,
-      slots: allSlots,
+      slots: processedSlots,
       isEmpty: false
     });
     
-    console.log(`📅 Ajouté: ${dateStr} (${daySlots.length} créneaux normaux + ${recurringAvailabilitySlots.length} créneaux récurrents)`);
+    const recurringCount = processedSlots.filter(s => s.is_recurring).length;
+    console.log(`📅 Ajouté: ${dateStr} (${daySlots.length} créneaux, dont ${recurringCount} marqués comme récurrents)`);
   });
   
   // Ajouter des cellules vides à la fin pour compléter la dernière semaine
