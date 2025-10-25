@@ -307,6 +307,7 @@ export type Database = {
           availability_start: string | null
           capacity: number
           city: string
+          commission_rate: number | null
           created_at: string | null
           currency: string | null
           description: string | null
@@ -318,11 +319,17 @@ export type Database = {
           location: string
           longitude: number | null
           name: string
+          net_price_1h: number | null
+          net_price_1h30: number | null
+          net_price_2h: number | null
           owner_id: string
           payout_account_id: string | null
           price_1h30: number | null
           price_2h: number | null
           price_per_hour: number
+          public_price_1h: number | null
+          public_price_1h30: number | null
+          public_price_2h: number | null
           rating: number | null
           total_reviews: number | null
           updated_at: string | null
@@ -334,6 +341,7 @@ export type Database = {
           availability_start?: string | null
           capacity: number
           city: string
+          commission_rate?: number | null
           created_at?: string | null
           currency?: string | null
           description?: string | null
@@ -345,11 +353,17 @@ export type Database = {
           location: string
           longitude?: number | null
           name: string
+          net_price_1h?: number | null
+          net_price_1h30?: number | null
+          net_price_2h?: number | null
           owner_id: string
           payout_account_id?: string | null
           price_1h30?: number | null
           price_2h?: number | null
           price_per_hour: number
+          public_price_1h?: number | null
+          public_price_1h30?: number | null
+          public_price_2h?: number | null
           rating?: number | null
           total_reviews?: number | null
           updated_at?: string | null
@@ -361,6 +375,7 @@ export type Database = {
           availability_start?: string | null
           capacity?: number
           city?: string
+          commission_rate?: number | null
           created_at?: string | null
           currency?: string | null
           description?: string | null
@@ -372,11 +387,17 @@ export type Database = {
           location?: string
           longitude?: number | null
           name?: string
+          net_price_1h?: number | null
+          net_price_1h30?: number | null
+          net_price_2h?: number | null
           owner_id?: string
           payout_account_id?: string | null
           price_1h30?: number | null
           price_2h?: number | null
           price_per_hour?: number
+          public_price_1h?: number | null
+          public_price_1h30?: number | null
+          public_price_2h?: number | null
           rating?: number | null
           total_reviews?: number | null
           updated_at?: string | null
@@ -789,6 +810,62 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      recurring_slots: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          day_of_week: number
+          end_date: string | null
+          end_time: string
+          field_id: string
+          id: string
+          is_active: boolean | null
+          label: string | null
+          notes: string | null
+          start_date: string
+          start_time: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          day_of_week: number
+          end_date?: string | null
+          end_time: string
+          field_id: string
+          id?: string
+          is_active?: boolean | null
+          label?: string | null
+          notes?: string | null
+          start_date: string
+          start_time: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          day_of_week?: number
+          end_date?: string | null
+          end_time?: string
+          field_id?: string
+          id?: string
+          is_active?: boolean | null
+          label?: string | null
+          notes?: string | null
+          start_date?: string
+          start_time?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_slots_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       review_categories: {
         Row: {

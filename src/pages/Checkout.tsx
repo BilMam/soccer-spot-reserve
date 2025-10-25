@@ -19,14 +19,15 @@ import {
   Loader2,
   AlertCircle
 } from 'lucide-react';
+import { formatXOF } from '@/utils/publicPricing';
 
 interface CheckoutState {
   selectedDate: Date;
   selectedStartTime: string;
   selectedEndTime: string;
-  subtotal: number;
-  serviceFee: number;
-  totalPrice: number;
+  subtotal: number;  // Prix public (ce que le client voit avant frais opérateurs)
+  serviceFee: number;  // Frais opérateurs
+  totalPrice: number;  // Prix public + frais opérateurs
 }
 
 interface Field {
@@ -36,6 +37,9 @@ interface Field {
   address: string;
   city: string;
   price_per_hour: number;
+  net_price_1h?: number;
+  net_price_1h30?: number | null;
+  net_price_2h?: number | null;
   rating: number;
   total_reviews: number;
   images: string[];
@@ -63,7 +67,15 @@ const Checkout = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('fields')
-        .select('*')
+        .select(`
+          *,
+          net_price_1h,
+          net_price_1h30,
+          net_price_2h,
+          public_price_1h,
+          public_price_1h30,
+          public_price_2h
+        `)
         .eq('id', id)
         .eq('is_active', true)
         .single();
@@ -83,8 +95,34 @@ const Checkout = () => {
         throw new Error('Données manquantes pour la réservation');
       }
 
-      const platformFee = Math.round(checkoutData.totalPrice * 0.05);
-      const ownerAmount = checkoutData.totalPrice - platformFee;
+      // Calculer la durée et les montants
+      const [startHour, startMin] = checkoutData.selectedStartTime.split(':').map(Number);
+      const [endHour, endMin] = checkoutData.selectedEndTime.split(':').map(Number);
+      const durationMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+
+      // Prix PUBLIC (déjà calculé dans checkoutData.subtotal)
+      const publicPriceTotal = checkoutData.subtotal;
+      
+      // Calculer le montant net propriétaire
+      const getNetPriceForOwner = (durationMin: number): number => {
+        switch (durationMin) {
+          case 60:
+            return field.net_price_1h || field.price_per_hour;
+          case 90:
+            return field.net_price_1h30 || (field.net_price_1h || field.price_per_hour) * 1.5;
+          case 120:
+            return field.net_price_2h || (field.net_price_1h || field.price_per_hour) * 2;
+          default:
+            const hours = durationMin / 60;
+            return (field.net_price_1h || field.price_per_hour) * hours;
+        }
+      };
+
+      const netPriceOwner = getNetPriceForOwner(durationMinutes);
+      const platformCommission = publicPriceTotal - netPriceOwner;
+
+      // Le total envoyé à PayDunya inclut les frais opérateurs
+      const finalTotalWithOperatorFees = checkoutData.totalPrice;
 
       // Créer la réservation
       const { data: booking, error: bookingError } = await supabase
@@ -95,12 +133,18 @@ const Checkout = () => {
           booking_date: checkoutData.selectedDate.toISOString().split('T')[0],
           start_time: checkoutData.selectedStartTime,
           end_time: checkoutData.selectedEndTime,
-          total_price: checkoutData.totalPrice,
-          platform_fee: platformFee,
-          owner_amount: ownerAmount,
+          
+          // Nouveau modèle de prix
+          total_price: publicPriceTotal,  // Prix public (ce que voit le client AVANT frais opérateurs)
+          field_price: netPriceOwner,  // Prix net pour le propriétaire
+          platform_fee_user: 0,  // Pas de frais user séparés
+          platform_fee_owner: platformCommission,  // Commission plateforme (TOUTE la différence)
+          owner_amount: netPriceOwner,  // Montant net EXACT garanti au propriétaire
+          
           status: 'pending',
           payment_status: 'pending',
-          currency: 'XOF'
+          currency: 'XOF',
+          payment_provider: 'paydunya'
         })
         .select()
         .single();
@@ -109,10 +153,10 @@ const Checkout = () => {
         throw new Error(`Impossible de créer la réservation: ${bookingError.message}`);
       }
 
-      // Créer le paiement PayDunya avec la bonne URL
+      // Créer le paiement PayDunya avec le montant TOTAL (incluant frais opérateurs)
       const paymentRequestData = {
         booking_id: booking.id,
-        amount: checkoutData.totalPrice,
+        amount: finalTotalWithOperatorFees,  // Montant final avec frais opérateurs
         field_name: field.name,
         date: checkoutData.selectedDate.toLocaleDateString('fr-FR'),
         time: `${checkoutData.selectedStartTime} - ${checkoutData.selectedEndTime}`
@@ -120,7 +164,6 @@ const Checkout = () => {
 
       console.log('🔍 Debug paymentRequestData PayDunya:', paymentRequestData);
 
-      // Utiliser l'API Supabase directement au lieu d'une URL externe
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-paydunya-invoice', {
         body: paymentRequestData
       });
@@ -143,7 +186,7 @@ const Checkout = () => {
     onSuccess: () => {
       toast({
         title: "Redirection vers le paiement",
-        description: `Vous allez être redirigé vers PayDunya pour payer ${checkoutData?.totalPrice.toLocaleString()} XOF`,
+        description: `Vous allez être redirigé vers PayDunya pour payer ${formatXOF(checkoutData?.totalPrice || 0)}`,
         duration: 2000
       });
     },
@@ -312,16 +355,16 @@ const Checkout = () => {
                  {/* Calcul prix */}
                  <div className="space-y-3 py-4">
                    <div className="flex justify-between text-sm">
-                     <span>Sous-total</span>
-                     <span>{checkoutData.subtotal.toLocaleString()} XOF</span>
+                     <span>Location terrain</span>
+                     <span>{formatXOF(checkoutData.subtotal)}</span>
                    </div>
-                   <div className="flex justify-between text-sm text-gray-600">
-                     <span>Frais de service (3%)</span>
-                     <span>{checkoutData.serviceFee.toLocaleString()} XOF</span>
+                   <div className="flex justify-between text-sm text-muted-foreground">
+                     <span>Frais opérateurs – paiement sécurisé</span>
+                     <span>{formatXOF(checkoutData.serviceFee)}</span>
                    </div>
                    <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                     <span>Total</span>
-                     <span className="text-green-600">{checkoutData.totalPrice.toLocaleString()} XOF</span>
+                     <span>Total à payer</span>
+                     <span className="text-primary">{formatXOF(checkoutData.totalPrice)}</span>
                    </div>
                  </div>
 
@@ -337,7 +380,7 @@ const Checkout = () => {
                       Traitement en cours...
                     </>
                   ) : (
-                    `Payer ${checkoutData.totalPrice.toLocaleString()} XOF`
+                    `Payer ${formatXOF(checkoutData.totalPrice)}`
                   )}
                 </Button>
               </CardContent>

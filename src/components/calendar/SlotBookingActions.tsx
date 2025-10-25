@@ -49,7 +49,11 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const validator = new SlotValidationLogic(availableSlots, bookedSlots, bookings, recurringSlots, dateStr);
-  const priceCalculator = new SlotPriceCalculator(availableSlots, fieldPrice, price1h30, price2h);
+  const priceCalculator = new SlotPriceCalculator(availableSlots, {
+    price_per_hour: fieldPrice,
+    price_1h30: price1h30,
+    price_2h: price2h
+  });
 
   const handleConfirmBooking = () => {
     if (!selectedDate || !selectedStartTime || !selectedEndTime) {
@@ -71,12 +75,25 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
       return;
     }
     
-    const priceCalculation = priceCalculator.calculateTotalPriceWithFees(selectedStartTime, selectedEndTime);
-    onTimeSlotSelect(selectedDate, selectedStartTime, selectedEndTime, priceCalculation.subtotal, priceCalculation.serviceFee, priceCalculation.total);
+    // Calculer le prix PUBLIC (déjà avec commission 3%)
+    const publicPrice = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
+    
+    // Frais opérateurs (3% du prix public)
+    const PAYMENT_OPERATOR_FEE_RATE = 0.03;
+    const operatorFee = Math.ceil(publicPrice * PAYMENT_OPERATOR_FEE_RATE);
+    const finalTotal = publicPrice + operatorFee;
+    
+    // subtotal = prix public, serviceFee = frais opérateurs, total = final
+    onTimeSlotSelect(selectedDate, selectedStartTime, selectedEndTime, publicPrice, operatorFee, finalTotal);
   };
 
   const rangeIsAvailable = validator.isRangeAvailable(selectedStartTime, selectedEndTime);
-  const priceCalculation = priceCalculator.calculateTotalPriceWithFees(selectedStartTime, selectedEndTime);
+  
+  // Calculer pour l'affichage
+  const publicPrice = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
+  const PAYMENT_OPERATOR_FEE_RATE = 0.03;
+  const operatorFee = Math.ceil(publicPrice * PAYMENT_OPERATOR_FEE_RATE);
+  const finalTotal = publicPrice + operatorFee;
 
   return (
     <Button
@@ -85,7 +102,7 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
       className="w-full bg-green-600 hover:bg-green-700"
       size="lg"
     >
-      Réserver {selectedStartTime && selectedEndTime && `(${priceCalculation.total.toLocaleString()} XOF)`}
+      Réserver {selectedStartTime && selectedEndTime && `(${finalTotal.toLocaleString()} XOF)`}
     </Button>
   );
 };

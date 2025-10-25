@@ -7,9 +7,21 @@ export interface Field {
   location: string;
   address: string;
   city: string;
+  
+  // Anciens champs (compatibilité)
   price_per_hour: number;
   price_1h30: number | null;
   price_2h: number | null;
+  
+  // Nouveaux champs avec valeurs par défaut
+  net_price_1h: number;
+  net_price_1h30: number | null;
+  net_price_2h: number | null;
+  public_price_1h: number;
+  public_price_1h30: number | null;
+  public_price_2h: number | null;
+  commission_rate: number;  // Obligatoire avec défaut 0.03
+  
   rating: number;
   total_reviews: number;
   images: string[];

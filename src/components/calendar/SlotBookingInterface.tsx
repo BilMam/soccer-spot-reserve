@@ -92,16 +92,28 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
 
   // Initialize utility classes
   const validator = new SlotValidationLogic(availableSlots, bookedSlots, bookings, recurringSlots, dateStr);
-  const priceCalculator = new SlotPriceCalculator(availableSlots, fieldPrice, price1h30, price2h);
+  const priceCalculator = new SlotPriceCalculator(availableSlots, {
+    price_per_hour: fieldPrice,
+    price_1h30: price1h30,
+    price_2h: price2h
+  });
 
   const rangeIsAvailable = validator.isRangeAvailable(selectedStartTime, selectedEndTime);
-  const priceCalculation = priceCalculator.calculateTotalPriceWithFees(selectedStartTime, selectedEndTime);
+  
+  // Calculer le prix PUBLIC (déjà avec commission 3%)
+  const publicPrice = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
+  
+  // Calculer durée en minutes pour l'affichage
+  const startMinutes = selectedStartTime ? parseInt(selectedStartTime.split(':')[0]) * 60 + parseInt(selectedStartTime.split(':')[1]) : 0;
+  const endMinutes = selectedEndTime ? parseInt(selectedEndTime.split(':')[0]) * 60 + parseInt(selectedEndTime.split(':')[1]) : 0;
+  const durationMinutes = endMinutes - startMinutes;
+  const durationHoursFloat = durationMinutes / 60;
   
   // Calculer l'affichage de la durée
   const durationDisplay = selectedStartTime && selectedEndTime 
     ? (() => {
-        const hours = Math.floor(priceCalculation.durationHoursFloat);
-        const minutes = priceCalculation.durationMinutes % 60;
+        const hours = Math.floor(durationHoursFloat);
+        const minutes = durationMinutes % 60;
         let display = '';
         if (hours > 0) display += `${hours}h`;
         if (minutes > 0) display += `${minutes}min`;
@@ -160,13 +172,13 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
             <BookingSummary
               selectedStartTime={selectedStartTime}
               selectedEndTime={selectedEndTime}
-              subtotal={priceCalculation.subtotal}
-              serviceFee={priceCalculation.serviceFee}
-              total={priceCalculation.total}
+              subtotal={publicPrice}
+              serviceFee={0}
+              total={publicPrice}
               fieldPrice={fieldPrice}
               price1h30={price1h30}
               price2h={price2h}
-              durationMinutes={priceCalculation.durationMinutes}
+              durationMinutes={durationMinutes}
               rangeIsAvailable={rangeIsAvailable}
               durationDisplay={durationDisplay}
             />
