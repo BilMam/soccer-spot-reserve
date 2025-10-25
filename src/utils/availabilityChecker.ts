@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { parseTimeSlot } from '@/utils/timeSlotParser';
 import { timeToMinutes, minutesToTime } from '@/utils/timeUtils';
+import { checkRecurringSlotOverlap } from './recurringSlotChecker';
 import type { Field } from '@/types/search';
 
 export const checkFieldAvailability = async (
@@ -65,6 +66,19 @@ const checkSlotsAvailability = async (
   requiredSlots: Array<{ start: string; end: string }>,
   parsedTimeSlot: { startTime: string; endTime: string }
 ): Promise<boolean> => {
+  // Vérifier d'abord les créneaux récurrents
+  const hasRecurringConflict = await checkRecurringSlotOverlap(
+    field.id,
+    date,
+    parsedTimeSlot.startTime,
+    parsedTimeSlot.endTime
+  );
+
+  if (hasRecurringConflict) {
+    console.log(`🔍 ❌ CONFLIT AVEC CRÉNEAU RÉCURRENT pour ${field.name}`);
+    return false;
+  }
+
   let isFieldAvailable = true;
   const unavailableSlots = [];
   

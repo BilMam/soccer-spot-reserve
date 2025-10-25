@@ -9,6 +9,7 @@ import { fr } from 'date-fns/locale';
 import PeriodSelector from './PeriodSelector';
 import SlotCreationForm from './SlotCreationForm';
 import AvailabilityCalendar from './AvailabilityCalendar';
+import RecurringSlotsManagement from './RecurringSlotsManagement';
 import { usePersistentPeriod } from '@/hooks/usePersistentPeriod';
 
 interface AvailabilityManagementProps {
@@ -87,9 +88,10 @@ const AvailabilityManagement: React.FC<AvailabilityManagementProps> = ({
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="period">Sélection période</TabsTrigger>
           <TabsTrigger value="creation">Création créneaux</TabsTrigger>
+          <TabsTrigger value="recurring">Créneaux récurrents</TabsTrigger>
           <TabsTrigger value="calendar">Calendrier</TabsTrigger>
         </TabsList>
 
@@ -124,6 +126,10 @@ const AvailabilityManagement: React.FC<AvailabilityManagementProps> = ({
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="recurring">
+          <RecurringSlotsManagement fieldId={fieldId} />
         </TabsContent>
 
         <TabsContent value="calendar">
