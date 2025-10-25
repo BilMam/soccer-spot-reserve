@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useRecurringSlots, RecurringSlot } from '@/hooks/useRecurringSlots';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 
 interface RecurringSlotFormProps {
   fieldId: string;
@@ -59,6 +60,13 @@ const RecurringSlotForm: React.FC<RecurringSlotFormProps> = ({
     }
 
     try {
+      // Récupérer l'utilisateur actuel
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('Utilisateur non authentifié');
+        return;
+      }
+
       if (editingSlot) {
         // Mise à jour
         await updateRecurringSlot.mutateAsync({
@@ -83,7 +91,8 @@ const RecurringSlotForm: React.FC<RecurringSlotFormProps> = ({
             end_date: formData.endDate || undefined,
             label: formData.label || undefined,
             notes: formData.notes || undefined,
-            is_active: true
+            is_active: true,
+            created_by: user.id
           });
         }
       }
