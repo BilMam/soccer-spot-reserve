@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { useAvailabilityManagement } from '@/hooks/useAvailabilityManagement';
 import { useBookingData } from '@/hooks/useBookingData';
+import { useRecurringSlots } from '@/hooks/useRecurringSlots';
 import { generateCalendarGrid } from '@/utils/calendarGridUtils';
 import CalendarHeader from './CalendarHeader';
 import CalendarLegend from './CalendarLegend';
@@ -23,6 +24,8 @@ interface AvailabilitySlot {
   is_available: boolean;
   unavailability_reason?: string;
   is_maintenance?: boolean;
+  is_recurring?: boolean;
+  recurring_label?: string;
   notes?: string;
 }
 
@@ -32,6 +35,7 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
   endDate
 }) => {
   const { useFieldAvailabilityForPeriod, setSlotsUnavailable, setSlotsAvailable } = useAvailabilityManagement(fieldId);
+  const { recurringSlots } = useRecurringSlots(fieldId);
 
   const startDateStr = format(startDate, 'yyyy-MM-dd');
   const endDateStr = format(endDate, 'yyyy-MM-dd');
@@ -91,7 +95,7 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
     );
   }
 
-  const calendarGrid = generateCalendarGrid(startDate, endDate, slotsByDate);
+  const calendarGrid = generateCalendarGrid(startDate, endDate, slotsByDate, recurringSlots || []);
 
   return (
     <div className="space-y-4">

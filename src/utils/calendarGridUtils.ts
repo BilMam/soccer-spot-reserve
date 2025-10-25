@@ -1,5 +1,6 @@
 
 import { format } from 'date-fns';
+import { generateBlockedSlotsForDate } from './recurringSlotChecker';
 
 interface AvailabilitySlot {
   id?: string;
@@ -9,6 +10,8 @@ interface AvailabilitySlot {
   is_available: boolean;
   unavailability_reason?: string;
   is_maintenance?: boolean;
+  is_recurring?: boolean;
+  recurring_label?: string;
   notes?: string;
 }
 
@@ -22,7 +25,8 @@ export interface CalendarCell {
 export const generateCalendarGrid = (
   startDate: Date,
   endDate: Date,
-  slotsByDate: Record<string, AvailabilitySlot[]>
+  slotsByDate: Record<string, AvailabilitySlot[]>,
+  recurringSlots: any[] = []
 ): CalendarCell[] => {
   const grid: CalendarCell[] = [];
   
@@ -61,14 +65,31 @@ export const generateCalendarGrid = (
     const dateStr = format(day, 'yyyy-MM-dd');
     const daySlots = slotsByDate[dateStr] || [];
     
+    // Générer les créneaux récurrents bloqués pour cette date
+    const recurringBlockedSlots = generateBlockedSlotsForDate(recurringSlots, dateStr);
+    
+    // Convertir les créneaux récurrents en AvailabilitySlot
+    const recurringAvailabilitySlots: AvailabilitySlot[] = recurringBlockedSlots.map(blocked => ({
+      date: dateStr,
+      start_time: blocked.start_time,
+      end_time: blocked.end_time,
+      is_available: false,
+      is_recurring: true,
+      recurring_label: blocked.reason,
+      unavailability_reason: `🔁 ${blocked.reason}`
+    }));
+    
+    // Fusionner les créneaux normaux avec les créneaux récurrents
+    const allSlots = [...daySlots, ...recurringAvailabilitySlots];
+    
     grid.push({
       date: day,
       dateStr,
-      slots: daySlots,
+      slots: allSlots,
       isEmpty: false
     });
     
-    console.log(`📅 Ajouté: ${dateStr} (${daySlots.length} créneaux)`);
+    console.log(`📅 Ajouté: ${dateStr} (${daySlots.length} créneaux normaux + ${recurringAvailabilitySlots.length} créneaux récurrents)`);
   });
   
   // Ajouter des cellules vides à la fin pour compléter la dernière semaine

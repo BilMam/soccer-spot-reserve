@@ -14,6 +14,8 @@ interface AvailabilitySlot {
   is_available: boolean;
   unavailability_reason?: string;
   is_maintenance?: boolean;
+  is_recurring?: boolean;
+  recurring_label?: string;
   notes?: string;
 }
 
@@ -62,10 +64,13 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
   };
 
   const canMarkUnavailable = (slot: AvailabilitySlot): boolean => {
-    return slot.is_available && !isSlotBooked(slot);
+    // Ne pas permettre la modification des créneaux récurrents
+    return slot.is_available && !isSlotBooked(slot) && !slot.is_recurring;
   };
 
   const handleSlotClick = (slot: AvailabilitySlot) => {
+    // Ne pas permettre la sélection des créneaux récurrents
+    if (slot.is_recurring) return;
     setSelectedSlot(selectedSlot?.id === slot.id ? null : slot);
   };
 

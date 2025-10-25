@@ -11,6 +11,8 @@ interface AvailabilitySlot {
   is_available: boolean;
   unavailability_reason?: string;
   is_maintenance?: boolean;
+  is_recurring?: boolean;
+  recurring_label?: string;
   notes?: string;
 }
 
@@ -34,6 +36,10 @@ const SlotItem: React.FC<SlotItemProps> = ({
       return <Calendar className="w-4 h-4 text-blue-600" />;
     }
     
+    if (slot.is_recurring) {
+      return <span className="text-lg">🔁</span>;
+    }
+    
     if (slot.is_available) {
       return <CheckCircle className="w-4 h-4 text-green-600" />;
     } else {
@@ -44,6 +50,10 @@ const SlotItem: React.FC<SlotItemProps> = ({
   const getSlotStatusBadge = () => {
     if (isBooked) {
       return <Badge variant="secondary" className="bg-blue-100 text-blue-700">Réservé</Badge>;
+    }
+    
+    if (slot.is_recurring) {
+      return <Badge variant="secondary" className="bg-purple-100 text-purple-700">Récurrent</Badge>;
     }
     
     if (slot.is_available) {
@@ -57,12 +67,14 @@ const SlotItem: React.FC<SlotItemProps> = ({
     <div 
       key={slot.id || index}
       className={`
-        flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all
-        ${isSelected 
-          ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-200' 
-          : 'hover:bg-gray-50 border-gray-200'
+        flex items-center justify-between p-3 border rounded-lg transition-all
+        ${slot.is_recurring 
+          ? 'bg-purple-50 border-purple-300 cursor-not-allowed opacity-75' 
+          : isSelected 
+            ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-200 cursor-pointer' 
+            : 'hover:bg-gray-50 border-gray-200 cursor-pointer'
         }
-        ${isBooked ? 'bg-blue-50 border-blue-200' : ''}
+        ${isBooked && !slot.is_recurring ? 'bg-blue-50 border-blue-200' : ''}
       `}
       onClick={onClick}
     >
@@ -72,12 +84,17 @@ const SlotItem: React.FC<SlotItemProps> = ({
           <div className="font-medium">
             {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
           </div>
-          {isBooked && (
+          {isBooked && !slot.is_recurring && (
             <div className="text-sm text-blue-600 font-medium">
               Réservation active
             </div>
           )}
-          {slot.unavailability_reason && !isBooked && (
+          {slot.is_recurring && slot.recurring_label && (
+            <div className="text-sm text-purple-600 font-medium">
+              {slot.recurring_label}
+            </div>
+          )}
+          {slot.unavailability_reason && !isBooked && !slot.is_recurring && (
             <div className="text-sm text-gray-600">
               {slot.unavailability_reason}
             </div>

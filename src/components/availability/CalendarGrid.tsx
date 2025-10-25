@@ -15,6 +15,8 @@ interface AvailabilitySlot {
   is_available: boolean;
   unavailability_reason?: string;
   is_maintenance?: boolean;
+  is_recurring?: boolean;
+  recurring_label?: string;
   notes?: string;
 }
 

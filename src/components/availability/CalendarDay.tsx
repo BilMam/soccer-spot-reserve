@@ -13,6 +13,8 @@ interface AvailabilitySlot {
   is_available: boolean;
   unavailability_reason?: string;
   is_maintenance?: boolean;
+  is_recurring?: boolean;
+  recurring_label?: string;
   notes?: string;
 }
 
@@ -32,27 +34,33 @@ interface CalendarDayProps {
 const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, bookings, onClick }) => {
   // Calculer les statistiques pour ce jour
   const total = slots.length;
-  const available = slots.filter(s => s.is_available).length;
-  const unavailable = slots.filter(s => !s.is_available).length;
+  const recurring = slots.filter(s => s.is_recurring).length;
+  const normalSlots = slots.filter(s => !s.is_recurring);
+  const available = normalSlots.filter(s => s.is_available).length;
+  const unavailable = normalSlots.filter(s => !s.is_available).length;
   
-  // NOUVELLE LOGIQUE: Utiliser la détection de chevauchement
-  const booked = slots.filter(slot => {
+  // NOUVELLE LOGIQUE: Utiliser la détection de chevauchement (seulement pour les créneaux normaux)
+  const booked = normalSlots.filter(slot => {
     return isSlotOverlappingWithBooking(slot.start_time, slot.end_time, bookings);
   }).length;
   
   const hasSlots = total > 0;
+  const hasRecurring = recurring > 0;
   const hasUnavailable = unavailable > 0;
   const hasBooked = booked > 0;
-  const isFullyAvailable = hasSlots && unavailable === 0 && booked === 0;
+  const isFullyAvailable = hasSlots && unavailable === 0 && booked === 0 && recurring === 0;
 
-  // Déterminer la couleur de fond avec priorité
+  // Déterminer la couleur de fond avec priorité: Réservé > Récurrent > Indisponible > Disponible
   let bgColor = 'bg-gray-50 border-gray-200';
-  if (hasUnavailable) {
-    // Rouge si indisponible (priorité la plus haute)
-    bgColor = 'bg-red-50 border-red-200';
-  } else if (hasBooked) {
-    // Bleu si réservé
+  if (hasBooked) {
+    // Bleu si réservé (priorité la plus haute)
     bgColor = 'bg-blue-50 border-blue-200';
+  } else if (hasRecurring) {
+    // Violet si récurrent
+    bgColor = 'bg-purple-50 border-purple-200';
+  } else if (hasUnavailable) {
+    // Rouge si indisponible
+    bgColor = 'bg-red-50 border-red-200';
   } else if (isFullyAvailable) {
     // Vert si tout disponible
     bgColor = 'bg-green-50 border-green-200';
@@ -91,7 +99,7 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, book
       <span className="font-medium">{day.getDate()}</span>
       {hasSlots && (
         <div className="flex gap-1 mt-1">
-          {available > 0 && booked === 0 && (
+          {available > 0 && booked === 0 && recurring === 0 && (
             <Badge variant="secondary" className="text-xs px-1 py-0 bg-green-100 text-green-700">
               {available}
             </Badge>
@@ -99,6 +107,11 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, book
           {booked > 0 && (
             <Badge variant="secondary" className="text-xs px-1 py-0 bg-blue-100 text-blue-700">
               {booked}
+            </Badge>
+          )}
+          {recurring > 0 && (
+            <Badge variant="secondary" className="text-xs px-1 py-0 bg-purple-100 text-purple-700">
+              {recurring}
             </Badge>
           )}
           {unavailable > 0 && (
