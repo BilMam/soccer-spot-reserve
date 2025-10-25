@@ -1,6 +1,8 @@
 
 import { normalizeTime } from '@/utils/timeUtils';
 import { SlotOverlapUtils } from './SlotOverlapUtils';
+import { isSlotInRecurringRange } from '@/utils/recurringSlotChecker';
+import { format } from 'date-fns';
 
 interface AvailabilitySlot {
   id: string;
@@ -25,13 +27,21 @@ export class SlotStatusUtils {
   private bookings: BookingSlot[];
   private overlapUtils: SlotOverlapUtils;
   private selectedDate: Date;
+  private recurringSlots: any[];
 
-  constructor(availableSlots: AvailabilitySlot[], bookedSlots: Set<string>, bookings: BookingSlot[] = [], selectedDate: Date) {
+  constructor(
+    availableSlots: AvailabilitySlot[], 
+    bookedSlots: Set<string>, 
+    bookings: BookingSlot[] = [], 
+    selectedDate: Date,
+    recurringSlots: any[] = []
+  ) {
     this.availableSlots = availableSlots;
     this.bookedSlots = bookedSlots;
     this.bookings = bookings;
     this.overlapUtils = new SlotOverlapUtils(bookings);
     this.selectedDate = selectedDate;
+    this.recurringSlots = recurringSlots;
   }
 
   // Vérifier si un créneau spécifique est réservé (méthode héritée)
@@ -109,7 +119,7 @@ export class SlotStatusUtils {
     return 'available';
   }
 
-  // MISE À JOUR: Vérifier le statut pour les heures de début (avec chevauchements)
+  // MISE À JOUR: Vérifier le statut pour les heures de début (avec chevauchements et créneaux récurrents)
   getStartTimeStatus(startTime: string): 'available' | 'booked' | 'unavailable' | 'not_created' {
     // Vérifier si c'est une heure passée pour aujourd'hui
     if (this.isPastTime(startTime)) {
@@ -120,7 +130,21 @@ export class SlotStatusUtils {
     // Créer un créneau de 30 minutes pour tester
     const endTime = `${String(Math.floor((timeToMinutes(startTime) + 30) / 60)).padStart(2, '0')}:${String((timeToMinutes(startTime) + 30) % 60).padStart(2, '0')}`;
     
-    // D'abord vérifier les chevauchements avec les réservations existantes
+    // PRIORITÉ 1: Vérifier les créneaux récurrents bloqués
+    const dateStr = format(this.selectedDate, 'yyyy-MM-dd');
+    const recurringCheck = isSlotInRecurringRange(
+      this.recurringSlots,
+      dateStr,
+      startTime + ':00',
+      endTime + ':00'
+    );
+    
+    if (recurringCheck.isRecurring) {
+      console.log('🔴 getStartTimeStatus: unavailable (créneau récurrent) pour', startTime, '-', recurringCheck.recurringLabel);
+      return 'unavailable';
+    }
+    
+    // PRIORITÉ 2: Vérifier les chevauchements avec les réservations existantes
     if (this.isStartTimeOverlapping(startTime)) {
       console.log('🔍 getStartTimeStatus: booked (chevauchement) pour heure de début', startTime);
       return 'booked';

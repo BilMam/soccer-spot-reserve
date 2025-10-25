@@ -11,6 +11,7 @@ import TimeSlotSelector from './TimeSlotSelector';
 import BookingSummary from './BookingSummary';
 import SlotBookingActions from './SlotBookingActions';
 import { useBookingData } from '@/hooks/useBookingData';
+import { useRecurringSlots } from '@/hooks/useRecurringSlots';
 
 interface AvailabilitySlot {
   id: string;
@@ -53,6 +54,9 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const { bookedSlotsByDate, bookingsByDate } = useBookingData(fieldId, dateStr, dateStr);
   
+  // Récupérer les créneaux récurrents
+  const { recurringSlots = [] } = useRecurringSlots(fieldId);
+  
   // Convertir les données du hook au format attendu
   const bookedSlots = Array.from(bookedSlotsByDate[dateStr] || []);
   const bookings = bookingsByDate[dateStr] || [];
@@ -87,7 +91,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   }, [selectedStartTime, availableSlots]);
 
   // Initialize utility classes
-  const validator = new SlotValidationLogic(availableSlots, bookedSlots);
+  const validator = new SlotValidationLogic(availableSlots, bookedSlots, bookings, recurringSlots, dateStr);
   const priceCalculator = new SlotPriceCalculator(availableSlots, fieldPrice, price1h30, price2h);
 
   const rangeIsAvailable = validator.isRangeAvailable(selectedStartTime, selectedEndTime);
@@ -150,6 +154,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               bookedSlots={bookedSlots}
               bookings={bookings}
               selectedDate={selectedDate}
+              recurringSlots={recurringSlots}
             />
 
             <BookingSummary
@@ -172,6 +177,8 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               selectedEndTime={selectedEndTime}
               availableSlots={availableSlots}
               bookedSlots={bookedSlots}
+              bookings={bookings}
+              recurringSlots={recurringSlots}
               fieldPrice={fieldPrice}
               price1h30={price1h30}
               price2h={price2h}

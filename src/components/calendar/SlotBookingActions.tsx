@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { SlotValidationLogic } from './SlotValidationLogic';
 import { SlotPriceCalculator } from './SlotPriceCalculator';
+import { format } from 'date-fns';
 
 interface AvailabilitySlot {
   id: string;
@@ -23,6 +24,8 @@ interface SlotBookingActionsProps {
   selectedEndTime: string;
   availableSlots: AvailabilitySlot[];
   bookedSlots: string[];
+  bookings: Array<{start_time: string, end_time: string}>;
+  recurringSlots: any[];
   fieldPrice: number;
   price1h30?: number | null;
   price2h?: number | null;
@@ -35,6 +38,8 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
   selectedEndTime,
   availableSlots,
   bookedSlots,
+  bookings,
+  recurringSlots,
   fieldPrice,
   price1h30,
   price2h,
@@ -42,7 +47,8 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
 }) => {
   const { toast } = useToast();
 
-  const validator = new SlotValidationLogic(availableSlots, bookedSlots);
+  const dateStr = format(selectedDate, 'yyyy-MM-dd');
+  const validator = new SlotValidationLogic(availableSlots, bookedSlots, bookings, recurringSlots, dateStr);
   const priceCalculator = new SlotPriceCalculator(availableSlots, fieldPrice, price1h30, price2h);
 
   const handleConfirmBooking = () => {

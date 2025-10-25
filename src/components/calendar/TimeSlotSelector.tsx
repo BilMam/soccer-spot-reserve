@@ -28,6 +28,7 @@ interface TimeSlotSelectorProps {
   bookedSlots: string[];
   bookings: Array<{start_time: string, end_time: string}>;
   selectedDate: Date;
+  recurringSlots: any[];
 }
 
 const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
@@ -39,7 +40,8 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
   fieldId,
   bookedSlots,
   bookings,
-  selectedDate
+  selectedDate,
+  recurringSlots
 }) => {
   const timeOptions = generateTimeOptions();
 
@@ -55,9 +57,9 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
     }
   }, [selectedStartTime, availableSlots, onEndTimeChange]);
 
-  // Initialize utility classes AVEC les réservations complètes
+  // Initialize utility classes AVEC les réservations complètes et les créneaux récurrents
   const bookedSlotsSet = new Set(bookedSlots);
-  const slotStatusUtils = new SlotStatusUtils(availableSlots, bookedSlotsSet, bookings, selectedDate);
+  const slotStatusUtils = new SlotStatusUtils(availableSlots, bookedSlotsSet, bookings, selectedDate, recurringSlots);
   const endTimesCalculator = new AvailableEndTimesCalculator(slotStatusUtils);
 
   const availableEndTimes = endTimesCalculator.getAvailableEndTimes(selectedStartTime);

@@ -1,5 +1,6 @@
 import { timeToMinutes, minutesToTime, normalizeTime } from '@/utils/timeUtils';
 import { SlotOverlapUtils } from './SlotOverlapUtils';
+import { isSlotInRecurringRange } from '@/utils/recurringSlotChecker';
 
 interface AvailabilitySlot {
   id: string;
@@ -17,11 +18,21 @@ export class SlotValidationLogic {
   private availableSlots: AvailabilitySlot[];
   private bookedSlots: string[];
   private overlapUtils: SlotOverlapUtils;
+  private recurringSlots: any[];
+  private selectedDate: string;
 
-  constructor(availableSlots: AvailabilitySlot[], bookedSlots: string[], bookings: Array<{start_time: string, end_time: string}> = []) {
+  constructor(
+    availableSlots: AvailabilitySlot[], 
+    bookedSlots: string[], 
+    bookings: Array<{start_time: string, end_time: string}> = [],
+    recurringSlots: any[] = [],
+    selectedDate: string = ''
+  ) {
     this.availableSlots = availableSlots;
     this.bookedSlots = bookedSlots;
     this.overlapUtils = new SlotOverlapUtils(bookings);
+    this.recurringSlots = recurringSlots;
+    this.selectedDate = selectedDate;
   }
 
   // RENFORCÉ: Vérifier si une plage horaire est entièrement disponible avec validation stricte ET détection de chevauchements
@@ -30,14 +41,32 @@ export class SlotValidationLogic {
     
     console.log('🔍🔒 isRangeAvailable STRICT - Vérification plage:', `${startTime}-${endTime}`);
 
-    // NOUVELLE PRIORITÉ: Vérifier les chevauchements avec les réservations existantes
+    const startMinutes = timeToMinutes(startTime);
+    const endMinutes = timeToMinutes(endTime);
+
+    // PRIORITÉ 1: Vérifier les créneaux récurrents bloqués
+    for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
+      const slotStart = minutesToTime(minutes);
+      const slotEnd = minutesToTime(minutes + 30);
+      
+      const recurringCheck = isSlotInRecurringRange(
+        this.recurringSlots,
+        this.selectedDate,
+        slotStart + ':00',
+        slotEnd + ':00'
+      );
+      
+      if (recurringCheck.isRecurring) {
+        console.log('🔴 BLOQUÉ PAR CRÉNEAU RÉCURRENT:', recurringCheck.recurringLabel);
+        return false;
+      }
+    }
+
+    // PRIORITÉ 2: Vérifier les chevauchements avec les réservations existantes
     if (this.overlapUtils.isRangeOverlappingWithBookings(startTime, endTime)) {
       console.log('🔍🔒 Plage REJETÉE à cause d\'un chevauchement avec réservations');
       return false;
     }
-
-    const startMinutes = timeToMinutes(startTime);
-    const endMinutes = timeToMinutes(endTime);
 
     // Vérifier chaque créneau de 30 minutes dans la plage
     for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
