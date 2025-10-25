@@ -24,7 +24,10 @@ interface SlotBookingActionsProps {
   availableSlots: AvailabilitySlot[];
   bookedSlots: string[];
   fieldPrice: number;
-  onTimeSlotSelect: (date: Date, startTime: string, endTime: string, price: number) => void;
+  subtotal: number;
+  serviceFee: number;
+  finalTotal: number;
+  onTimeSlotSelect: (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => void;
 }
 
 const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
@@ -34,12 +37,14 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
   availableSlots,
   bookedSlots,
   fieldPrice,
+  subtotal,
+  serviceFee,
+  finalTotal,
   onTimeSlotSelect
 }) => {
   const { toast } = useToast();
 
   const validator = new SlotValidationLogic(availableSlots, bookedSlots);
-  const priceCalculator = new SlotPriceCalculator(availableSlots, fieldPrice);
 
   const handleConfirmBooking = () => {
     if (!selectedDate || !selectedStartTime || !selectedEndTime) {
@@ -61,12 +66,10 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
       return;
     }
     
-    const totalPrice = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
-    onTimeSlotSelect(selectedDate, selectedStartTime, selectedEndTime, totalPrice);
+    onTimeSlotSelect(selectedDate, selectedStartTime, selectedEndTime, subtotal, serviceFee, finalTotal);
   };
 
   const rangeIsAvailable = validator.isRangeAvailable(selectedStartTime, selectedEndTime);
-  const totalPrice = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
 
   return (
     <Button
@@ -75,7 +78,7 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
       className="w-full bg-green-600 hover:bg-green-700"
       size="lg"
     >
-      Réserver {selectedStartTime && selectedEndTime && `(${totalPrice.toLocaleString()} XOF)`}
+      Réserver {selectedStartTime && selectedEndTime && `(${finalTotal.toLocaleString()} XOF)`}
     </Button>
   );
 };

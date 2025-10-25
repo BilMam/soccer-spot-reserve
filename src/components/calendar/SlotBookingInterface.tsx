@@ -103,6 +103,12 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   // Calculer le prix PUBLIC (déjà avec commission 3%)
   const publicPrice = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
   
+  // Calculer les frais opérateurs (3% du prix public)
+  const operatorFee = Math.ceil(publicPrice * 0.03);
+  
+  // Calculer le total final (prix public + frais opérateurs)
+  const finalTotal = publicPrice + operatorFee;
+  
   // Calculer durée en minutes pour l'affichage
   const startMinutes = selectedStartTime ? parseInt(selectedStartTime.split(':')[0]) * 60 + parseInt(selectedStartTime.split(':')[1]) : 0;
   const endMinutes = selectedEndTime ? parseInt(selectedEndTime.split(':')[0]) * 60 + parseInt(selectedEndTime.split(':')[1]) : 0;
@@ -173,8 +179,8 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               selectedStartTime={selectedStartTime}
               selectedEndTime={selectedEndTime}
               subtotal={publicPrice}
-              serviceFee={0}
-              total={publicPrice}
+              serviceFee={operatorFee}
+              total={finalTotal}
               fieldPrice={fieldPrice}
               price1h30={price1h30}
               price2h={price2h}

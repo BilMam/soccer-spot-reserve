@@ -111,36 +111,33 @@ serve(async (req) => {
       throw new Error('Accès non autorisé à cette réservation');
     }
 
-    const price = existingBooking.field_price || amount;
-
-    // Calculate fees - Same model as CinetPay
-    const fieldPrice = price;
-    const platformFeeUser = Math.round(price * 0.03);    // 3% frais utilisateur MySport
-    const platformFeeOwner = Math.round(price * 0.05);   // 5% commission plateforme
-    const ownerAmount = price - platformFeeOwner;        // 95% pour le propriétaire
-    let amountCheckout = price + platformFeeUser;        // Montant total à payer
-
-    // PayDunya minimum amount is 200 FCFA
-    const PAYDUNYA_MIN_AMOUNT = 200;
-    if (amountCheckout < PAYDUNYA_MIN_AMOUNT) {
-      console.log(`[${timestamp}] [create-paydunya-invoice] Amount ${amountCheckout} below minimum ${PAYDUNYA_MIN_AMOUNT}, adjusting...`);
-      amountCheckout = PAYDUNYA_MIN_AMOUNT;
-    }
+    // Le montant reçu est déjà le finalTotal (prix public + frais opérateurs 3%)
+    const amountCheckout = amount;
+    
+    // Extraire le prix public (subtotal) et les frais opérateurs
+    // finalTotal = publicPrice + (publicPrice * 0.03)
+    // donc publicPrice = finalTotal / 1.03
+    const publicPrice = Math.round(amountCheckout / 1.03);
+    const operatorFee = amountCheckout - publicPrice;
+    
+    // Calculer le montant net pour le propriétaire (prix public - commission 3%)
+    const platformFeeOwner = Math.ceil(publicPrice * 0.03);
+    const ownerAmount = publicPrice - platformFeeOwner;
 
     console.log(`[${timestamp}] [create-paydunya-invoice] Fee calculation:`, {
-      field_price: fieldPrice,
-      platform_fee_user: platformFeeUser,
+      amount_checkout: amountCheckout,
+      public_price: publicPrice,
+      operator_fee: operatorFee,
       platform_fee_owner: platformFeeOwner,
-      owner_amount: ownerAmount,
-      amount_checkout: amountCheckout
+      owner_amount: ownerAmount
     });
 
     // Update existing booking with payment info
     const { data: booking, error: bookingError } = await supabaseClient
       .from('bookings')
       .update({
-        field_price: fieldPrice,
-        platform_fee_user: platformFeeUser,
+        field_price: publicPrice,
+        platform_fee_user: operatorFee,
         platform_fee_owner: platformFeeOwner,
         owner_amount: ownerAmount,
         total_price: amountCheckout,
@@ -263,8 +260,8 @@ serve(async (req) => {
       url: paydunyaResult.response_text,
       invoice_token: invoiceToken,
       amount_checkout: amountCheckout,
-      field_price: fieldPrice,
-      platform_fee_user: platformFeeUser,
+      field_price: publicPrice,
+      platform_fee_user: operatorFee,
       platform_fee_owner: platformFeeOwner,
       owner_amount: ownerAmount,
       currency: 'XOF'

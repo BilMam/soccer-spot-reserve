@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Star, MapPin, Users, Clock, Wifi, Car, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 interface Field {
   id: string;
@@ -80,7 +81,7 @@ const FieldDetail = () => {
     }
   };
 
-  const handleTimeSlotSelect = (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => {
+  const handleTimeSlotSelect = async (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => {
     console.log('🎯 Sélection créneau dans FieldDetail:', {
       date: date.toISOString(),
       startTime,
@@ -90,21 +91,65 @@ const FieldDetail = () => {
       total
     });
     
-    setSelectedDate(date);
-    setSelectedStartTime(startTime);
-    setSelectedEndTime(endTime);
-    setTotalPrice(total);
+    if (!user) {
+      toast({
+        title: "Connexion requise",
+        description: "Veuillez vous connecter pour réserver un terrain.",
+        variant: "destructive"
+      });
+      navigate('/auth');
+      return;
+    }
     
-    navigate(`/checkout/${id}`, {
-      state: {
-        selectedDate: date,
-        selectedStartTime: startTime,
-        selectedEndTime: endTime,
-        subtotal: subtotal,
-        serviceFee: serviceFee,
-        totalPrice: total
+    try {
+      // Créer la réservation en statut pending
+      const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .insert({
+          field_id: id,
+          user_id: user.id,
+          booking_date: format(date, 'yyyy-MM-dd'),
+          start_time: startTime,
+          end_time: endTime,
+          total_price: subtotal,
+          field_price: subtotal,
+          platform_fee_user: serviceFee,
+          status: 'pending',
+          payment_status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (bookingError || !booking) {
+        throw new Error(bookingError?.message || 'Erreur lors de la création de la réservation');
       }
-    });
+
+      // Appeler l'edge function PayDunya
+      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-paydunya-invoice', {
+        body: {
+          booking_id: booking.id,
+          amount: total,
+          field_name: field?.name || 'Terrain',
+          date: format(date, 'dd/MM/yyyy'),
+          time: `${startTime} - ${endTime}`
+        }
+      });
+
+      if (paymentError || !paymentData?.url) {
+        throw new Error(paymentError?.message || 'Erreur lors de la génération du paiement');
+      }
+
+      // Rediriger directement vers PayDunya
+      window.location.href = paymentData.url;
+      
+    } catch (error: any) {
+      console.error('Erreur lors de la réservation:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Une erreur est survenue lors de la réservation.",
+        variant: "destructive"
+      });
+    }
   };
 
   if (isLoading) {
