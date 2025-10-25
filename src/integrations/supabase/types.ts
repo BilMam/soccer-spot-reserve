@@ -790,62 +790,6 @@ export type Database = {
         }
         Relationships: []
       }
-      recurring_slots: {
-        Row: {
-          created_at: string | null
-          created_by: string
-          day_of_week: number
-          end_date: string | null
-          end_time: string
-          field_id: string
-          id: string
-          is_active: boolean | null
-          label: string | null
-          notes: string | null
-          start_date: string
-          start_time: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          created_by: string
-          day_of_week: number
-          end_date?: string | null
-          end_time: string
-          field_id: string
-          id?: string
-          is_active?: boolean | null
-          label?: string | null
-          notes?: string | null
-          start_date: string
-          start_time: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          created_by?: string
-          day_of_week?: number
-          end_date?: string | null
-          end_time?: string
-          field_id?: string
-          id?: string
-          is_active?: boolean | null
-          label?: string | null
-          notes?: string | null
-          start_date?: string
-          start_time?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "recurring_slots_field_id_fkey"
-            columns: ["field_id"]
-            isOneToOne: false
-            referencedRelation: "fields"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       review_categories: {
         Row: {
           category: string

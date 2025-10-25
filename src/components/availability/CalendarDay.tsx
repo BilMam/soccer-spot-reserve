@@ -14,8 +14,6 @@ interface AvailabilitySlot {
   unavailability_reason?: string;
   is_maintenance?: boolean;
   notes?: string;
-  is_recurring?: boolean;
-  recurring_label?: string;
 }
 
 interface BookingSlot {
@@ -36,7 +34,6 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, book
   const total = slots.length;
   const available = slots.filter(s => s.is_available).length;
   const unavailable = slots.filter(s => !s.is_available).length;
-  const recurring = slots.filter(s => s.is_recurring).length;
   
   // NOUVELLE LOGIQUE: Utiliser la détection de chevauchement
   const booked = slots.filter(slot => {
@@ -46,23 +43,16 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, book
   const hasSlots = total > 0;
   const hasUnavailable = unavailable > 0;
   const hasBooked = booked > 0;
-  const hasRecurring = recurring > 0;
   const isFullyAvailable = hasSlots && unavailable === 0 && booked === 0;
 
   // Déterminer la couleur de fond avec priorité
   let bgColor = 'bg-gray-50 border-gray-200';
-  let borderStyle = '';
-  
   if (hasUnavailable) {
     // Rouge si indisponible (priorité la plus haute)
     bgColor = 'bg-red-50 border-red-200';
   } else if (hasBooked) {
     // Bleu si réservé
     bgColor = 'bg-blue-50 border-blue-200';
-  } else if (hasRecurring && available > 0) {
-    // Violet en pointillés si créneaux récurrents
-    bgColor = 'bg-purple-50 border-purple-300';
-    borderStyle = 'border-dashed border-2';
   } else if (isFullyAvailable) {
     // Vert si tout disponible
     bgColor = 'bg-green-50 border-green-200';
@@ -95,20 +85,15 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, book
   return (
     <Button
       variant="ghost"
-      className={`h-16 p-2 flex flex-col items-center justify-center border cursor-pointer hover:shadow-md transition-all ${bgColor} ${borderStyle}`}
+      className={`h-16 p-2 flex flex-col items-center justify-center border cursor-pointer hover:shadow-md transition-all ${bgColor}`}
       onClick={onClick}
     >
       <span className="font-medium">{day.getDate()}</span>
       {hasSlots && (
         <div className="flex gap-1 mt-1">
-          {available > 0 && booked === 0 && !hasRecurring && (
+          {available > 0 && booked === 0 && (
             <Badge variant="secondary" className="text-xs px-1 py-0 bg-green-100 text-green-700">
               {available}
-            </Badge>
-          )}
-          {recurring > 0 && (
-            <Badge variant="secondary" className="text-xs px-1 py-0 bg-purple-100 text-purple-700">
-              {recurring}
             </Badge>
           )}
           {booked > 0 && (

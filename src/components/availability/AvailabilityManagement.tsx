@@ -3,13 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Calendar, Clock, AlertTriangle, RotateCcw, Repeat } from 'lucide-react';
+import { Settings, Calendar, Clock, AlertTriangle, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import PeriodSelector from './PeriodSelector';
 import SlotCreationForm from './SlotCreationForm';
 import AvailabilityCalendar from './AvailabilityCalendar';
-import RecurringSlotManager from './RecurringSlotManager';
 import { usePersistentPeriod } from '@/hooks/usePersistentPeriod';
 
 interface AvailabilityManagementProps {
@@ -88,13 +87,9 @@ const AvailabilityManagement: React.FC<AvailabilityManagementProps> = ({
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="period">Sélection période</TabsTrigger>
           <TabsTrigger value="creation">Création créneaux</TabsTrigger>
-          <TabsTrigger value="recurring">
-            <Repeat className="w-4 h-4 mr-2" />
-            Créneaux récurrents
-          </TabsTrigger>
           <TabsTrigger value="calendar">Calendrier</TabsTrigger>
         </TabsList>
 
@@ -129,10 +124,6 @@ const AvailabilityManagement: React.FC<AvailabilityManagementProps> = ({
               </CardContent>
             </Card>
           )}
-        </TabsContent>
-
-        <TabsContent value="recurring">
-          <RecurringSlotManager fieldId={fieldId} fieldName={fieldName} />
         </TabsContent>
 
         <TabsContent value="calendar">

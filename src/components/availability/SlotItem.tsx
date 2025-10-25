@@ -12,8 +12,6 @@ interface AvailabilitySlot {
   unavailability_reason?: string;
   is_maintenance?: boolean;
   notes?: string;
-  is_recurring?: boolean;
-  recurring_label?: string;
 }
 
 interface SlotItemProps {
@@ -36,14 +34,6 @@ const SlotItem: React.FC<SlotItemProps> = ({
       return <Calendar className="w-4 h-4 text-blue-600" />;
     }
     
-    if (slot.is_recurring) {
-      return (
-        <div className="relative">
-          <CheckCircle className="w-4 h-4 text-purple-600" />
-        </div>
-      );
-    }
-    
     if (slot.is_available) {
       return <CheckCircle className="w-4 h-4 text-green-600" />;
     } else {
@@ -54,10 +44,6 @@ const SlotItem: React.FC<SlotItemProps> = ({
   const getSlotStatusBadge = () => {
     if (isBooked) {
       return <Badge variant="secondary" className="bg-blue-100 text-blue-700">Réservé</Badge>;
-    }
-    
-    if (slot.is_recurring) {
-      return <Badge variant="secondary" className="bg-purple-100 text-purple-700 border-purple-300 border-dashed">Récurrent</Badge>;
     }
     
     if (slot.is_available) {
@@ -77,7 +63,6 @@ const SlotItem: React.FC<SlotItemProps> = ({
           : 'hover:bg-gray-50 border-gray-200'
         }
         ${isBooked ? 'bg-blue-50 border-blue-200' : ''}
-        ${slot.is_recurring && !isBooked ? 'bg-purple-50 border-purple-200 border-dashed' : ''}
       `}
       onClick={onClick}
     >
@@ -87,11 +72,6 @@ const SlotItem: React.FC<SlotItemProps> = ({
           <div className="font-medium">
             {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)}
           </div>
-          {slot.is_recurring && slot.recurring_label && (
-            <div className="text-xs text-purple-600 font-medium">
-              {slot.recurring_label}
-            </div>
-          )}
           {isBooked && (
             <div className="text-sm text-blue-600 font-medium">
               Réservation active

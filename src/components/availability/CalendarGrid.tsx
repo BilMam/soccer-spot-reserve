@@ -16,8 +16,6 @@ interface AvailabilitySlot {
   unavailability_reason?: string;
   is_maintenance?: boolean;
   notes?: string;
-  is_recurring?: boolean;
-  recurring_label?: string;
 }
 
 interface BookingSlot {
