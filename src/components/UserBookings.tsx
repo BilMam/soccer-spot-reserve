@@ -137,7 +137,8 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
     const now = new Date();
     const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
     
-    return (booking.status === 'provisional' || booking.status === 'confirmed') && hoursUntilBooking > 24;
+    // Seules les réservations provisoires peuvent être annulées (pas les confirmées)
+    return booking.status === 'provisional' && hoursUntilBooking > 24;
   };
 
   const canReview = (booking: Booking) => {
