@@ -35,7 +35,7 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
   onSlotsCreated,
   onViewCalendar
 }) => {
-  const { createAvailabilityForPeriod } = useAvailabilityManagement(fieldId);
+  const { createAvailabilityForPeriod, setSlotsUnavailable } = useAvailabilityManagement(fieldId);
   const { data: existingSlots = [], isLoading: checkingExisting, refetch } = useExistingSlots(fieldId, startDate, endDate);
   
   const [formData, setFormData] = useState({
@@ -60,6 +60,12 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
       console.log('Configuration extraite des créneaux existants:', extractedConfig);
     }
   }, [creationStep, existingSlots]);
+
+  // Fonction utilitaire pour convertir heure en minutes
+  const timeToMinutes = (time: string): number => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
 
   const calculateTotalSlots = () => {
     const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -123,72 +129,103 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
         console.log('Créneaux existants supprimés avec succès');
       }
       
-      // Gérer les horaires spécifiques par jour côté frontend
+      // 1️⃣ Créer tous les créneaux avec horaires globaux
+      console.log('Création de tous les créneaux avec horaires globaux:', formData.startTime, '-', formData.endTime);
+      const result = await createAvailabilityForPeriod.mutateAsync({
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        slotDuration: formData.slotDuration,
+        excludeDays: formData.excludeDays,
+        timeExclusions: timeExclusions
+      });
+
+      let totalSlotsCreated = result || 0;
+
+      // 2️⃣ Si horaires spécifiques par jour : ajuster les créneaux
       if (formData.daySpecificTimes && formData.daySpecificTimes.length > 0) {
-        console.log('Création avec horaires spécifiques par jour - traitement séquentiel...');
-        let totalSlotsCreated = 0;
+        console.log('🔧 Ajustement des horaires spécifiques par jour...');
         
-        // Créer une map pour accès rapide aux horaires spécifiques
-        const specificTimesMap = new Map(
-          formData.daySpecificTimes.map(dst => [dst.dayOfWeek, dst])
-        );
-        
-        // Traiter chaque jour de la semaine séparément
-        for (let dayOfWeek = 0; dayOfWeek <= 6; dayOfWeek++) {
-          // Skip si le jour est exclu
-          if (formData.excludeDays.includes(dayOfWeek)) {
-            console.log(`Jour ${dayOfWeek} exclu, skip`);
-            continue;
+        for (const dst of formData.daySpecificTimes) {
+          if (formData.excludeDays.includes(dst.dayOfWeek)) {
+            console.log(`Jour ${dst.dayOfWeek} déjà exclu, skip`);
+            continue; // Jour déjà exclu
           }
           
-          // Déterminer les horaires pour ce jour
-          const specificTime = specificTimesMap.get(dayOfWeek);
-          const startTime = specificTime ? specificTime.startTime : formData.startTime;
-          const endTime = specificTime ? specificTime.endTime : formData.endTime;
+          const dayName = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][dst.dayOfWeek];
+          console.log(`Ajustement pour ${dayName}: ${dst.startTime}-${dst.endTime} (global: ${formData.startTime}-${formData.endTime})`);
           
-          // Exclure tous les autres jours (ne créer que pour ce jour)
-          const excludeDaysForThisDay = [0, 1, 2, 3, 4, 5, 6].filter(d => d !== dayOfWeek);
+          // Calculer les plages à marquer indisponibles
+          const globalStart = timeToMinutes(formData.startTime);
+          const globalEnd = timeToMinutes(formData.endTime);
+          const specificStart = timeToMinutes(dst.startTime);
+          const specificEnd = timeToMinutes(dst.endTime);
           
-          const dayName = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][dayOfWeek];
-          console.log(`Création pour ${dayName} avec horaires ${startTime}-${endTime}`);
+          // Si horaires spécifiques commencent APRÈS global start
+          if (specificStart > globalStart) {
+            console.log(`  → Marquer indisponible AVANT: ${formData.startTime} à ${dst.startTime}`);
+            const exclusionStartTime = formData.startTime;
+            const exclusionEndTime = dst.startTime;
+            
+            // Pour chaque occurrence de ce jour dans la période
+            let currentDate = new Date(startDate);
+            while (currentDate <= endDate) {
+              if (currentDate.getDay() === dst.dayOfWeek) {
+                const dateStr = currentDate.toISOString().split('T')[0];
+                
+                try {
+                  await setSlotsUnavailable.mutateAsync({
+                    date: dateStr,
+                    startTime: exclusionStartTime,
+                    endTime: exclusionEndTime,
+                    reason: 'Horaire ajusté',
+                    notes: `Horaires spécifiques pour ${dayName}`
+                  });
+                } catch (error) {
+                  console.error(`Erreur ajustement ${dateStr}:`, error);
+                }
+              }
+              currentDate.setDate(currentDate.getDate() + 1);
+            }
+          }
           
-          const result = await createAvailabilityForPeriod.mutateAsync({
-            startDate: startDate.toISOString().split('T')[0],
-            endDate: endDate.toISOString().split('T')[0],
-            startTime: startTime,
-            endTime: endTime,
-            slotDuration: formData.slotDuration,
-            excludeDays: excludeDaysForThisDay,
-            timeExclusions: timeExclusions.filter(exclusion => {
-              const excDate = new Date(exclusion.date);
-              return excDate.getDay() === dayOfWeek;
-            })
-          });
-          
-          totalSlotsCreated += result || 0;
+          // Si horaires spécifiques finissent AVANT global end
+          if (specificEnd < globalEnd) {
+            console.log(`  → Marquer indisponible APRÈS: ${dst.endTime} à ${formData.endTime}`);
+            const exclusionStartTime = dst.endTime;
+            const exclusionEndTime = formData.endTime;
+            
+            // Pour chaque occurrence de ce jour dans la période
+            let currentDate = new Date(startDate);
+            while (currentDate <= endDate) {
+              if (currentDate.getDay() === dst.dayOfWeek) {
+                const dateStr = currentDate.toISOString().split('T')[0];
+                
+                try {
+                  await setSlotsUnavailable.mutateAsync({
+                    date: dateStr,
+                    startTime: exclusionStartTime,
+                    endTime: exclusionEndTime,
+                    reason: 'Horaire ajusté',
+                    notes: `Horaires spécifiques pour ${dayName}`
+                  });
+                } catch (error) {
+                  console.error(`Erreur ajustement ${dateStr}:`, error);
+                }
+              }
+              currentDate.setDate(currentDate.getDate() + 1);
+            }
+          }
         }
         
-        setSlotsCreatedCount(totalSlotsCreated);
-        setCreationStep('success');
-        refetch();
-        onSlotsCreated?.(totalSlotsCreated);
-      } else {
-        // Pas d'horaires spécifiques : comportement normal
-        const result = await createAvailabilityForPeriod.mutateAsync({
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0],
-          startTime: formData.startTime,
-          endTime: formData.endTime,
-          slotDuration: formData.slotDuration,
-          excludeDays: formData.excludeDays,
-          timeExclusions: timeExclusions
-        });
-        
-        setSlotsCreatedCount(result || calculateTotalSlots());
-        setCreationStep('success');
-        refetch();
-        onSlotsCreated?.(result || calculateTotalSlots());
+        console.log('✅ Ajustements terminés');
       }
+
+      setSlotsCreatedCount(totalSlotsCreated);
+      setCreationStep('success');
+      refetch();
+      onSlotsCreated?.(totalSlotsCreated);
     } catch (error) {
       console.error('Erreur lors de la création des créneaux:', error);
       toast.error('Erreur lors de la création des créneaux');
