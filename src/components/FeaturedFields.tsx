@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import FieldCard from './FieldCard';
 import { getDefaultSportImage } from '@/utils/defaultImages';
+import { getFieldTypeLabel } from '@/utils/fieldUtils';
 
 interface DatabaseField {
   id: string;
@@ -40,15 +41,6 @@ const FeaturedFields = () => {
     }
   });
 
-  const getFieldTypeLabel = (type: string) => {
-    switch (type) {
-      case 'natural_grass': return 'Gazon naturel';
-      case 'synthetic': return 'Synthétique';
-      case 'indoor': return 'Indoor';
-      case 'street': return 'Bitume';
-      default: return type;
-    }
-  };
 
   // Transform database fields to FieldCard format
   const transformedFields = fields?.map(field => ({

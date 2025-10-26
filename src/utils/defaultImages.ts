@@ -5,7 +5,7 @@ const DEFAULT_SPORT_IMAGES: Record<SportType, string> = {
   football: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
   basketball: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
   tennis: 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-  paddle: 'https://images.unsplash.com/photo-1612534847738-b5f93f2e6c76?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+  paddle: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
 };
 
 /**

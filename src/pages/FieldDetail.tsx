@@ -14,6 +14,7 @@ import { Star, MapPin, Users, Clock, Wifi, Car, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { getDefaultSportImage } from '@/utils/defaultImages';
+import { getFieldTypeLabel } from '@/utils/fieldUtils';
 
 interface Field {
   id: string;
@@ -62,15 +63,6 @@ const FieldDetail = () => {
     }
   });
 
-  const getFieldTypeLabel = (type: string) => {
-    switch (type) {
-      case 'natural_grass': return 'Gazon naturel';
-      case 'synthetic': return 'Synthétique';
-      case 'indoor': return 'Indoor';
-      case 'street': return 'Bitume';
-      default: return type;
-    }
-  };
 
   const getAmenityIcon = (amenity: string) => {
     switch (amenity.toLowerCase()) {

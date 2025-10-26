@@ -11,6 +11,7 @@ import FieldCard from '@/components/FieldCard';
 import { useSearchQuery } from '@/hooks/useSearchQuery';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getDefaultSportImage } from '@/utils/defaultImages';
+import { getFieldTypeLabel } from '@/utils/fieldUtils';
 
 const Search = () => {
   const [searchParams] = useSearchParams();
@@ -58,9 +59,7 @@ const Search = () => {
       image: field.images?.[0] || getDefaultSportImage(field.sport_type),
       features: field.amenities || [],
       capacity: field.capacity,
-      type: field.field_type === 'natural_grass' ? 'Gazon naturel' :
-            field.field_type === 'synthetic' ? 'Synthétique' :
-            field.field_type === 'indoor' ? 'Indoor' : 'Bitume',
+      type: getFieldTypeLabel(field.field_type),
       // IMPORTANT: Coordonnées GPS pour la carte
       latitude: field.latitude,
       longitude: field.longitude
