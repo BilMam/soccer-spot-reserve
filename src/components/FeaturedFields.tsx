@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import FieldCard from './FieldCard';
+import { getDefaultSportImage } from '@/utils/defaultImages';
 
 interface DatabaseField {
   id: string;
@@ -18,6 +19,7 @@ interface DatabaseField {
   amenities: string[];
   capacity: number;
   field_type: string;
+  sport_type: string;
 }
 
 const FeaturedFields = () => {
@@ -56,7 +58,7 @@ const FeaturedFields = () => {
     price: field.price_per_hour,
     rating: field.rating || 0,
     reviews: field.total_reviews || 0,
-    image: field.images?.[0] || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+    image: field.images?.[0] || getDefaultSportImage(field.sport_type),
     features: field.amenities || [],
     capacity: field.capacity,
     type: getFieldTypeLabel(field.field_type)

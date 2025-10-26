@@ -20,6 +20,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { formatXOF } from '@/utils/publicPricing';
+import { getDefaultSportImage } from '@/utils/defaultImages';
 
 interface CheckoutState {
   selectedDate: Date;
@@ -44,6 +45,7 @@ interface Field {
   total_reviews: number;
   images: string[];
   field_type: string;
+  sport_type: string;
 }
 
 const Checkout = () => {
@@ -301,7 +303,7 @@ const Checkout = () => {
                 {/* Image et infos terrain */}
                 <div className="flex space-x-4 mb-6">
                   <img
-                    src={field.images?.[0] || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80'}
+                    src={field.images?.[0] || getDefaultSportImage(field.sport_type)}
                     alt={field.name}
                     className="w-20 h-20 rounded-lg object-cover"
                   />

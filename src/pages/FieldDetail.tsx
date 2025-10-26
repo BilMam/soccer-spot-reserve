@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Star, MapPin, Users, Clock, Wifi, Car, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { getDefaultSportImage } from '@/utils/defaultImages';
 
 interface Field {
   id: string;
@@ -30,6 +31,7 @@ interface Field {
   amenities: string[];
   capacity: number;
   field_type: string;
+  sport_type: string;
   availability_start: string;
   availability_end: string;
   owner_id: string;
@@ -197,7 +199,7 @@ const FieldDetail = () => {
             {/* Images */}
             <div className="relative h-96 rounded-2xl overflow-hidden">
               <img
-                src={field.images?.[0] || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'}
+                src={field.images?.[0] || getDefaultSportImage(field.sport_type)}
                 alt={field.name}
                 className="w-full h-full object-cover"
               />

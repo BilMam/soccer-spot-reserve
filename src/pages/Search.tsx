@@ -10,6 +10,7 @@ import ViewToggle from '@/components/search/ViewToggle';
 import FieldCard from '@/components/FieldCard';
 import { useSearchQuery } from '@/hooks/useSearchQuery';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getDefaultSportImage } from '@/utils/defaultImages';
 
 const Search = () => {
   const [searchParams] = useSearchParams();
@@ -54,7 +55,7 @@ const Search = () => {
       price: field.price_per_hour,
       rating: field.rating || 0,
       reviews: field.total_reviews || 0,
-      image: field.images?.[0] || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+      image: field.images?.[0] || getDefaultSportImage(field.sport_type),
       features: field.amenities || [],
       capacity: field.capacity,
       type: field.field_type === 'natural_grass' ? 'Gazon naturel' :
