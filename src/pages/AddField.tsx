@@ -17,6 +17,7 @@ interface FieldFormData {
   location: string;
   address: string;
   city: string;
+  sport_type?: string;
   price_per_hour: number;
   price_1h30?: number;
   price_2h?: number;
@@ -104,6 +105,7 @@ const AddField = () => {
           location: fieldData.location,
           address: fieldData.address,
           city: fieldData.city,
+          sport_type: fieldData.sport_type || 'football',
           price_per_hour: fieldData.price_per_hour,
           price_1h30: fieldData.price_1h30,
           price_2h: fieldData.price_2h,

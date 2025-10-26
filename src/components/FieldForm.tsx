@@ -18,6 +18,7 @@ interface FieldFormData {
   location: string;
   address: string;
   city: string;
+  sport_type?: string;
   price_per_hour: number;
   price_1h30?: number;
   price_2h?: number;
@@ -44,6 +45,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     location: '',
     address: '',
     city: '',
+    sport_type: 'football',
     field_type: 'synthetic',
     capacity: '',
     price_per_hour: '',
@@ -198,6 +200,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
       location: formData.location,
       address: formData.address,
       city: formData.city,
+      sport_type: formData.sport_type,
       field_type: formData.field_type as 'natural_grass' | 'synthetic' | 'street',
       capacity: parseInt(formData.capacity),
       price_per_hour: parseFloat(formData.price_per_hour),
