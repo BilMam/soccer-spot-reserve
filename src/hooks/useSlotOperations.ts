@@ -10,6 +10,12 @@ interface TimeExclusion {
   reason?: string;
 }
 
+interface DaySpecificTime {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+}
+
 export const useSlotOperations = (fieldId: string) => {
   const queryClient = useQueryClient();
 
@@ -41,9 +47,11 @@ export const useSlotOperations = (fieldId: string) => {
       excludeDays?: number[];
       templateId?: string;
       timeExclusions?: TimeExclusion[];
+      daySpecificTimes?: DaySpecificTime[];
     }) => {
       // D'abord créer tous les créneaux de base
-      const { data, error } = await supabase.rpc('create_availability_for_period', {
+      // Note: p_day_specific_times sera utilisé quand le backend sera mis à jour
+      const rpcParams: any = {
         p_field_id: fieldId,
         p_start_date: params.startDate,
         p_end_date: params.endDate,
@@ -52,7 +60,14 @@ export const useSlotOperations = (fieldId: string) => {
         p_slot_duration: params.slotDuration || 30,
         p_exclude_days: params.excludeDays || [],
         p_template_id: params.templateId
-      });
+      };
+      
+      // Ajouter daySpecificTimes si supporté par le backend
+      if (params.daySpecificTimes && params.daySpecificTimes.length > 0) {
+        rpcParams.p_day_specific_times = JSON.stringify(params.daySpecificTimes);
+      }
+      
+      const { data, error } = await supabase.rpc('create_availability_for_period', rpcParams);
 
       if (error) throw error;
 

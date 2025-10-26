@@ -9,6 +9,7 @@ import SlotCreationFormHeader from './SlotCreationFormHeader';
 import SlotCreationFormContent from './SlotCreationFormContent';
 import SlotCreationFormActions from './SlotCreationFormActions';
 import SlotCreationFormLoading from './SlotCreationFormLoading';
+import { DaySpecificTime } from './DaySelectionForm';
 
 interface SlotCreationFormProps {
   fieldId: string;
@@ -39,7 +40,8 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     startTime: '08:00',
     endTime: '22:00',
     slotDuration: 30,
-    excludeDays: [] as number[]
+    excludeDays: [] as number[],
+    daySpecificTimes: [] as DaySpecificTime[] | undefined
   });
   const [timeExclusions, setTimeExclusions] = useState<TimeExclusion[]>([]);
   const [creationStep, setCreationStep] = useState<'preview' | 'creating' | 'success' | 'modify'>('preview');
@@ -49,19 +51,41 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
   useEffect(() => {
     if (creationStep === 'modify' && existingSlots.length > 0) {
       const extractedConfig = extractSlotConfiguration(existingSlots);
-      setFormData(extractedConfig);
+      setFormData({
+        ...extractedConfig,
+        daySpecificTimes: extractedConfig.daySpecificTimes || []
+      });
       console.log('Configuration extraite des créneaux existants:', extractedConfig);
     }
   }, [creationStep, existingSlots]);
 
   const calculateTotalSlots = () => {
     const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    const activeDays = days - Math.floor(days / 7) * formData.excludeDays.length;
+    let totalSlots = 0;
     
-    const startMinutes = parseInt(formData.startTime.split(':')[0]) * 60 + parseInt(formData.startTime.split(':')[1]);
-    const endMinutes = parseInt(formData.endTime.split(':')[0]) * 60 + parseInt(formData.endTime.split(':')[1]);
-    const slotsPerDay = Math.floor((endMinutes - startMinutes) / formData.slotDuration);
+    // Parcourir chaque jour de la période
+    for (let i = 0; i < days; i++) {
+      const currentDate = new Date(startDate);
+      currentDate.setDate(startDate.getDate() + i);
+      const dayOfWeek = currentDate.getDay();
+      
+      // Ignorer les jours exclus
+      if (formData.excludeDays.includes(dayOfWeek)) continue;
+      
+      // Trouver les horaires pour ce jour
+      const specificTime = formData.daySpecificTimes?.find(d => d.dayOfWeek === dayOfWeek);
+      const dayStart = specificTime?.startTime || formData.startTime;
+      const dayEnd = specificTime?.endTime || formData.endTime;
+      
+      // Calculer les créneaux pour ce jour
+      const startMinutes = parseInt(dayStart.split(':')[0]) * 60 + parseInt(dayStart.split(':')[1]);
+      const endMinutes = parseInt(dayEnd.split(':')[0]) * 60 + parseInt(dayEnd.split(':')[1]);
+      const slotsForDay = Math.floor((endMinutes - startMinutes) / formData.slotDuration);
+      
+      totalSlots += slotsForDay;
+    }
     
+    // Soustraire les exclusions horaires spécifiques
     const excludedSlots = timeExclusions.reduce((total, exclusion) => {
       const excStartMinutes = parseInt(exclusion.startTime.split(':')[0]) * 60 + parseInt(exclusion.startTime.split(':')[1]);
       const excEndMinutes = parseInt(exclusion.endTime.split(':')[0]) * 60 + parseInt(exclusion.endTime.split(':')[1]);
@@ -69,7 +93,7 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
       return total + excludedSlotsForDay;
     }, 0);
     
-    return Math.max(0, (activeDays * slotsPerDay) - excludedSlots);
+    return Math.max(0, totalSlots - excludedSlots);
   };
 
   const handleCreateSlots = async () => {
@@ -83,7 +107,8 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
         endTime: formData.endTime,
         slotDuration: formData.slotDuration,
         excludeDays: formData.excludeDays,
-        timeExclusions: timeExclusions
+        timeExclusions: timeExclusions,
+        daySpecificTimes: formData.daySpecificTimes
       });
       
       setSlotsCreatedCount(result || calculateTotalSlots());
@@ -117,7 +142,8 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
       startTime: '08:00',
       endTime: '22:00',
       slotDuration: 30,
-      excludeDays: []
+      excludeDays: [],
+      daySpecificTimes: []
     });
     setTimeExclusions([]);
   };
@@ -167,7 +193,7 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
           startDate={startDate}
           endDate={endDate}
           totalSlots={calculateTotalSlots()}
-          onFormDataChange={setFormData}
+          onFormDataChange={(newData) => setFormData({ ...newData, daySpecificTimes: newData.daySpecificTimes || [] })}
           onTimeExclusionsChange={setTimeExclusions}
         />
         

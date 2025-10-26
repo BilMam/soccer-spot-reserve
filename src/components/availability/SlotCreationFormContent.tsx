@@ -3,7 +3,7 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TimeExclusionManager from './TimeExclusionManager';
 import BasicConfigurationForm from './BasicConfigurationForm';
-import DaySelectionForm from './DaySelectionForm';
+import DaySelectionForm, { DaySpecificTime } from './DaySelectionForm';
 import SlotSummary from './SlotSummary';
 
 interface TimeExclusion {
@@ -18,6 +18,7 @@ interface FormData {
   endTime: string;
   slotDuration: number;
   excludeDays: number[];
+  daySpecificTimes?: DaySpecificTime[];
 }
 
 interface SlotCreationFormContentProps {
@@ -50,6 +51,30 @@ const SlotCreationFormContent: React.FC<SlotCreationFormContentProps> = ({
     });
   };
 
+  const handleDaySpecificTimeChange = (dayValue: number, startTime: string | null, endTime: string | null) => {
+    let newDaySpecificTimes = [...(formData.daySpecificTimes || [])];
+    
+    if (startTime === null && endTime === null) {
+      // Supprime les horaires spécifiques pour ce jour
+      newDaySpecificTimes = newDaySpecificTimes.filter(d => d.dayOfWeek !== dayValue);
+    } else {
+      // Ajoute ou met à jour les horaires spécifiques
+      const existingIndex = newDaySpecificTimes.findIndex(d => d.dayOfWeek === dayValue);
+      const newEntry = { dayOfWeek: dayValue, startTime: startTime!, endTime: endTime! };
+      
+      if (existingIndex >= 0) {
+        newDaySpecificTimes[existingIndex] = newEntry;
+      } else {
+        newDaySpecificTimes.push(newEntry);
+      }
+    }
+    
+    onFormDataChange({
+      ...formData,
+      daySpecificTimes: newDaySpecificTimes
+    });
+  };
+
   return (
     <>
       <Tabs defaultValue="basic" className="space-y-6">
@@ -71,6 +96,10 @@ const SlotCreationFormContent: React.FC<SlotCreationFormContentProps> = ({
           <DaySelectionForm
             excludeDays={formData.excludeDays}
             onDayToggle={handleDayToggle}
+            daySpecificTimes={formData.daySpecificTimes}
+            onDaySpecificTimeChange={handleDaySpecificTimeChange}
+            globalStartTime={formData.startTime}
+            globalEndTime={formData.endTime}
           />
         </TabsContent>
 
@@ -94,6 +123,7 @@ const SlotCreationFormContent: React.FC<SlotCreationFormContentProps> = ({
           excludeDays={formData.excludeDays}
           timeExclusions={timeExclusions}
           totalSlots={totalSlots}
+          daySpecificTimes={formData.daySpecificTimes}
         />
       </div>
     </>

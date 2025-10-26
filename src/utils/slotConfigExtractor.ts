@@ -11,6 +11,11 @@ interface ExtractedSlotConfig {
   endTime: string;
   slotDuration: number;
   excludeDays: number[];
+  daySpecificTimes?: Array<{
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+  }>;
 }
 
 interface AvailabilitySlot {
@@ -30,7 +35,8 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
       startTime: '08:00',
       endTime: '22:00',
       slotDuration: 30,
-      excludeDays: []
+      excludeDays: [],
+      daySpecificTimes: []
     };
   }
 
@@ -106,7 +112,8 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
     startTime: earliestStart,
     endTime: latestEnd,
     slotDuration: mostCommonDuration,
-    excludeDays
+    excludeDays,
+    daySpecificTimes: []
   };
 
   console.log('✅ Configuration extraite:', result);
