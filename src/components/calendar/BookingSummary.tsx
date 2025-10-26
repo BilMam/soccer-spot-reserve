@@ -84,10 +84,6 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
           </div>
         </div>
 
-        <p className="text-xs text-gray-500 mt-3">
-          Vos fonds sont protégés jusqu'à confirmation de votre réservation.
-        </p>
-
         {!rangeIsAvailable && (
           <div className="flex items-center space-x-2 text-red-600 text-sm mt-3 p-2 bg-red-50 rounded">
             <AlertCircle className="w-4 h-4" />
