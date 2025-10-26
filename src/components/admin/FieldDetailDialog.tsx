@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { MapPin, Users, Clock, Calendar, Euro } from 'lucide-react';
 import type { Field } from '@/types/admin';
+import { getSportIcon, getSportLabel } from '@/utils/sportUtils';
 
 interface FieldDetailDialogProps {
   field: Field | null;
@@ -66,6 +67,13 @@ export const FieldDetailDialog: React.FC<FieldDetailDialogProps> = ({
                 <Calendar className="w-4 h-4 text-gray-500" />
                 <span className="text-sm">Créé le {new Date(field.created_at).toLocaleDateString('fr-FR')}</span>
               </div>
+            </div>
+
+            <div>
+              <span className="text-sm font-medium">Sport : </span>
+              <Badge variant="secondary" className="text-base">
+                {getSportIcon(field.sport_type)} {getSportLabel(field.sport_type)}
+              </Badge>
             </div>
 
             <div>

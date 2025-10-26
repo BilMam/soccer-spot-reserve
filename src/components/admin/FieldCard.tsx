@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { CheckCircle, Eye, Clock, XCircle } from 'lucide-react';
 import type { Field } from '@/types/admin';
 import { FieldDetailDialog } from './FieldDetailDialog';
+import { getSportIcon, getSportLabel } from '@/utils/sportUtils';
 
 interface FieldCardProps {
   field: Field;
@@ -59,6 +60,11 @@ export const FieldCard: React.FC<FieldCardProps> = ({
         <div className="flex justify-between items-start">
           <div>
             <h3 className="font-semibold text-lg">{field.name}</h3>
+            <div className="mb-2">
+              <Badge variant="secondary" className="text-base">
+                {getSportIcon(field.sport_type)} {getSportLabel(field.sport_type)}
+              </Badge>
+            </div>
             <p className="text-gray-600">{field.location}</p>
             <p className="text-sm text-gray-500">
               Propriétaire: {field.profiles?.full_name} ({field.profiles?.email})

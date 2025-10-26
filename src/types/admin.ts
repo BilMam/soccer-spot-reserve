@@ -20,6 +20,7 @@ export interface Field {
   id: string;
   name: string;
   location: string;
+  sport_type: string;
   field_type: string;
   capacity: number;
   price_per_hour: number;
