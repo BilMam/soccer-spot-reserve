@@ -1,9 +1,10 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, MapPin, Users, Clock, Wifi, Car } from 'lucide-react';
+import { Star, MapPin, Users } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { getSportIcon, getSportLabel } from '@/utils/sportUtils';
 
 interface Field {
   id: string;
@@ -16,6 +17,7 @@ interface Field {
   features: string[];
   capacity: number;
   type: string;
+  sport_type?: string;
 }
 
 interface FieldCardProps {
@@ -24,19 +26,6 @@ interface FieldCardProps {
 
 const FieldCard: React.FC<FieldCardProps> = ({ field }) => {
   const navigate = useNavigate();
-
-  const getFeatureIcon = (feature: string) => {
-    switch (feature.toLowerCase()) {
-      case 'wifi':
-        return <Wifi className="w-3 h-3" />;
-      case 'parking':
-        return <Car className="w-3 h-3" />;
-      case 'vestiaires':
-        return <Clock className="w-3 h-3" />;
-      default:
-        return null;
-    }
-  };
 
   const handleClick = () => {
     navigate(`/field/${field.id}`);
@@ -54,8 +43,13 @@ const FieldCard: React.FC<FieldCardProps> = ({ field }) => {
           alt={field.name}
           className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
         />
-        <div className="absolute top-3 left-3">
-          <Badge className="bg-green-600 hover:bg-green-700">
+        <div className="absolute top-3 left-3 flex gap-2">
+          {field.sport_type && (
+            <Badge className="bg-green-600 hover:bg-green-700">
+              {getSportIcon(field.sport_type)} {getSportLabel(field.sport_type)}
+            </Badge>
+          )}
+          <Badge className="bg-blue-600 hover:bg-blue-700">
             {field.type}
           </Badge>
         </div>
@@ -80,20 +74,11 @@ const FieldCard: React.FC<FieldCardProps> = ({ field }) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-1 text-gray-600 text-sm">
               <Users className="w-4 h-4" />
-              <span>{field.capacity} joueurs max</span>
+              <span>{field.capacity} participants max</span>
             </div>
             <div className="text-sm text-gray-500">
               {field.reviews} avis
             </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {field.features.slice(0, 3).map((feature, index) => (
-              <div key={index} className="flex items-center space-x-1 text-xs text-gray-600 bg-gray-100 rounded-full px-2 py-1">
-                {getFeatureIcon(feature)}
-                <span>{feature}</span>
-              </div>
-            ))}
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t">

@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Filter, ChevronDown, ChevronUp } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { SPORTS, SPORT_FIELD_TYPES, SportType } from '@/constants/sports';
 
 interface SearchFiltersProps {
   filters: {
@@ -14,6 +15,7 @@ interface SearchFiltersProps {
     fieldType: string;
     capacity: string;
     sortBy: string;
+    sport: string;
   };
   onFiltersChange: (filters: any) => void;
 }
@@ -31,8 +33,21 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({ filters, onFiltersChange 
       priceMax: '',
       fieldType: 'all',
       capacity: '',
-      sortBy: 'rating'
+      sortBy: 'rating',
+      sport: 'all',
     });
+  };
+
+  // Options dynamiques de type de surface selon le sport sélectionné
+  const getFieldTypeOptions = () => {
+    if (filters.sport === 'all') {
+      return [{ value: 'all', label: 'Tous les types' }];
+    }
+    const sportFieldTypes = SPORT_FIELD_TYPES[filters.sport as SportType] || [];
+    return [
+      { value: 'all', label: 'Tous les types' },
+      ...sportFieldTypes
+    ];
   };
 
   return (
@@ -52,7 +67,13 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({ filters, onFiltersChange 
             </CollapsibleTrigger>
             
             <CollapsibleContent className="space-y-6">
-              <FilterContent filters={filters} handleFilterChange={handleFilterChange} resetFilters={resetFilters} isMobile={true} />
+              <FilterContent 
+                filters={filters} 
+                handleFilterChange={handleFilterChange} 
+                resetFilters={resetFilters} 
+                isMobile={true}
+                getFieldTypeOptions={getFieldTypeOptions}
+              />
             </CollapsibleContent>
           </Collapsible>
         </div>
@@ -63,7 +84,13 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({ filters, onFiltersChange 
             <Filter className="w-5 h-5" />
             <h3 className="text-lg font-semibold">Filtres</h3>
           </div>
-          <FilterContent filters={filters} handleFilterChange={handleFilterChange} resetFilters={resetFilters} isMobile={false} />
+          <FilterContent 
+            filters={filters} 
+            handleFilterChange={handleFilterChange} 
+            resetFilters={resetFilters} 
+            isMobile={false}
+            getFieldTypeOptions={getFieldTypeOptions}
+          />
         </div>
       </CardContent>
     </Card>
@@ -76,8 +103,29 @@ const FilterContent: React.FC<{
   handleFilterChange: (key: string, value: string) => void;
   resetFilters: () => void;
   isMobile: boolean;
-}> = ({ filters, handleFilterChange, resetFilters, isMobile }) => (
+  getFieldTypeOptions: () => { value: string; label: string }[];
+}> = ({ filters, handleFilterChange, resetFilters, isMobile, getFieldTypeOptions }) => (
   <div className={isMobile ? "space-y-4" : "space-y-6"}>
+    {/* Filtre Sport */}
+    <div>
+      <label className="text-sm font-medium text-gray-700 mb-3 block">
+        Sport
+      </label>
+      <Select value={filters.sport} onValueChange={(value) => handleFilterChange('sport', value)}>
+        <SelectTrigger className={isMobile ? "h-12 text-base" : "h-10 text-sm"}>
+          <SelectValue placeholder="Tous les sports" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Tous les sports</SelectItem>
+          {SPORTS.map((sport) => (
+            <SelectItem key={sport.value} value={sport.value}>
+              {sport.icon} {sport.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+
     <div>
       <label className="text-sm font-medium text-gray-700 mb-3 block">
         Prix par heure (FCFA)
@@ -98,20 +146,21 @@ const FilterContent: React.FC<{
       </div>
     </div>
 
+    {/* Type de surface - Options dynamiques */}
     <div>
       <label className="text-sm font-medium text-gray-700 mb-3 block">
-        Type de terrain
+        Type de surface
       </label>
       <Select value={filters.fieldType} onValueChange={(value) => handleFilterChange('fieldType', value)}>
         <SelectTrigger className={isMobile ? "h-12 text-base" : "h-10 text-sm"}>
           <SelectValue placeholder="Tous les types" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Tous les types</SelectItem>
-          <SelectItem value="natural_grass">Gazon naturel</SelectItem>
-          <SelectItem value="synthetic">Synthétique</SelectItem>
-          <SelectItem value="indoor">Indoor</SelectItem>
-          <SelectItem value="street">Bitume</SelectItem>
+          {getFieldTypeOptions().map((type) => (
+            <SelectItem key={type.value} value={type.value}>
+              {type.label}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>
@@ -121,7 +170,7 @@ const FilterContent: React.FC<{
         Capacité minimum
       </label>
       <Input
-        placeholder="Nombre de joueurs"
+        placeholder="Nombre de participants"
         value={filters.capacity}
         onChange={(e) => handleFilterChange('capacity', e.target.value)}
         className={isMobile ? "h-12 text-base" : "h-10 text-sm"}
@@ -140,7 +189,6 @@ const FilterContent: React.FC<{
           <SelectItem value="rating">Mieux notés</SelectItem>
           <SelectItem value="price_asc">Prix croissant</SelectItem>
           <SelectItem value="price_desc">Prix décroissant</SelectItem>
-          <SelectItem value="distance">Distance (si applicable)</SelectItem>
         </SelectContent>
       </Select>
     </div>

@@ -331,6 +331,7 @@ export type Database = {
           public_price_1h30: number | null
           public_price_2h: number | null
           rating: number | null
+          sport_type: string
           total_reviews: number | null
           updated_at: string | null
         }
@@ -365,6 +366,7 @@ export type Database = {
           public_price_1h30?: number | null
           public_price_2h?: number | null
           rating?: number | null
+          sport_type?: string
           total_reviews?: number | null
           updated_at?: string | null
         }
@@ -399,6 +401,7 @@ export type Database = {
           public_price_1h30?: number | null
           public_price_2h?: number | null
           rating?: number | null
+          sport_type?: string
           total_reviews?: number | null
           updated_at?: string | null
         }

@@ -8,6 +8,9 @@ export interface Field {
   address: string;
   city: string;
   
+  // Type de sport
+  sport_type: string; // Sera validé en BDD mais reste string côté TypeScript
+  
   // Anciens champs (compatibilité)
   price_per_hour: number;
   price_1h30: number | null;
@@ -47,6 +50,7 @@ export interface SearchFilters {
   fieldType: string;
   capacity: string;
   sortBy: string;
+  sport: string;
 }
 
 export interface UseSearchQueryProps {

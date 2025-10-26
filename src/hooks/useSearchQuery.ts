@@ -107,6 +107,13 @@ export const useSearchQuery = ({ location, date, timeSlot, players, filters }: U
         console.log('📊 Terrains après filtrage localisation:', filteredFields.length);
       }
 
+      // Filtrer par sport si spécifié
+      if (filters.sport && filters.sport !== 'all') {
+        const beforeSportFilter = filteredFields.length;
+        filteredFields = filteredFields.filter((field: any) => field.sport_type === filters.sport);
+        console.log(`🏆 Filtrage par sport ${filters.sport}: ${beforeSportFilter} → ${filteredFields.length}`);
+      }
+
       // Appliquer les autres filtres
       filteredFields = filteredFields.filter((field: any) => {
         // Filtre par prix minimum

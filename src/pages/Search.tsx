@@ -20,7 +20,8 @@ const Search = () => {
     priceMax: '',
     fieldType: 'all',
     capacity: '',
-    sortBy: 'rating'
+    sortBy: 'rating',
+    sport: 'all',
   });
 
   // Handle mobile view mode - if on mobile and grid is selected, switch to list
