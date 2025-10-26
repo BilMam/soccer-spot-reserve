@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MapPin, Info } from 'lucide-react';
 import { calculatePublicPrice, calculateNetFromPublic, formatXOF, calculatePlatformCommission } from '@/utils/publicPricing';
+import { SPORTS, SPORT_FIELD_TYPES, SPORT_CAPACITIES, SportType } from '@/constants/sports';
 
 interface FieldBasicInfoFormProps {
   formData: {
@@ -13,6 +14,7 @@ interface FieldBasicInfoFormProps {
     location: string;
     address: string;
     city: string;
+    sport_type?: string;
     field_type: string;
     capacity: string;
     price_per_hour: string;
@@ -22,23 +24,30 @@ interface FieldBasicInfoFormProps {
   onInputChange: (field: string, value: string) => void;
 }
 
-const fieldTypes = [
-  { value: 'synthetic', label: 'Synthétique' },
-  { value: 'natural_grass', label: 'Pelouse naturelle' },
-  { value: 'street', label: 'Street' }
-];
-
-const gameFormats = [
-  { value: '10', label: '5v5 (10 joueurs)' },
-  { value: '12', label: '6v6 (12 joueurs)' },
-  { value: '14', label: '7v7 (14 joueurs)' },
-  { value: '16', label: '8v8 (16 joueurs)' },
-  { value: '18', label: '9v9 (18 joueurs)' },
-  { value: '20', label: '10v10 (20 joueurs)' },
-  { value: '22', label: '11v11 (22 joueurs)' }
-];
-
 const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInputChange }) => {
+  const [selectedSport, setSelectedSport] = useState<SportType>(
+    (formData.sport_type as SportType) || 'football'
+  );
+
+  // Options dynamiques selon le sport
+  const fieldTypes = SPORT_FIELD_TYPES[selectedSport] || SPORT_FIELD_TYPES.football;
+  const capacities = SPORT_CAPACITIES[selectedSport] || SPORT_CAPACITIES.football;
+
+  const handleSportChange = (sport: SportType) => {
+    setSelectedSport(sport);
+    onInputChange('sport_type', sport);
+    
+    // Réinitialiser field_type et capacity aux premières valeurs du nouveau sport
+    const firstFieldType = SPORT_FIELD_TYPES[sport][0]?.value;
+    const firstCapacity = SPORT_CAPACITIES[sport][0]?.value;
+    
+    if (firstFieldType) {
+      onInputChange('field_type', firstFieldType);
+    }
+    if (firstCapacity) {
+      onInputChange('capacity', firstCapacity.toString());
+    }
+  };
   // États pour les prix nets et publics (bi-directionnalité)
   const [netPrice1h, setNetPrice1h] = useState(formData.price_per_hour || '');
   const [publicPrice1h, setPublicPrice1h] = useState('');
@@ -165,6 +174,26 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
+          <Label htmlFor="sport_type">Sport *</Label>
+          <Select 
+            value={selectedSport} 
+            onValueChange={handleSportChange}
+            required
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Sélectionner le sport" />
+            </SelectTrigger>
+            <SelectContent>
+              {SPORTS.map((sport) => (
+                <SelectItem key={sport.value} value={sport.value}>
+                  {sport.icon} {sport.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="name">Nom du terrain *</Label>
           <Input
             id="name"
@@ -206,9 +235,9 @@ const FieldBasicInfoForm: React.FC<FieldBasicInfoFormProps> = ({ formData, onInp
               <SelectValue placeholder="Sélectionner le format" />
             </SelectTrigger>
             <SelectContent>
-              {gameFormats.map((format) => (
-                <SelectItem key={format.value} value={format.value}>
-                  {format.label}
+              {capacities.map((cap) => (
+                <SelectItem key={cap.value} value={cap.value.toString()}>
+                  {cap.label}
                 </SelectItem>
               ))}
             </SelectContent>
