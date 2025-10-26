@@ -107,6 +107,7 @@ serve(async (req) => {
       location: body.location,
       address: body.address,
       city: body.city,
+      sport_type: body.sport_type,
       field_type: body.field_type,
       capacity: body.capacity,
       price_per_hour: body.price_per_hour,
