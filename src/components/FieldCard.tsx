@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, MapPin, Users } from 'lucide-react';
+import { Star, MapPin, Users, Wifi, Car, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getSportIcon, getSportLabel } from '@/utils/sportUtils';
@@ -26,6 +26,21 @@ interface FieldCardProps {
 
 const FieldCard: React.FC<FieldCardProps> = ({ field }) => {
   const navigate = useNavigate();
+
+  const getFeatureIcon = (feature: string) => {
+    switch (feature.toLowerCase()) {
+      case 'wifi':
+        return <Wifi className="w-3 h-3" />;
+      case 'parking':
+      case 'parking gratuit':
+        return <Car className="w-3 h-3" />;
+      case 'vestiaires':
+      case 'douches':
+        return <Clock className="w-3 h-3" />;
+      default:
+        return null;
+    }
+  };
 
   const handleClick = () => {
     navigate(`/field/${field.id}`);
@@ -79,6 +94,15 @@ const FieldCard: React.FC<FieldCardProps> = ({ field }) => {
             <div className="text-sm text-gray-500">
               {field.reviews} avis
             </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {field.features.slice(0, 3).map((feature, index) => (
+              <div key={index} className="flex items-center space-x-1 text-xs text-gray-600 bg-gray-100 rounded-full px-2 py-1">
+                {getFeatureIcon(feature)}
+                <span>{feature}</span>
+              </div>
+            ))}
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t">
