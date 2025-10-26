@@ -49,7 +49,7 @@ const FieldCard: React.FC<FieldCardProps> = ({ field }) => {
               {getSportIcon(field.sport_type)} {getSportLabel(field.sport_type)}
             </Badge>
           )}
-          <Badge className="bg-blue-600 hover:bg-blue-700">
+          <Badge className="bg-green-600 hover:bg-green-700 text-white">
             {field.type}
           </Badge>
         </div>

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, Clock, Users } from 'lucide-react';
+import { MapPin, Calendar, Clock, Users, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import TimeSlotSelector from './TimeSlotSelector';
@@ -37,7 +37,8 @@ const SearchBar = () => {
         {/* Sport */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700 flex items-center">
-            🏆 Sport
+            <Trophy className="w-4 h-4 mr-1 text-gray-600" />
+            Sport
           </label>
           <Select value={sport} onValueChange={setSport}>
             <SelectTrigger className="border-gray-200 focus:border-green-500">
@@ -57,7 +58,7 @@ const SearchBar = () => {
         {/* Location */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700 flex items-center">
-            <MapPin className="w-4 h-4 mr-1 text-green-600" />
+            <MapPin className="w-4 h-4 mr-1 text-gray-600" />
             Lieu
           </label>
           <input
@@ -72,7 +73,7 @@ const SearchBar = () => {
         {/* Date */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700 flex items-center">
-            <Calendar className="w-4 h-4 mr-1 text-green-600" />
+            <Calendar className="w-4 h-4 mr-1 text-gray-600" />
             Date
           </label>
           <input
@@ -86,7 +87,7 @@ const SearchBar = () => {
         {/* Time Slot */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700 flex items-center">
-            <Clock className="w-4 h-4 mr-1 text-green-600" />
+            <Clock className="w-4 h-4 mr-1 text-gray-600" />
             Créneau
           </label>
           <TimeSlotSelector 
@@ -98,7 +99,7 @@ const SearchBar = () => {
         {/* Players */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700 flex items-center">
-            <Users className="w-4 h-4 mr-1 text-green-600" />
+            <Users className="w-4 h-4 mr-1 text-gray-600" />
             Participants
           </label>
           <input

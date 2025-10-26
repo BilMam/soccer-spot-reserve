@@ -9,8 +9,8 @@ const Hero = () => {
         <div className="space-y-8">
           <div className="space-y-4">
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900">
-              Trouvez votre terrain
-              <span className="text-green-600 block">de sport idéal</span>
+              Trouvez le terrain
+              <span className="text-green-600 block">parfait pour jouer</span>
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">Réservez des terrains de football, tennis, paddle et basket près de chez vous dans toute la ville d'Abidjan</p>
           </div>
