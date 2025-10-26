@@ -123,21 +123,80 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
         console.log('Créneaux existants supprimés avec succès');
       }
       
-      const result = await createAvailabilityForPeriod.mutateAsync({
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-        slotDuration: formData.slotDuration,
-        excludeDays: formData.excludeDays,
-        timeExclusions: timeExclusions,
-        daySpecificTimes: formData.daySpecificTimes
-      });
-      
-      setSlotsCreatedCount(result || calculateTotalSlots());
-      setCreationStep('success');
-      refetch();
-      onSlotsCreated?.(result || calculateTotalSlots());
+      // Gérer les horaires spécifiques par jour côté frontend
+      if (formData.daySpecificTimes && formData.daySpecificTimes.length > 0) {
+        console.log('Création avec horaires spécifiques par jour...');
+        let totalSlotsCreated = 0;
+        
+        // Grouper les jours par horaires
+        const dayGroups: Map<string, number[]> = new Map();
+        
+        // Ajouter le groupe des horaires globaux (jours sans horaires spécifiques)
+        const daysWithSpecificTimes = formData.daySpecificTimes.map(dst => dst.dayOfWeek);
+        const globalDays = [0, 1, 2, 3, 4, 5, 6].filter(day => 
+          !daysWithSpecificTimes.includes(day) && !formData.excludeDays.includes(day)
+        );
+        
+        if (globalDays.length > 0) {
+          const key = `${formData.startTime}-${formData.endTime}`;
+          dayGroups.set(key, globalDays);
+        }
+        
+        // Ajouter les groupes des horaires spécifiques
+        for (const dst of formData.daySpecificTimes) {
+          if (!formData.excludeDays.includes(dst.dayOfWeek)) {
+            const key = `${dst.startTime}-${dst.endTime}`;
+            const existing = dayGroups.get(key) || [];
+            dayGroups.set(key, [...existing, dst.dayOfWeek]);
+          }
+        }
+        
+        // Créer les créneaux pour chaque groupe
+        for (const [timeKey, days] of dayGroups.entries()) {
+          const [groupStartTime, groupEndTime] = timeKey.split('-');
+          
+          // Calculer les jours à exclure pour ce groupe (tous sauf ceux du groupe)
+          const excludeDaysForGroup = [0, 1, 2, 3, 4, 5, 6].filter(day => !days.includes(day));
+          
+          console.log(`Création pour jours ${days.join(',')} avec horaires ${groupStartTime}-${groupEndTime}`);
+          
+          const result = await createAvailabilityForPeriod.mutateAsync({
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0],
+            startTime: groupStartTime,
+            endTime: groupEndTime,
+            slotDuration: formData.slotDuration,
+            excludeDays: excludeDaysForGroup,
+            timeExclusions: timeExclusions.filter(exclusion => {
+              const excDate = new Date(exclusion.date);
+              return days.includes(excDate.getDay());
+            })
+          });
+          
+          totalSlotsCreated += result || 0;
+        }
+        
+        setSlotsCreatedCount(totalSlotsCreated);
+        setCreationStep('success');
+        refetch();
+        onSlotsCreated?.(totalSlotsCreated);
+      } else {
+        // Pas d'horaires spécifiques : comportement normal
+        const result = await createAvailabilityForPeriod.mutateAsync({
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+          slotDuration: formData.slotDuration,
+          excludeDays: formData.excludeDays,
+          timeExclusions: timeExclusions
+        });
+        
+        setSlotsCreatedCount(result || calculateTotalSlots());
+        setCreationStep('success');
+        refetch();
+        onSlotsCreated?.(result || calculateTotalSlots());
+      }
     } catch (error) {
       console.error('Erreur lors de la création des créneaux:', error);
       toast.error('Erreur lors de la création des créneaux');
