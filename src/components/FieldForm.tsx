@@ -328,10 +328,12 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
             onImagesChange={handleImagesChange}
           />
 
+          {/* Compte de paiement masqué temporairement
           <FieldPayoutAccountForm
             payoutAccountId={formData.payout_account_id}
             onPayoutAccountChange={handlePayoutAccountChange}
           />
+          */}
 
           <FieldFormActions isLoading={isLoading || isLocationLoading} />
         </form>
