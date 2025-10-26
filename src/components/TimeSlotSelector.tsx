@@ -17,7 +17,7 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
   value,
   onChange,
   selectedDate,
-  placeholder = 'Choisir un horaire'
+  placeholder = 'Horaire'
 }) => {
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
