@@ -93,19 +93,48 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
     current.setDate(current.getDate() + 1);
   }
 
-  // Les jours exclus sont ceux qui devraient être présents mais qui ne le sont pas
+  // ⚠️ NE PAS essayer de deviner les jours exclus à partir des créneaux existants
+  // L'utilisateur doit les gérer manuellement dans l'interface
   const excludeDays: number[] = [];
-  expectedDaysSet.forEach(dayOfWeek => {
-    if (!daysInSlotsSet.has(dayOfWeek)) {
-      excludeDays.push(dayOfWeek);
-      console.log(`🚫 Jour ${dayOfWeek} (${getDayName(dayOfWeek)}) exclu - attendu mais pas trouvé dans les créneaux`);
-    }
-  });
-
+  
+  console.log('ℹ️ excludeDays défini à vide - l\'utilisateur doit gérer manuellement les exclusions');
   console.log('📊 Analyse des jours:', {
     daysInSlots: Array.from(daysInSlotsSet).map(d => `${d}(${getDayName(d)})`),
-    expectedDays: Array.from(expectedDaysSet).map(d => `${d}(${getDayName(d)})`),
-    excludeDays: excludeDays.map(d => `${d}(${getDayName(d)})`)
+    expectedDays: Array.from(expectedDaysSet).map(d => `${d}(${getDayName(d)})`)
+  });
+
+  // Détecter les horaires spécifiques par jour
+  const daySpecificTimes: Array<{
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+  }> = [];
+
+  // Analyser les horaires pour chaque jour présent
+  daysInSlotsSet.forEach(dayOfWeek => {
+    const slotsForDay = slots.filter(slot => {
+      const [year, month, day] = slot.date.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.getDay() === dayOfWeek;
+    });
+    
+    if (slotsForDay.length > 0) {
+      const dayStartTimes = slotsForDay.map(s => s.start_time).sort();
+      const dayEndTimes = slotsForDay.map(s => s.end_time).sort();
+      
+      const dayEarliestStart = dayStartTimes[0];
+      const dayLatestEnd = dayEndTimes[dayEndTimes.length - 1];
+      
+      // Si les horaires de ce jour diffèrent des horaires globaux, ajouter
+      if (dayEarliestStart !== earliestStart || dayLatestEnd !== latestEnd) {
+        daySpecificTimes.push({
+          dayOfWeek,
+          startTime: dayEarliestStart,
+          endTime: dayLatestEnd
+        });
+        console.log(`⏰ Horaires spécifiques détectés pour ${getDayName(dayOfWeek)}: ${dayEarliestStart}-${dayLatestEnd}`);
+      }
+    }
   });
 
   const result = {
@@ -113,7 +142,7 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
     endTime: latestEnd,
     slotDuration: mostCommonDuration,
     excludeDays,
-    daySpecificTimes: []
+    daySpecificTimes
   };
 
   console.log('✅ Configuration extraite:', result);
