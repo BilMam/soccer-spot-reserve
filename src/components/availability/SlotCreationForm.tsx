@@ -10,6 +10,8 @@ import SlotCreationFormContent from './SlotCreationFormContent';
 import SlotCreationFormActions from './SlotCreationFormActions';
 import SlotCreationFormLoading from './SlotCreationFormLoading';
 import { DaySpecificTime } from './DaySelectionForm';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface SlotCreationFormProps {
   fieldId: string;
@@ -100,6 +102,27 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     try {
       setCreationStep('creating');
       
+      // Si en mode modification : supprimer les créneaux existants d'abord
+      if (creationStep === 'modify' && existingSlots.length > 0) {
+        console.log('Mode modification : suppression des créneaux existants...');
+        
+        const { error: deleteError } = await supabase
+          .from('field_availability')
+          .delete()
+          .eq('field_id', fieldId)
+          .gte('date', startDate.toISOString().split('T')[0])
+          .lte('date', endDate.toISOString().split('T')[0]);
+        
+        if (deleteError) {
+          console.error('Erreur lors de la suppression:', deleteError);
+          toast.error('Impossible de supprimer les anciens créneaux');
+          setCreationStep('preview');
+          return;
+        }
+        
+        console.log('Créneaux existants supprimés avec succès');
+      }
+      
       const result = await createAvailabilityForPeriod.mutateAsync({
         startDate: startDate.toISOString().split('T')[0],
         endDate: endDate.toISOString().split('T')[0],
@@ -117,6 +140,7 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
       onSlotsCreated?.(result || calculateTotalSlots());
     } catch (error) {
       console.error('Erreur lors de la création des créneaux:', error);
+      toast.error('Erreur lors de la création des créneaux');
       setCreationStep('preview');
     }
   };
