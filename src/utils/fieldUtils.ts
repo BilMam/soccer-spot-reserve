@@ -16,7 +16,7 @@ export const getFieldTypeLabel = (fieldType: string): string => {
     grass: 'Gazon',
     
     // Paddle
-    synthetic_grass: 'Gazon synthétique',
+    synthetic_grass: 'Synthétique',
     concrete: 'Béton',
     
     // Basketball
