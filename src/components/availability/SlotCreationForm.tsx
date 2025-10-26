@@ -125,51 +125,43 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
       
       // Gérer les horaires spécifiques par jour côté frontend
       if (formData.daySpecificTimes && formData.daySpecificTimes.length > 0) {
-        console.log('Création avec horaires spécifiques par jour...');
+        console.log('Création avec horaires spécifiques par jour - traitement séquentiel...');
         let totalSlotsCreated = 0;
         
-        // Grouper les jours par horaires
-        const dayGroups: Map<string, number[]> = new Map();
-        
-        // Ajouter le groupe des horaires globaux (jours sans horaires spécifiques)
-        const daysWithSpecificTimes = formData.daySpecificTimes.map(dst => dst.dayOfWeek);
-        const globalDays = [0, 1, 2, 3, 4, 5, 6].filter(day => 
-          !daysWithSpecificTimes.includes(day) && !formData.excludeDays.includes(day)
+        // Créer une map pour accès rapide aux horaires spécifiques
+        const specificTimesMap = new Map(
+          formData.daySpecificTimes.map(dst => [dst.dayOfWeek, dst])
         );
         
-        if (globalDays.length > 0) {
-          const key = `${formData.startTime}-${formData.endTime}`;
-          dayGroups.set(key, globalDays);
-        }
-        
-        // Ajouter les groupes des horaires spécifiques
-        for (const dst of formData.daySpecificTimes) {
-          if (!formData.excludeDays.includes(dst.dayOfWeek)) {
-            const key = `${dst.startTime}-${dst.endTime}`;
-            const existing = dayGroups.get(key) || [];
-            dayGroups.set(key, [...existing, dst.dayOfWeek]);
+        // Traiter chaque jour de la semaine séparément
+        for (let dayOfWeek = 0; dayOfWeek <= 6; dayOfWeek++) {
+          // Skip si le jour est exclu
+          if (formData.excludeDays.includes(dayOfWeek)) {
+            console.log(`Jour ${dayOfWeek} exclu, skip`);
+            continue;
           }
-        }
-        
-        // Créer les créneaux pour chaque groupe
-        for (const [timeKey, days] of dayGroups.entries()) {
-          const [groupStartTime, groupEndTime] = timeKey.split('-');
           
-          // Calculer les jours à exclure pour ce groupe (tous sauf ceux du groupe)
-          const excludeDaysForGroup = [0, 1, 2, 3, 4, 5, 6].filter(day => !days.includes(day));
+          // Déterminer les horaires pour ce jour
+          const specificTime = specificTimesMap.get(dayOfWeek);
+          const startTime = specificTime ? specificTime.startTime : formData.startTime;
+          const endTime = specificTime ? specificTime.endTime : formData.endTime;
           
-          console.log(`Création pour jours ${days.join(',')} avec horaires ${groupStartTime}-${groupEndTime}`);
+          // Exclure tous les autres jours (ne créer que pour ce jour)
+          const excludeDaysForThisDay = [0, 1, 2, 3, 4, 5, 6].filter(d => d !== dayOfWeek);
+          
+          const dayName = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][dayOfWeek];
+          console.log(`Création pour ${dayName} avec horaires ${startTime}-${endTime}`);
           
           const result = await createAvailabilityForPeriod.mutateAsync({
             startDate: startDate.toISOString().split('T')[0],
             endDate: endDate.toISOString().split('T')[0],
-            startTime: groupStartTime,
-            endTime: groupEndTime,
+            startTime: startTime,
+            endTime: endTime,
             slotDuration: formData.slotDuration,
-            excludeDays: excludeDaysForGroup,
+            excludeDays: excludeDaysForThisDay,
             timeExclusions: timeExclusions.filter(exclusion => {
               const excDate = new Date(exclusion.date);
-              return days.includes(excDate.getDay());
+              return excDate.getDay() === dayOfWeek;
             })
           });
           
