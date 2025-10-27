@@ -35,7 +35,7 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
   onSlotsCreated,
   onViewCalendar
 }) => {
-  const { createAvailabilityForPeriod, setSlotsUnavailable } = useAvailabilityManagement(fieldId);
+  const { createAvailabilityWithDaySpecificTimes } = useAvailabilityManagement(fieldId);
   const { data: existingSlots = [], isLoading: checkingExisting, refetch } = useExistingSlots(fieldId, startDate, endDate);
   
   const [formData, setFormData] = useState({
@@ -111,98 +111,38 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
       const startDateISO = startDate.toISOString().split('T')[0];
       const endDateISO = endDate.toISOString().split('T')[0];
 
-      // 1. En mode modification, on supprime les anciens créneaux pour cette période
-      if (creationStep === 'modify') {
-        console.log('Mode modification : suppression des créneaux existants...');
-        
-        const { error: deleteError } = await supabase
-          .from('field_availability')
-          .delete()
-          .eq('field_id', fieldId)
-          .gte('date', startDateISO)
-          .lte('date', endDateISO);
+      // Construire le tableau des créneaux à créer
+      const slotsToCreate: Array<{ dayOfWeek: number; start: string; end: string }> = [];
 
-        if (deleteError) {
-          console.error('Erreur suppression anciennes dispos:', deleteError);
-          toast.error('Impossible de supprimer les anciens créneaux');
-          setCreationStep('preview');
-          return;
+      for (let dayOfWeek = 0; dayOfWeek <= 6; dayOfWeek++) {
+        // Ignorer les jours exclus
+        if (formData.excludeDays.includes(dayOfWeek)) {
+          console.log(`⏭️ Jour ${dayOfWeek} exclu, skip`);
+          continue;
         }
+
+        // Trouver les horaires spécifiques pour ce jour
+        const specific = formData.daySpecificTimes?.find(d => d.dayOfWeek === dayOfWeek);
+        const start = specific?.startTime || formData.startTime;
+        const end = specific?.endTime || formData.endTime;
+
+        slotsToCreate.push({ dayOfWeek, start, end });
         
-        console.log('✅ Créneaux existants supprimés avec succès');
+        const dayName = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][dayOfWeek];
+        console.log(`📅 ${dayName} (${dayOfWeek}): ${start}-${end}`);
       }
 
-      // 2. Créer TOUS les créneaux avec les horaires globaux
-      console.log(`📅 Création de tous les créneaux globaux: ${formData.startTime}-${formData.endTime}`);
-      
-      const globalResult = await createAvailabilityForPeriod.mutateAsync({
+      console.log('🚀 Appel RPC unique avec:', slotsToCreate);
+
+      // Un seul appel RPC pour créer tous les créneaux
+      const totalSlotsCreated = await createAvailabilityWithDaySpecificTimes.mutateAsync({
         startDate: startDateISO,
         endDate: endDateISO,
-        startTime: formData.startTime,
-        endTime: formData.endTime,
         slotDuration: formData.slotDuration,
-        excludeDays: formData.excludeDays,
-        timeExclusions: timeExclusions
+        slotsToCreate
       });
 
-      let totalSlotsCreated = globalResult || 0;
-      console.log(`✅ ${totalSlotsCreated} créneaux globaux créés`);
-
-      // 3. Ajuster les jours avec horaires spécifiques
-      if (formData.daySpecificTimes && formData.daySpecificTimes.length > 0) {
-        console.log('🔧 Ajustement des horaires spécifiques par jour...');
-        
-        for (const dst of formData.daySpecificTimes) {
-          if (formData.excludeDays.includes(dst.dayOfWeek)) {
-            continue; // Jour déjà exclu
-          }
-          
-          const dayName = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][dst.dayOfWeek];
-          console.log(`  Ajustement pour ${dayName}: ${dst.startTime}-${dst.endTime} (global: ${formData.startTime}-${formData.endTime})`);
-          
-          // Pour chaque occurrence de ce jour dans la période
-          let currentDate = new Date(startDate);
-          while (currentDate <= endDate) {
-            if (currentDate.getDay() === dst.dayOfWeek) {
-              const dateStr = currentDate.toISOString().split('T')[0];
-              
-              // Supprimer les créneaux AVANT l'heure de début spécifique
-              if (dst.startTime > formData.startTime) {
-                const { error: deleteBeforeError } = await supabase
-                  .from('field_availability')
-                  .delete()
-                  .eq('field_id', fieldId)
-                  .eq('date', dateStr)
-                  .gte('start_time', formData.startTime)
-                  .lt('start_time', dst.startTime);
-                
-                if (deleteBeforeError) {
-                  console.error('Erreur suppression créneaux avant:', deleteBeforeError);
-                }
-              }
-              
-              // Supprimer les créneaux APRÈS l'heure de fin spécifique
-              if (dst.endTime < formData.endTime) {
-                const { error: deleteAfterError } = await supabase
-                  .from('field_availability')
-                  .delete()
-                  .eq('field_id', fieldId)
-                  .eq('date', dateStr)
-                  .gte('start_time', dst.endTime);
-                
-                if (deleteAfterError) {
-                  console.error('Erreur suppression créneaux après:', deleteAfterError);
-                }
-              }
-            }
-            currentDate.setDate(currentDate.getDate() + 1);
-          }
-          
-          console.log(`  ✅ ${dayName} ajusté`);
-        }
-      }
-
-      console.log(`🎉 Total : ${totalSlotsCreated} créneaux créés et ajustés`);
+      console.log(`🎉 Total : ${totalSlotsCreated} créneaux créés`);
 
       setSlotsCreatedCount(totalSlotsCreated);
       setCreationStep('success');
@@ -292,7 +232,7 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
         />
         
         <SlotCreationFormActions
-          isCreating={createAvailabilityForPeriod.isPending || creationStep === 'creating'}
+          isCreating={createAvailabilityWithDaySpecificTimes.isPending || creationStep === 'creating'}
           isModifying={creationStep === 'modify'}
           onCreateSlots={handleCreateSlots}
         />

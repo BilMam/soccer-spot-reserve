@@ -1294,6 +1294,16 @@ export type Database = {
         }
         Returns: number
       }
+      create_availability_for_period_with_day_specific_times: {
+        Args: {
+          p_end_date: string
+          p_field_id: string
+          p_slot_duration: number
+          p_slots_to_create: Json
+          p_start_date: string
+        }
+        Returns: number
+      }
       generate_unique_confirmation_code: { Args: never; Returns: string }
       get_all_owner_applications: {
         Args: never

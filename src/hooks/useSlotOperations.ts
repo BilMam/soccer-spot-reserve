@@ -36,7 +36,36 @@ export const useSlotOperations = (fieldId: string) => {
     return data || false;
   };
 
-  // Créer des créneaux pour une période avec exclusions
+  // Créer des créneaux pour une période avec horaires spécifiques par jour
+  const createAvailabilityWithDaySpecificTimes = useMutation({
+    mutationFn: async (params: {
+      startDate: string;
+      endDate: string;
+      slotDuration: number;
+      slotsToCreate: Array<{ dayOfWeek: number; start: string; end: string }>;
+    }) => {
+      const { data, error } = await supabase.rpc('create_availability_for_period_with_day_specific_times', {
+        p_field_id: fieldId,
+        p_start_date: params.startDate,
+        p_end_date: params.endDate,
+        p_slot_duration: params.slotDuration,
+        p_slots_to_create: params.slotsToCreate
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (slotsCreated) => {
+      queryClient.invalidateQueries({ queryKey: ['field-availability-period', fieldId] });
+      toast.success(`${slotsCreated} créneaux créés avec succès`);
+    },
+    onError: (error) => {
+      console.error('Erreur création créneaux:', error);
+      toast.error('Erreur lors de la création des créneaux');
+    }
+  });
+
+  // Créer des créneaux pour une période avec exclusions (ancien système, gardé pour compatibilité)
   const createAvailabilityForPeriod = useMutation({
     mutationFn: async (params: {
       startDate: string;
@@ -171,6 +200,7 @@ export const useSlotOperations = (fieldId: string) => {
 
   return {
     createAvailabilityForPeriod,
+    createAvailabilityWithDaySpecificTimes,
     setSlotsUnavailable,
     setSlotsAvailable,
     checkSlotBookingStatus
