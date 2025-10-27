@@ -1,8 +1,8 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Clock, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Clock, Check, X } from 'lucide-react';
 
 export interface DaySpecificTime {
   dayOfWeek: number;
@@ -27,6 +27,10 @@ const DaySelectionForm: React.FC<DaySelectionFormProps> = ({
   globalStartTime,
   globalEndTime
 }) => {
+  const [editingDay, setEditingDay] = useState<number | null>(null);
+  const [tempStartTime, setTempStartTime] = useState<string>('');
+  const [tempEndTime, setTempEndTime] = useState<string>('');
+
   const daysOfWeek = [
     { value: 0, label: 'Dimanche', shortLabel: 'Dim' },
     { value: 1, label: 'Lundi', shortLabel: 'Lun' },
@@ -44,48 +48,61 @@ const DaySelectionForm: React.FC<DaySelectionFormProps> = ({
     onDayToggle(dayValue, checked);
   };
 
-  const hasSpecificTimes = (dayValue: number) => {
-    return daySpecificTimes.some(d => d.dayOfWeek === dayValue);
+  const hasSpecificTime = (dayValue: number) => {
+    return daySpecificTimes.some(dst => dst.dayOfWeek === dayValue);
   };
 
-  const getSpecificTime = (dayValue: number, type: 'start' | 'end') => {
-    const specific = daySpecificTimes.find(d => d.dayOfWeek === dayValue);
-    if (specific) {
-      return type === 'start' ? specific.startTime : specific.endTime;
-    }
-    return type === 'start' ? globalStartTime : globalEndTime;
+  const getSpecificTime = (dayValue: number) => {
+    return daySpecificTimes.find(dst => dst.dayOfWeek === dayValue);
   };
 
-  const toggleSpecificTimes = (dayValue: number) => {
-    if (hasSpecificTimes(dayValue)) {
-      onDaySpecificTimeChange?.(dayValue, null, null);
+  const handleStartEdit = (dayValue: number) => {
+    const existing = getSpecificTime(dayValue);
+    if (existing) {
+      setTempStartTime(existing.startTime);
+      setTempEndTime(existing.endTime);
     } else {
-      onDaySpecificTimeChange?.(dayValue, globalStartTime, globalEndTime);
+      setTempStartTime(globalStartTime);
+      setTempEndTime(globalEndTime);
     }
+    setEditingDay(dayValue);
   };
 
-  const handleSpecificTimeChange = (dayValue: number, start: string | null, end: string | null) => {
-    const current = daySpecificTimes.find(d => d.dayOfWeek === dayValue);
-    const newStart = start !== null ? start : (current?.startTime || globalStartTime);
-    const newEnd = end !== null ? end : (current?.endTime || globalEndTime);
-    onDaySpecificTimeChange?.(dayValue, newStart, newEnd);
+  const handleSaveEdit = (dayValue: number) => {
+    if (!onDaySpecificTimeChange) return;
+    
+    onDaySpecificTimeChange(dayValue, tempStartTime, tempEndTime);
+    setEditingDay(null);
+    console.log(`✅ Horaires spécifiques sauvegardés pour jour ${dayValue}: ${tempStartTime}-${tempEndTime}`);
   };
 
-  const removeSpecificTimes = (dayValue: number) => {
-    onDaySpecificTimeChange?.(dayValue, null, null);
+  const handleCancelEdit = () => {
+    setEditingDay(null);
+    setTempStartTime('');
+    setTempEndTime('');
+  };
+
+  const handleRemoveSpecificTime = (dayValue: number) => {
+    if (!onDaySpecificTimeChange) return;
+    
+    onDaySpecificTimeChange(dayValue, null, null);
+    setEditingDay(null);
+    console.log(`❌ Horaires spécifiques supprimés pour jour ${dayValue}`);
   };
 
   return (
     <div className="space-y-4">
       <h4 className="font-medium">Jours d'ouverture</h4>
-      <p className="text-sm text-gray-600">
-        Décochez les jours où votre terrain sera fermé toute la journée
+      <p className="text-sm text-muted-foreground">
+        Décochez les jours où votre terrain sera fermé. Cliquez sur <Clock className="inline h-3 w-3" /> pour des horaires spécifiques.
       </p>
       
-      <div className="space-y-2">
+      <div className="space-y-3">
         {daysOfWeek.map((day) => {
           const isExcluded = excludeDays.includes(day.value);
-          const hasSpecific = hasSpecificTimes(day.value);
+          const specificTime = getSpecificTime(day.value);
+          const isEditing = editingDay === day.value;
+          
           return (
             <div key={day.value} className="space-y-2">
               <div className="flex items-center space-x-2">
@@ -96,52 +113,79 @@ const DaySelectionForm: React.FC<DaySelectionFormProps> = ({
                 />
                 <label
                   htmlFor={`day-${day.value}`}
-                  className={`text-sm font-medium flex-1 ${isExcluded ? 'text-gray-400 line-through' : 'text-gray-700'}`}
+                  className={`text-sm font-medium flex-1 ${isExcluded ? 'text-muted-foreground line-through' : ''}`}
                 >
-                  {day.label} ({day.shortLabel}) - Jour {day.value}
+                  {day.label}
                 </label>
                 
-                {!isExcluded && (
-                  <button
+                {!isExcluded && onDaySpecificTimeChange && (
+                  <Button
                     type="button"
-                    onClick={() => toggleSpecificTimes(day.value)}
-                    className={`p-1 transition-colors ${hasSpecific ? 'text-blue-600' : 'text-gray-400 hover:text-blue-600'}`}
-                    title="Horaires spécifiques"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleStartEdit(day.value)}
+                    className={`h-8 px-2 ${hasSpecificTime(day.value) ? 'text-primary' : 'text-muted-foreground'}`}
                   >
-                    <Clock className="w-4 h-4" />
-                  </button>
+                    <Clock className="h-4 w-4" />
+                  </Button>
                 )}
                 
                 {isExcluded && (
-                  <span className="text-xs text-red-500 ml-2 font-medium">
-                    [Exclu - aucun créneau ne sera créé]
+                  <span className="text-xs text-destructive font-medium">
+                    Fermé
+                  </span>
+                )}
+                
+                {!isExcluded && specificTime && !isEditing && (
+                  <span className="text-xs text-primary font-medium">
+                    {specificTime.startTime} - {specificTime.endTime}
                   </span>
                 )}
               </div>
               
-              {!isExcluded && hasSpecific && (
-                <div className="flex items-center gap-2 ml-6 animate-in slide-in-from-left">
+              {isEditing && !isExcluded && (
+                <div className="ml-6 flex items-center gap-2 p-3 bg-muted/50 rounded-md border">
                   <Input
                     type="time"
-                    value={getSpecificTime(day.value, 'start')}
-                    onChange={(e) => handleSpecificTimeChange(day.value, e.target.value, null)}
-                    className="w-24 h-8 text-xs"
+                    value={tempStartTime}
+                    onChange={(e) => setTempStartTime(e.target.value)}
+                    className="h-8 w-24"
                   />
-                  <span className="text-xs text-gray-500">→</span>
+                  <span className="text-sm text-muted-foreground">→</span>
                   <Input
                     type="time"
-                    value={getSpecificTime(day.value, 'end')}
-                    onChange={(e) => handleSpecificTimeChange(day.value, null, e.target.value)}
-                    className="w-24 h-8 text-xs"
+                    value={tempEndTime}
+                    onChange={(e) => setTempEndTime(e.target.value)}
+                    className="h-8 w-24"
                   />
-                  <button
+                  <Button
                     type="button"
-                    onClick={() => removeSpecificTimes(day.value)}
-                    className="text-red-400 hover:text-red-600 p-1 transition-colors"
-                    title="Supprimer horaires spécifiques"
+                    size="sm"
+                    onClick={() => handleSaveEdit(day.value)}
+                    className="h-8 px-2"
                   >
-                    <X className="w-3 h-3" />
-                  </button>
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCancelEdit}
+                    className="h-8 px-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  {hasSpecificTime(day.value) && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleRemoveSpecificTime(day.value)}
+                      className="h-8 px-2 ml-auto"
+                    >
+                      Supprimer
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -150,12 +194,12 @@ const DaySelectionForm: React.FC<DaySelectionFormProps> = ({
       </div>
       
       {excludeDays.length > 0 && (
-        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-          <p className="text-sm text-yellow-800 font-medium">
-            <strong>Jours exclus :</strong> {excludeDays.map(day => daysOfWeek[day].label).join(', ')}
+        <div className="mt-4 p-3 bg-warning/10 border border-warning rounded-md">
+          <p className="text-sm text-warning-foreground font-medium">
+            <strong>Jours fermés :</strong> {excludeDays.map(day => daysOfWeek[day].label).join(', ')}
           </p>
-          <p className="text-xs text-yellow-600 mt-1">
-            Aucun créneau ne sera créé pour ces jours dans la période sélectionnée.
+          <p className="text-xs text-muted-foreground mt-1">
+            Aucun créneau ne sera créé pour ces jours.
           </p>
         </div>
       )}

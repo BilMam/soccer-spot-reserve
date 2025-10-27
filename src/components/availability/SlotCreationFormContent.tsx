@@ -51,6 +51,13 @@ const SlotCreationFormContent: React.FC<SlotCreationFormContentProps> = ({
     });
   };
 
+  const handleDaySpecificTimesChange = (times: DaySpecificTime[]) => {
+    onFormDataChange({
+      ...formData,
+      daySpecificTimes: times
+    });
+  };
+
   const handleDaySpecificTimeChange = (dayValue: number, startTime: string | null, endTime: string | null) => {
     let newDaySpecificTimes = [...(formData.daySpecificTimes || [])];
     
