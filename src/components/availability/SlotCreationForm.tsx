@@ -61,7 +61,7 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     }
   }, [creationStep, existingSlots]);
 
-  // Fonction utilitaire pour convertir heure en minutes
+  // Fonction utilitaire pour convertir heure en minutes (gardée pour compatibilité)
   const timeToMinutes = (time: string): number => {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
@@ -107,127 +107,95 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
   const handleCreateSlots = async () => {
     try {
       setCreationStep('creating');
-      
-      // Si en mode modification : supprimer les créneaux existants d'abord
-      if (creationStep === 'modify' && existingSlots.length > 0) {
+
+      const startDateISO = startDate.toISOString().split('T')[0];
+      const endDateISO = endDate.toISOString().split('T')[0];
+
+      // 1. En mode modification, on supprime les anciens créneaux pour cette période
+      if (creationStep === 'modify') {
         console.log('Mode modification : suppression des créneaux existants...');
         
         const { error: deleteError } = await supabase
           .from('field_availability')
           .delete()
           .eq('field_id', fieldId)
-          .gte('date', startDate.toISOString().split('T')[0])
-          .lte('date', endDate.toISOString().split('T')[0]);
-        
+          .gte('date', startDateISO)
+          .lte('date', endDateISO);
+
         if (deleteError) {
-          console.error('Erreur lors de la suppression:', deleteError);
+          console.error('Erreur suppression anciennes dispos:', deleteError);
           toast.error('Impossible de supprimer les anciens créneaux');
           setCreationStep('preview');
           return;
         }
         
-        console.log('Créneaux existants supprimés avec succès');
+        console.log('✅ Créneaux existants supprimés avec succès');
       }
-      
-      // 1️⃣ Créer tous les créneaux avec horaires globaux
-      console.log('Création de tous les créneaux avec horaires globaux:', formData.startTime, '-', formData.endTime);
-      const result = await createAvailabilityForPeriod.mutateAsync({
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-        slotDuration: formData.slotDuration,
-        excludeDays: formData.excludeDays,
-        timeExclusions: timeExclusions
-      });
 
-      let totalSlotsCreated = result || 0;
+      // 2. Préparer accès rapide aux horaires spécifiques par jour
+      // Map : dayOfWeek -> { startTime, endTime }
+      const specificTimesMap = new Map(
+        (formData.daySpecificTimes || []).map((dst) => [dst.dayOfWeek, dst])
+      );
 
-      // 2️⃣ Si horaires spécifiques par jour : ajuster les créneaux
-      if (formData.daySpecificTimes && formData.daySpecificTimes.length > 0) {
-        console.log('🔧 Ajustement des horaires spécifiques par jour...');
-        
-        for (const dst of formData.daySpecificTimes) {
-          if (formData.excludeDays.includes(dst.dayOfWeek)) {
-            console.log(`Jour ${dst.dayOfWeek} déjà exclu, skip`);
-            continue; // Jour déjà exclu
-          }
-          
-          const dayName = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][dst.dayOfWeek];
-          console.log(`Ajustement pour ${dayName}: ${dst.startTime}-${dst.endTime} (global: ${formData.startTime}-${formData.endTime})`);
-          
-          // Calculer les plages à marquer indisponibles
-          const globalStart = timeToMinutes(formData.startTime);
-          const globalEnd = timeToMinutes(formData.endTime);
-          const specificStart = timeToMinutes(dst.startTime);
-          const specificEnd = timeToMinutes(dst.endTime);
-          
-          // Si horaires spécifiques commencent APRÈS global start
-          if (specificStart > globalStart) {
-            console.log(`  → Marquer indisponible AVANT: ${formData.startTime} à ${dst.startTime}`);
-            const exclusionStartTime = formData.startTime;
-            const exclusionEndTime = dst.startTime;
-            
-            // Pour chaque occurrence de ce jour dans la période
-            let currentDate = new Date(startDate);
-            while (currentDate <= endDate) {
-              if (currentDate.getDay() === dst.dayOfWeek) {
-                const dateStr = currentDate.toISOString().split('T')[0];
-                
-                try {
-                  await setSlotsUnavailable.mutateAsync({
-                    date: dateStr,
-                    startTime: exclusionStartTime,
-                    endTime: exclusionEndTime,
-                    reason: 'Horaire ajusté',
-                    notes: `Horaires spécifiques pour ${dayName}`
-                  });
-                } catch (error) {
-                  console.error(`Erreur ajustement ${dateStr}:`, error);
-                }
-              }
-              currentDate.setDate(currentDate.getDate() + 1);
-            }
-          }
-          
-          // Si horaires spécifiques finissent AVANT global end
-          if (specificEnd < globalEnd) {
-            console.log(`  → Marquer indisponible APRÈS: ${dst.endTime} à ${formData.endTime}`);
-            const exclusionStartTime = dst.endTime;
-            const exclusionEndTime = formData.endTime;
-            
-            // Pour chaque occurrence de ce jour dans la période
-            let currentDate = new Date(startDate);
-            while (currentDate <= endDate) {
-              if (currentDate.getDay() === dst.dayOfWeek) {
-                const dateStr = currentDate.toISOString().split('T')[0];
-                
-                try {
-                  await setSlotsUnavailable.mutateAsync({
-                    date: dateStr,
-                    startTime: exclusionStartTime,
-                    endTime: exclusionEndTime,
-                    reason: 'Horaire ajusté',
-                    notes: `Horaires spécifiques pour ${dayName}`
-                  });
-                } catch (error) {
-                  console.error(`Erreur ajustement ${dateStr}:`, error);
-                }
-              }
-              currentDate.setDate(currentDate.getDate() + 1);
-            }
-          }
+      let totalSlotsCreated = 0;
+
+      // 3. Pour chaque jour de la semaine (0 = dimanche ... 6 = samedi),
+      //    on détermine l'horaire à appliquer pour CE jour,
+      //    puis on appelle la RPC pour créer UNIQUEMENT ce jour.
+      for (let dow = 0; dow <= 6; dow++) {
+        // si le jour est exclu (terrain fermé ce jour-là), on saute
+        if (formData.excludeDays.includes(dow)) {
+          console.log(`⏭️ Jour ${dow} exclu, skip`);
+          continue;
         }
-        
-        console.log('✅ Ajustements terminés');
+
+        // horaire pour ce jour : spécifique si défini, sinon global
+        const specific = specificTimesMap.get(dow);
+        const dayStart = specific ? specific.startTime : formData.startTime;
+        const dayEnd = specific ? specific.endTime : formData.endTime;
+
+        // sécurité
+        if (!dayStart || !dayEnd) {
+          console.warn(`⚠️ Pas d'horaires pour le jour ${dow}, skip`);
+          continue;
+        }
+
+        const dayName = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][dow];
+        console.log(`📅 Création créneaux pour ${dayName} (${dow}): ${dayStart}-${dayEnd}`);
+
+        // on veut créer uniquement les créneaux de CE jour-là de la semaine
+        // donc on passe excludeDays = tous les autres jours
+        const excludeDaysForThisCall = [0, 1, 2, 3, 4, 5, 6].filter((d) => d !== dow);
+
+        // appel RPC Supabase pour générer les créneaux de ce jour
+        const result = await createAvailabilityForPeriod.mutateAsync({
+          startDate: startDateISO,
+          endDate: endDateISO,
+          startTime: dayStart,
+          endTime: dayEnd,
+          slotDuration: formData.slotDuration,
+          excludeDays: excludeDaysForThisCall,
+          // Filtrer timeExclusions pour ne garder que celles de ce jour
+          timeExclusions: timeExclusions.filter((excl) => {
+            const excDate = new Date(excl.date);
+            return excDate.getDay() === dow;
+          })
+        });
+
+        const slotsForThisDay = result || 0;
+        console.log(`  ✅ ${slotsForThisDay} créneaux créés pour ${dayName}`);
+        totalSlotsCreated += slotsForThisDay;
       }
+
+      console.log(`🎉 Total : ${totalSlotsCreated} créneaux créés`);
 
       setSlotsCreatedCount(totalSlotsCreated);
       setCreationStep('success');
       refetch();
       onSlotsCreated?.(totalSlotsCreated);
     } catch (error) {
-      console.error('Erreur lors de la création des créneaux:', error);
+      console.error('❌ Erreur création créneaux:', error);
       toast.error('Erreur lors de la création des créneaux');
       setCreationStep('preview');
     }

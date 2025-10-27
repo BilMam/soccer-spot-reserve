@@ -31,6 +31,7 @@ interface AvailabilitySlot {
 
 export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSlotConfig => {
   if (slots.length === 0) {
+    console.log('Aucun créneau existant, configuration par défaut');
     return {
       startTime: '08:00',
       endTime: '22:00',
@@ -40,113 +41,101 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
     };
   }
 
-  console.log('🔍 Extraction configuration - Créneaux reçus:', slots.length);
+  // 1️⃣ Trouver l'horaire global théorique (earliestStart / latestEnd sur toute la période)
+  const allStarts = slots.map(s => s.start_time).sort();
+  const allEnds = slots.map(s => s.end_time).sort();
+  const globalStart = allStarts[0];
+  const globalEnd = allEnds[allEnds.length - 1];
 
-  // Trouver l'heure de début la plus tôt et l'heure de fin la plus tard
-  const startTimes = slots.map(slot => slot.start_time).sort();
-  const endTimes = slots.map(slot => slot.end_time).sort();
-  
-  const earliestStart = startTimes[0];
-  const latestEnd = endTimes[endTimes.length - 1];
-
-  // Calculer la durée des créneaux en prenant le plus commun
-  const durations = new Map<number, number>();
-  
-  slots.forEach(slot => {
-    const startMinutes = timeToMinutes(slot.start_time);
-    const endMinutes = timeToMinutes(slot.end_time);
-    const duration = endMinutes - startMinutes;
-    
-    durations.set(duration, (durations.get(duration) || 0) + 1);
+  // 2️⃣ Calculer la durée la plus commune des créneaux
+  const durations = slots.map(s => {
+    const start = timeToMinutes(s.start_time);
+    const end = timeToMinutes(s.end_time);
+    return end - start;
   });
-
-  // Prendre la durée la plus fréquente
-  let mostCommonDuration = 30; // valeur par défaut
-  let maxCount = 0;
   
-  durations.forEach((count, duration) => {
+  const durationCounts = new Map<number, number>();
+  durations.forEach(d => {
+    durationCounts.set(d, (durationCounts.get(d) || 0) + 1);
+  });
+  
+  let mostCommonDuration = 30;
+  let maxCount = 0;
+  durationCounts.forEach((count, duration) => {
     if (count > maxCount) {
       maxCount = count;
       mostCommonDuration = duration;
     }
   });
 
-  // Analyser les jours présents dans les créneaux
-  const dateRange = getDateRangeFromSlots(slots);
-  const daysInSlotsSet = new Set<number>();
+  console.log('📊 Extraction config - Global:', {
+    globalStart,
+    globalEnd,
+    slotDuration: mostCommonDuration,
+    totalSlots: slots.length
+  });
+
+  // 3️⃣ Pour chaque dayOfWeek présent, calculer son min start et max end
+  const perDay = new Map<number, { earliest: string; latest: string }>();
   
-  // Analyser chaque créneau pour voir quels jours de la semaine sont présents
   slots.forEach(slot => {
-    const [year, month, day] = slot.date.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    const dayOfWeek = date.getDay();
-    daysInSlotsSet.add(dayOfWeek);
+    const [y, m, d] = slot.date.split('-').map(Number);
+    const jsDate = new Date(y, m - 1, d);
+    const dow = jsDate.getDay(); // 0 = dimanche, 1 = lundi, etc.
     
-    console.log(`🔍 Créneau analysé: ${slot.date} -> jour ${dayOfWeek} (${getDayName(dayOfWeek)})`);
+    if (!perDay.has(dow)) {
+      perDay.set(dow, { earliest: slot.start_time, latest: slot.end_time });
+    } else {
+      const current = perDay.get(dow)!;
+      if (slot.start_time < current.earliest) {
+        current.earliest = slot.start_time;
+      }
+      if (slot.end_time > current.latest) {
+        current.latest = slot.end_time;
+      }
+    }
   });
 
-  // Calculer quels jours devraient être présents dans la période complète
-  const expectedDaysSet = new Set<number>();
-  const current = new Date(dateRange.start);
-  while (current <= dateRange.end) {
-    expectedDaysSet.add(current.getDay());
-    current.setDate(current.getDate() + 1);
-  }
-
-  // ⚠️ NE PAS essayer de deviner les jours exclus à partir des créneaux existants
-  // L'utilisateur doit les gérer manuellement dans l'interface
-  const excludeDays: number[] = [];
-  
-  console.log('ℹ️ excludeDays défini à vide - l\'utilisateur doit gérer manuellement les exclusions');
-  console.log('📊 Analyse des jours:', {
-    daysInSlots: Array.from(daysInSlotsSet).map(d => `${d}(${getDayName(d)})`),
-    expectedDays: Array.from(expectedDaysSet).map(d => `${d}(${getDayName(d)})`)
-  });
-
-  // Détecter les horaires spécifiques par jour
+  // 4️⃣ Construire daySpecificTimes = jours où l'horaire n'est pas le même que le global
   const daySpecificTimes: Array<{
     dayOfWeek: number;
     startTime: string;
     endTime: string;
   }> = [];
-
-  // Analyser les horaires pour chaque jour présent
-  daysInSlotsSet.forEach(dayOfWeek => {
-    const slotsForDay = slots.filter(slot => {
-      const [year, month, day] = slot.date.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-      return date.getDay() === dayOfWeek;
-    });
-    
-    if (slotsForDay.length > 0) {
-      const dayStartTimes = slotsForDay.map(s => s.start_time).sort();
-      const dayEndTimes = slotsForDay.map(s => s.end_time).sort();
+  
+  perDay.forEach((times, dow) => {
+    // Si ce jour a des horaires différents du global, on l'ajoute
+    if (times.earliest !== globalStart || times.latest !== globalEnd) {
+      daySpecificTimes.push({
+        dayOfWeek: dow,
+        startTime: times.earliest,
+        endTime: times.latest
+      });
       
-      const dayEarliestStart = dayStartTimes[0];
-      const dayLatestEnd = dayEndTimes[dayEndTimes.length - 1];
-      
-      // Si les horaires de ce jour diffèrent des horaires globaux, ajouter
-      if (dayEarliestStart !== earliestStart || dayLatestEnd !== latestEnd) {
-        daySpecificTimes.push({
-          dayOfWeek,
-          startTime: dayEarliestStart,
-          endTime: dayLatestEnd
-        });
-        console.log(`⏰ Horaires spécifiques détectés pour ${getDayName(dayOfWeek)}: ${dayEarliestStart}-${dayLatestEnd}`);
-      }
+      const dayName = getDayName(dow);
+      console.log(`  🕒 Horaires spécifiques pour ${dayName}: ${times.earliest}-${times.latest} (vs global ${globalStart}-${globalEnd})`);
     }
   });
 
-  const result = {
-    startTime: earliestStart,
-    endTime: latestEnd,
+  // 5️⃣ IMPORTANT : n'essaie plus d'inférer excludeDays à partir des slots.
+  // Laisse excludeDays = [] par défaut. On ne veut plus exclure agressivement un jour sans l'action explicite du user.
+  const excludeDays: number[] = [];
+  
+  console.log('✅ Configuration finale extraite:', {
+    startTime: globalStart,
+    endTime: globalEnd,
     slotDuration: mostCommonDuration,
-    excludeDays,
-    daySpecificTimes
-  };
+    excludeDays: excludeDays,
+    daySpecificTimes: daySpecificTimes.length > 0 ? daySpecificTimes : []
+  });
 
-  console.log('✅ Configuration extraite:', result);
-  return result;
+  return {
+    startTime: globalStart,
+    endTime: globalEnd,
+    slotDuration: mostCommonDuration,
+    excludeDays: excludeDays,
+    daySpecificTimes: daySpecificTimes
+  };
 };
 
 const getDayName = (dayOfWeek: number): string => {
