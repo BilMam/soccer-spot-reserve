@@ -48,3 +48,16 @@ export const normalizeTime = (time: string): string => {
   if (!time) return '';
   return time.slice(0, 5); // Garde seulement HH:MM
 };
+
+// Fonction pour formater une date pour Supabase (format YYYY-MM-DD sans décalage timezone)
+export const formatDateForSupabase = (dateInput: string | Date): string => {
+  if (typeof dateInput === 'string') {
+    // Si c'est déjà "2025-11-02" ou "2025-11-02T00:00:00.000Z"
+    return dateInput.split('T')[0];
+  }
+
+  const y = dateInput.getFullYear();
+  const m = String(dateInput.getMonth() + 1).padStart(2, '0');
+  const d = String(dateInput.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};

@@ -12,6 +12,7 @@ import BookingSummary from './BookingSummary';
 import SlotBookingActions from './SlotBookingActions';
 import { useBookingData } from '@/hooks/useBookingData';
 import { useRecurringSlots } from '@/hooks/useRecurringSlots';
+import { useAvailableTimesForDate } from '@/hooks/useAvailableTimesForDate';
 
 interface AvailabilitySlot {
   id: string;
@@ -130,10 +131,10 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   // Vérifier si aucun créneau n'a été créé pour ce jour
   const hasNoSlots = availableSlots.length === 0;
   
-  // Récupérer la première heure disponible pour l'affichage
-  const firstAvailableTime = availableSlots.length > 0 
-    ? normalizeTime(availableSlots[0].start_time)
-    : null;
+  // Récupérer la première heure disponible depuis le hook useAvailableTimesForDate
+  // utilisé dans TimeSlotSelector pour avoir la vraie première heure du jour
+  const { data: availableTimesData } = useAvailableTimesForDate(fieldId, selectedDate);
+  const firstAvailableTime = availableTimesData?.firstAvailableTime || null;
 
   return (
     <Card>

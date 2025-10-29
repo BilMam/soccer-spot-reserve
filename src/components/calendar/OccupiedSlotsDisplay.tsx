@@ -43,7 +43,8 @@ const OccupiedSlotsDisplay: React.FC<OccupiedSlotsDisplayProps> = ({
             </span>
           </div>
         </div>
-        {firstAvailableTime && (
+        {/* Afficher la ligne "Ouverture ce jour" seulement si l'heure n'est pas 08:00 (heure standard) */}
+        {firstAvailableTime && firstAvailableTime !== '08:00' && (
           <div className="text-xs text-gray-500 px-3">
             Ouverture ce jour : {firstAvailableTime}
           </div>
