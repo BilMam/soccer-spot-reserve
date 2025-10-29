@@ -230,7 +230,7 @@ export default function Cagnotte() {
               <p className="text-red-700 mb-2">
                 {cagnotte.status === 'REFUNDED' 
                   ? 'Tous les paiements ont été remboursés.'
-                  : 'Remboursement en cours...'}
+                  : 'Remboursement en cours…'}
               </p>
               <p className="text-sm text-red-600">
                 Vous serez recrédité sur votre moyen de paiement (1–5 jours ouvrés selon l'opérateur).

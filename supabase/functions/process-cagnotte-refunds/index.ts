@@ -53,47 +53,26 @@ serve(async (req) => {
         //   })
         // });
 
-        // Pour l'instant : marquer comme remboursé (traitement manuel requis)
-        await supabase
-          .from('cagnotte_contribution')
-          .update({
-            status: 'REFUNDED',
-            refunded_at: new Date().toISOString()
-          })
-          .eq('id', contrib.id);
+        // Pour l'instant : NE PAS marquer comme remboursé automatiquement
+        // Laisser en REFUND_PENDING pour traitement manuel
+        console.log(`[process-cagnotte-refunds] ⚠️  REMBOURSEMENT MANUEL NÉCESSAIRE VIA PAYDUNYA`);
+        console.log(`[process-cagnotte-refunds] Contribution ${contrib.id}: ${contrib.amount} XOF vers ${contrib.psp_tx_id}`);
 
         results.push({ 
           id: contrib.id, 
-          status: 'REFUNDED',
-          note: 'Marqué pour remboursement manuel via PayDunya'
+          status: 'REFUND_PENDING',
+          note: 'REMBOURSEMENT MANUEL REQUIS - Transaction PSP: ' + contrib.psp_tx_id,
+          amount: contrib.amount
         });
-
-        console.log(`[process-cagnotte-refunds] Marked contribution ${contrib.id} as REFUNDED`);
       } catch (err: any) {
         console.error(`[process-cagnotte-refunds] Error processing contribution ${contrib.id}:`, err);
         results.push({ id: contrib.id, status: 'ERROR', error: err.message });
       }
     }
 
-    // Vérifier si toutes les contributions d'une cagnotte sont remboursées
-    for (const contrib of contributions || []) {
-      const { data: allContribs } = await supabase
-        .from('cagnotte_contribution')
-        .select('status')
-        .eq('cagnotte_id', contrib.cagnotte_id)
-        .neq('status', 'FAILED');
-
-      const allRefunded = allContribs?.every(c => c.status === 'REFUNDED');
-
-      if (allRefunded) {
-        await supabase
-          .from('cagnotte')
-          .update({ status: 'REFUNDED', updated_at: new Date().toISOString() })
-          .eq('id', contrib.cagnotte_id);
-
-        console.log(`[process-cagnotte-refunds] Cagnotte ${contrib.cagnotte_id} fully refunded`);
-      }
-    }
+    // Note: On ne passe JAMAIS automatiquement en REFUNDED
+    // car PayDunya n'a pas encore d'API de remboursement automatique
+    // Les cagnottes restent en REFUNDING jusqu'au traitement manuel
 
     console.log('[process-cagnotte-refunds] Refund processing complete');
 

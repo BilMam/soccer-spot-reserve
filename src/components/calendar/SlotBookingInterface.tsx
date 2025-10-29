@@ -228,12 +228,14 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                       p_field_id: fieldId,
                       p_slot_date: format(selectedDate, 'yyyy-MM-dd'),
                       p_slot_start_time: selectedStartTime,
-                      p_slot_end_time: selectedEndTime
+                      p_slot_end_time: selectedEndTime,
+                      p_total_amount: finalTotal  // Utiliser le prix déjà calculé dans l'UI
                     }) as { data: any; error: any };
 
                     if (error) throw error;
 
-                    toast.success('Cagnotte créée !', {
+                    toast({
+                      title: 'Cagnotte créée !',
                       description: 'Partagez le lien avec votre équipe'
                     });
 
@@ -244,8 +246,10 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                     // Rediriger
                     navigate(`/cagnotte/${data.cagnotte_id}`);
                   } catch (error: any) {
-                    toast.error('Erreur', {
-                      description: error.message
+                    toast({
+                      title: 'Erreur',
+                      description: error.message,
+                      variant: 'destructive'
                     });
                   } finally {
                     setIsCreatingCagnotte(false);

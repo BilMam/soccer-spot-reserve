@@ -109,7 +109,86 @@ serve(async (req) => {
       return new Response("OK", { status: 200, headers: corsHeaders });
     }
 
-    // Determine booking status
+    // Extraire custom_data pour détecter les contributions cagnotte
+    let customData: any = null;
+    if (payload['data[custom_data][cagnotte_id]']) {
+      customData = {
+        cagnotte_id: payload['data[custom_data][cagnotte_id]'],
+        contribution_amount: payload['data[custom_data][contribution_amount]'],
+        team: payload['data[custom_data][team]'],
+        invoice_token: payload['data[custom_data][invoice_token]']
+      };
+    } else if (payload.data?.custom_data) {
+      customData = payload.data.custom_data;
+    } else if (payload.custom_data) {
+      customData = payload.custom_data;
+    }
+
+    // Vérifier si c'est une contribution cagnotte
+    const isCagnotteContribution = customData?.cagnotte_id;
+
+    if (isCagnotteContribution) {
+      console.log('[paydunya-ipn] 💰 Contribution cagnotte détectée:', {
+        cagnotte_id: customData.cagnotte_id,
+        contribution_amount: customData.contribution_amount,
+        team: customData.team
+      });
+
+      // Vérifier que le paiement est réussi
+      if (status !== 'completed' && status !== 'success') {
+        console.log('[paydunya-ipn] Paiement cagnotte non réussi, status:', status);
+        return new Response('OK', { headers: corsHeaders });
+      }
+
+      // Appeler contribute_to_cagnotte
+      const { data: contributeResult, error: contributeError } = await supabaseClient.rpc(
+        'contribute_to_cagnotte',
+        {
+          p_cagnotte_id: customData.cagnotte_id,
+          p_amount: parseFloat(customData.contribution_amount),
+          p_team: customData.team || null,
+          p_method: 'PAYDUNYA',
+          p_psp_tx_id: invoice_token
+        }
+      );
+
+      if (contributeError) {
+        console.error('[paydunya-ipn] ❌ Erreur contribute_to_cagnotte:', contributeError);
+        
+        await supabaseClient.from('payment_anomalies').insert({
+          payment_intent_id: invoice_token,
+          amount: parseInt(total_amount || '0'),
+          error_type: 'cagnotte_contribution_failed',
+          error_message: contributeError.message,
+          webhook_data: payload
+        });
+
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Erreur lors de la contribution' 
+          }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      console.log('[paydunya-ipn] ✅ Contribution enregistrée avec succès:', contributeResult);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          cagnotte_status: contributeResult.cagnotte_status,
+          collected_amount: contributeResult.collected_amount,
+          progress_pct: contributeResult.progress_pct
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Sinon, c'est une réservation classique
     let bookingStatus = 'cancelled';
     let paymentStatus = 'failed';
 
