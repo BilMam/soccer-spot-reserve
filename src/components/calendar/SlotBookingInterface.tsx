@@ -129,6 +129,11 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
 
   // Vérifier si aucun créneau n'a été créé pour ce jour
   const hasNoSlots = availableSlots.length === 0;
+  
+  // Récupérer la première heure disponible pour l'affichage
+  const firstAvailableTime = availableSlots.length > 0 
+    ? normalizeTime(availableSlots[0].start_time)
+    : null;
 
   return (
     <Card>
@@ -161,6 +166,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               occupiedSlots={bookedSlots} 
               unavailableSlots={unavailableSlots}
               hasSlots={availableSlots.length > 0}
+              firstAvailableTime={firstAvailableTime}
             />
             
             <TimeSlotSelector
