@@ -245,9 +245,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                     // Rediriger
                     navigate(`/cagnotte/${data.cagnotte_id}`);
                   } catch (error: any) {
-                    toast.error('Erreur', {
-                      description: error.message
-                    });
+                    toast.error('Erreur : ' + error.message);
                   } finally {
                     setIsCreatingCagnotte(false);
                   }
