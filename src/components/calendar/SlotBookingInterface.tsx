@@ -160,6 +160,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
             <OccupiedSlotsDisplay 
               occupiedSlots={bookedSlots} 
               unavailableSlots={unavailableSlots}
+              hasSlots={availableSlots.length > 0}
             />
             
             <TimeSlotSelector
