@@ -11,7 +11,7 @@ export const useAvailableTimesForDate = (fieldId: string, selectedDate: string |
 
       const { data, error } = await supabase
         .from('field_availability')
-        .select('start_time, end_time, is_available')
+        .select('start_time, end_time, is_available, on_hold_until')
         .eq('field_id', fieldId)
         .eq('date', normalizedDate)
         .eq('is_available', true)
@@ -23,20 +23,32 @@ export const useAvailableTimesForDate = (fieldId: string, selectedDate: string |
       }
 
       const rows = data || [];
+      
+      // Filtrer les slots en HOLD actif (masquer pour les autres utilisateurs)
+      const now = new Date();
+      const availableRows = rows.filter(slot => {
+        if (slot.on_hold_until) {
+          const holdUntil = new Date(slot.on_hold_until);
+          if (holdUntil > now) {
+            return false; // Slot en HOLD, on ne l'affiche pas
+          }
+        }
+        return true;
+      });
 
       // Extraire les heures de début uniques et normalisées
       const uniqueStartTimes = Array.from(
-        new Set(rows.map(slot => normalizeTime(slot.start_time)))
+        new Set(availableRows.map(slot => normalizeTime(slot.start_time)))
       ).sort();
 
       // Récupérer la première heure disponible
-      const firstAvailableTime = rows.length > 0 ? normalizeTime(rows[0].start_time) : null;
+      const firstAvailableTime = availableRows.length > 0 ? normalizeTime(availableRows[0].start_time) : null;
 
       console.log('🕒 Créneaux disponibles pour', normalizedDate, ':', uniqueStartTimes);
       console.log('🕒 Première heure disponible:', firstAvailableTime);
 
       return {
-        slots: rows,
+        slots: availableRows,
         availableStartTimes: uniqueStartTimes,
         firstAvailableTime
       };

@@ -240,6 +240,148 @@ export type Database = {
           },
         ]
       }
+      cagnotte: {
+        Row: {
+          collect_window_sec: number
+          collected_amount: number
+          created_at: string
+          created_by_user_id: string
+          expires_at: string
+          field_id: string
+          hold_duration_sec: number
+          hold_expires_at: string | null
+          hold_started_at: string | null
+          hold_threshold_pct: number
+          id: string
+          preset_mode: string
+          slot_date: string
+          slot_end_time: string
+          slot_start_time: string
+          split_pct_teama: number | null
+          split_pct_teamb: number | null
+          status: string
+          teama_target: number | null
+          teamb_target: number | null
+          total_amount: number
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          collect_window_sec: number
+          collected_amount?: number
+          created_at?: string
+          created_by_user_id: string
+          expires_at: string
+          field_id: string
+          hold_duration_sec: number
+          hold_expires_at?: string | null
+          hold_started_at?: string | null
+          hold_threshold_pct: number
+          id?: string
+          preset_mode?: string
+          slot_date: string
+          slot_end_time: string
+          slot_start_time: string
+          split_pct_teama?: number | null
+          split_pct_teamb?: number | null
+          status: string
+          teama_target?: number | null
+          teamb_target?: number | null
+          total_amount: number
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          collect_window_sec?: number
+          collected_amount?: number
+          created_at?: string
+          created_by_user_id?: string
+          expires_at?: string
+          field_id?: string
+          hold_duration_sec?: number
+          hold_expires_at?: string | null
+          hold_started_at?: string | null
+          hold_threshold_pct?: number
+          id?: string
+          preset_mode?: string
+          slot_date?: string
+          slot_end_time?: string
+          slot_start_time?: string
+          split_pct_teama?: number | null
+          split_pct_teamb?: number | null
+          status?: string
+          teama_target?: number | null
+          teamb_target?: number | null
+          total_amount?: number
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cagnotte_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cagnotte_contribution: {
+        Row: {
+          amount: number
+          cagnotte_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          method: string | null
+          paid_at: string | null
+          psp_tx_id: string | null
+          refund_initiated_at: string | null
+          refunded_at: string | null
+          status: string
+          team: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          cagnotte_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          method?: string | null
+          paid_at?: string | null
+          psp_tx_id?: string | null
+          refund_initiated_at?: string | null
+          refunded_at?: string | null
+          status: string
+          team?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          cagnotte_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          method?: string | null
+          paid_at?: string | null
+          psp_tx_id?: string | null
+          refund_initiated_at?: string | null
+          refunded_at?: string | null
+          status?: string
+          team?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cagnotte_contribution_cagnotte_id_fkey"
+            columns: ["cagnotte_id"]
+            isOneToOne: false
+            referencedRelation: "cagnotte"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       field_availability: {
         Row: {
           created_at: string | null
@@ -247,10 +389,12 @@ export type Database = {
           date: string
           end_time: string
           field_id: string
+          hold_cagnotte_id: string | null
           id: string
           is_available: boolean | null
           is_maintenance: boolean | null
           notes: string | null
+          on_hold_until: string | null
           period_template_id: string | null
           price_override: number | null
           start_time: string
@@ -263,10 +407,12 @@ export type Database = {
           date: string
           end_time: string
           field_id: string
+          hold_cagnotte_id?: string | null
           id?: string
           is_available?: boolean | null
           is_maintenance?: boolean | null
           notes?: string | null
+          on_hold_until?: string | null
           period_template_id?: string | null
           price_override?: number | null
           start_time: string
@@ -279,10 +425,12 @@ export type Database = {
           date?: string
           end_time?: string
           field_id?: string
+          hold_cagnotte_id?: string | null
           id?: string
           is_available?: boolean | null
           is_maintenance?: boolean | null
           notes?: string | null
+          on_hold_until?: string | null
           period_template_id?: string | null
           price_override?: number | null
           start_time?: string
@@ -295,6 +443,13 @@ export type Database = {
             columns: ["field_id"]
             isOneToOne: false
             referencedRelation: "fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "field_availability_hold_cagnotte_id_fkey"
+            columns: ["hold_cagnotte_id"]
+            isOneToOne: false
+            referencedRelation: "cagnotte"
             referencedColumns: ["id"]
           },
         ]
@@ -312,6 +467,7 @@ export type Database = {
           currency: string | null
           description: string | null
           field_type: string
+          hold_preset_mode: string
           id: string
           images: string[] | null
           is_active: boolean | null
@@ -324,6 +480,7 @@ export type Database = {
           net_price_2h: number | null
           owner_id: string
           payout_account_id: string | null
+          preset_last_changed_at: string | null
           price_1h30: number | null
           price_2h: number | null
           price_per_hour: number
@@ -347,6 +504,7 @@ export type Database = {
           currency?: string | null
           description?: string | null
           field_type: string
+          hold_preset_mode?: string
           id?: string
           images?: string[] | null
           is_active?: boolean | null
@@ -359,6 +517,7 @@ export type Database = {
           net_price_2h?: number | null
           owner_id: string
           payout_account_id?: string | null
+          preset_last_changed_at?: string | null
           price_1h30?: number | null
           price_2h?: number | null
           price_per_hour: number
@@ -382,6 +541,7 @@ export type Database = {
           currency?: string | null
           description?: string | null
           field_type?: string
+          hold_preset_mode?: string
           id?: string
           images?: string[] | null
           is_active?: boolean | null
@@ -394,6 +554,7 @@ export type Database = {
           net_price_2h?: number | null
           owner_id?: string
           payout_account_id?: string | null
+          preset_last_changed_at?: string | null
           price_1h30?: number | null
           price_2h?: number | null
           price_per_hour?: number
@@ -1241,6 +1402,10 @@ export type Database = {
         Returns: undefined
       }
       award_reviewer_badge: { Args: { p_user_id: string }; Returns: undefined }
+      calculate_cagnotte_timers: {
+        Args: { slot_datetime: string }
+        Returns: Json
+      }
       calculate_search_similarity: {
         Args: { field_text: string; search_term: string }
         Returns: number
@@ -1281,6 +1446,21 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_bookings: { Args: never; Returns: undefined }
+      cleanup_expired_cagnottes: { Args: never; Returns: Json }
+      confirm_cagnotte_and_lock_slot: {
+        Args: { p_cagnotte_id: string }
+        Returns: Json
+      }
+      contribute_to_cagnotte: {
+        Args: {
+          p_amount: number
+          p_cagnotte_id: string
+          p_method?: string
+          p_psp_tx_id?: string
+          p_team?: string
+        }
+        Returns: Json
+      }
       create_availability_for_period: {
         Args: {
           p_end_date: string
@@ -1303,6 +1483,17 @@ export type Database = {
           p_start_date: string
         }
         Returns: number
+      }
+      create_cagnotte: {
+        Args: {
+          p_field_id: string
+          p_slot_date: string
+          p_slot_end_time: string
+          p_slot_start_time: string
+          p_split_teama?: number
+          p_split_teamb?: number
+        }
+        Returns: Json
       }
       generate_unique_confirmation_code: { Args: never; Returns: string }
       get_all_owner_applications: {

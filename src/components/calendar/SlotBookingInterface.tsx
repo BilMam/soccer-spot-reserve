@@ -13,6 +13,11 @@ import SlotBookingActions from './SlotBookingActions';
 import { useBookingData } from '@/hooks/useBookingData';
 import { useRecurringSlots } from '@/hooks/useRecurringSlots';
 import { useAvailableTimesForDate } from '@/hooks/useAvailableTimesForDate';
+import { Button } from '@/components/ui/button';
+import { Users } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 interface AvailabilitySlot {
   id: string;
@@ -50,6 +55,8 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
   const [selectedEndTime, setSelectedEndTime] = useState<string>('');
   const [unavailableSlots, setUnavailableSlots] = useState<string[]>([]);
+  const [isCreatingCagnotte, setIsCreatingCagnotte] = useState(false);
+  const navigate = useNavigate();
 
   // Utiliser le hook temps réel pour les réservations
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -210,6 +217,49 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               price2h={price2h}
               onTimeSlotSelect={onTimeSlotSelect}
             />
+
+            {/* Bouton Créer une cagnotte */}
+            {selectedStartTime && selectedEndTime && rangeIsAvailable && (
+              <Button
+                onClick={async () => {
+                  setIsCreatingCagnotte(true);
+                  try {
+                    const { data, error } = await supabase.rpc('create_cagnotte', {
+                      p_field_id: fieldId,
+                      p_slot_date: format(selectedDate, 'yyyy-MM-dd'),
+                      p_slot_start_time: selectedStartTime,
+                      p_slot_end_time: selectedEndTime
+                    }) as { data: any; error: any };
+
+                    if (error) throw error;
+
+                    toast.success('Cagnotte créée !', {
+                      description: 'Partagez le lien avec votre équipe'
+                    });
+
+                    // Copier le lien
+                    const url = `${window.location.origin}/cagnotte/${data.cagnotte_id}`;
+                    await navigator.clipboard.writeText(url);
+
+                    // Rediriger
+                    navigate(`/cagnotte/${data.cagnotte_id}`);
+                  } catch (error: any) {
+                    toast.error('Erreur', {
+                      description: error.message
+                    });
+                  } finally {
+                    setIsCreatingCagnotte(false);
+                  }
+                }}
+                variant="outline"
+                className="w-full border-primary/50 text-primary hover:bg-primary/5"
+                size="lg"
+                disabled={isCreatingCagnotte}
+              >
+                <Users className="mr-2 h-5 w-5" />
+                {isCreatingCagnotte ? 'Création...' : '💰 Créer une cagnotte équipe'}
+              </Button>
+            )}
           </>
         )}
       </CardContent>

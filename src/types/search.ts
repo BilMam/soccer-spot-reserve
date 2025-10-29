@@ -42,6 +42,8 @@ export interface Field {
   updated_at: string | null;
   currency: string;
   payout_account_id: string | null;
+  hold_preset_mode: string;
+  preset_last_changed_at: string | null;
 }
 
 export interface SearchFilters {

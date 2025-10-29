@@ -19,6 +19,7 @@ import GeocodingAdmin from '@/pages/GeocodingAdmin';
 import BookingSuccess from '@/pages/BookingSuccess';
 import PaymentPage from '@/pages/PaymentPage';
 import MesReservations from '@/pages/MesReservations';
+import Cagnotte from '@/pages/Cagnotte';
 import NotFound from '@/pages/NotFound';
 import { AuthProvider } from '@/hooks/useAuth';
 
@@ -49,6 +50,7 @@ function App() {
               <Route path="/booking-success" element={<BookingSuccess />} />
               <Route path="/payment/:token" element={<PaymentPage />} />
               <Route path="/mes-reservations" element={<MesReservations />} />
+              <Route path="/cagnotte/:id" element={<Cagnotte />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
