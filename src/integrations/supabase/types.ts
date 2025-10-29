@@ -1492,6 +1492,7 @@ export type Database = {
           p_slot_start_time: string
           p_split_teama?: number
           p_split_teamb?: number
+          p_total_amount: number
         }
         Returns: Json
       }
