@@ -1447,6 +1447,15 @@ export type Database = {
         Args: { field_uuid: string }
         Returns: undefined
       }
+      validate_booking_slot_exists: {
+        Args: {
+          p_date: string
+          p_end_time: string
+          p_field_id: string
+          p_start_time: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       user_role_type:

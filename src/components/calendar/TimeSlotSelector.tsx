@@ -45,10 +45,15 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
   selectedDate,
   recurringSlots
 }) => {
-  const timeOptions = generateTimeOptions();
+  const dateStr = format(selectedDate, 'yyyy-MM-dd');
+  
+  // Charger les créneaux réellement disponibles depuis field_availability
+  const { data: availableTimesData, isLoading } = useAvailableTimesForDate(fieldId, dateStr);
+  const availableStartTimes = availableTimesData?.availableStartTimes || [];
 
   console.log('🔍 TimeSlotSelector - Field ID reçu:', fieldId);
-  console.log('🔍 TimeSlotSelector - Créneaux disponibles:', availableSlots.length);
+  console.log('🔍 TimeSlotSelector - Date:', dateStr);
+  console.log('🔍 TimeSlotSelector - Heures disponibles chargées:', availableStartTimes);
   console.log('🔍 TimeSlotSelector - Créneaux réservés reçus:', bookedSlots);
   console.log('🔍 TimeSlotSelector - Réservations reçues:', bookings);
 
@@ -77,7 +82,9 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
             <SelectValue placeholder={isLoading ? "Chargement..." : "Choisir l'heure"} />
           </SelectTrigger>
           <SelectContent>
-            {availableStartTimes.length === 0 ? (
+            {isLoading ? (
+              <SelectItem disabled value="loading">Chargement...</SelectItem>
+            ) : availableStartTimes.length === 0 ? (
               <SelectItem disabled value="no-slots">
                 Aucun créneau disponible
               </SelectItem>
