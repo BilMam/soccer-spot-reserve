@@ -1,10 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { generateTimeOptions, timeToMinutes, minutesToTime } from '@/utils/timeUtils';
+import { timeToMinutes, minutesToTime, normalizeTime } from '@/utils/timeUtils';
 import { SlotStatusUtils } from './SlotStatusUtils';
 import { AvailableEndTimesCalculator } from './AvailableEndTimesCalculator';
 import SlotStatusBadge from './SlotStatusBadge';
+import { useAvailableTimesForDate } from '@/hooks/useAvailableTimesForDate';
+import { format } from 'date-fns';
 
 interface AvailabilitySlot {
   id: string;
@@ -70,24 +72,30 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Heure de début
         </label>
-        <Select value={selectedStartTime} onValueChange={onStartTimeChange}>
+        <Select value={selectedStartTime} onValueChange={onStartTimeChange} disabled={isLoading}>
           <SelectTrigger>
-            <SelectValue placeholder="Choisir l'heure" />
+            <SelectValue placeholder={isLoading ? "Chargement..." : "Choisir l'heure"} />
           </SelectTrigger>
           <SelectContent>
-            {timeOptions.slice(0, -1).map(time => {
-              // NOUVELLE LOGIQUE: Utiliser getStartTimeStatus pour détecter les chevauchements
-              const status = slotStatusUtils.getStartTimeStatus(time);
-              const isDisabled = status !== 'available';
-              
-              console.log('🔍 Heure de début:', time, 'status:', status, 'disabled:', isDisabled);
-              
-               return (
-                 <SelectItem key={time} value={time} disabled={isDisabled}>
-                   <span className={isDisabled ? 'text-gray-400' : ''}>{time}</span>
-                 </SelectItem>
-               );
-            })}
+            {availableStartTimes.length === 0 ? (
+              <SelectItem disabled value="no-slots">
+                Aucun créneau disponible
+              </SelectItem>
+            ) : (
+              availableStartTimes.map(time => {
+                // Vérifier si cette heure est réservée ou chevauchée
+                const status = slotStatusUtils.getStartTimeStatus(time);
+                const isDisabled = status !== 'available';
+                
+                console.log('🔍 Heure de début:', time, 'status:', status, 'disabled:', isDisabled);
+                
+                return (
+                  <SelectItem key={time} value={time} disabled={isDisabled}>
+                    <span className={isDisabled ? 'text-gray-400' : ''}>{time}</span>
+                  </SelectItem>
+                );
+              })
+            )}
           </SelectContent>
         </Select>
       </div>
