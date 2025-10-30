@@ -51,6 +51,8 @@ function App() {
               <Route path="/payment/:token" element={<PaymentPage />} />
               <Route path="/mes-reservations" element={<MesReservations />} />
               <Route path="/cagnotte/:id" element={<Cagnotte />} />
+              <Route path="/p/:code" element={<ContributionProof />} />
+              <Route path="/receipt/:token" element={<ContributionReceipt />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

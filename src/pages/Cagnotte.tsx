@@ -102,7 +102,7 @@ export default function Cagnotte() {
     queryFn: async () => {
       const query = supabase
         .from('cagnotte_contribution')
-        .select('*')
+        .select('id, amount, team, status, created_at, handle_snapshot, identity_badge, payer_phone_masked, proof_code')
         .eq('cagnotte_id', id)
         .eq('status', 'SUCCEEDED')
         .order('created_at', { ascending: false });
@@ -210,13 +210,29 @@ export default function Cagnotte() {
         try {
           const { data, error } = await supabase
             .from('cagnotte_contribution')
-            .select('status')
+            .select('status, proof_code')
             .eq('psp_tx_id', txParam)
             .eq('status', 'SUCCEEDED')
             .maybeSingle();
           
           if (data) {
             setContributionConfirmed(true);
+            
+            // Afficher le toast de succès avec le lien de preuve
+            if (data.proof_code) {
+              const proofUrl = `${window.location.origin}/p/${data.proof_code}`;
+              toast.success('Contribution enregistrée ! 🎉', {
+                description: 'Partage ta preuve de paiement avec ton équipe',
+                action: {
+                  label: 'Copier le lien',
+                  onClick: () => {
+                    navigator.clipboard.writeText(proofUrl);
+                    toast.success('Lien de preuve copié !');
+                  }
+                }
+              });
+            }
+            
             queryClient.invalidateQueries({ queryKey: ['cagnotte', id] });
             queryClient.invalidateQueries({ queryKey: ['team-info', id, team] });
             queryClient.invalidateQueries({ queryKey: ['contributions', id, team] });
@@ -227,7 +243,20 @@ export default function Cagnotte() {
         }
       }, 2000);
 
-      return () => clearInterval(pollInterval);
+      // Timeout après 30 secondes - fallback pour appeler le PSP
+      const timeout = setTimeout(() => {
+        if (!contributionConfirmed) {
+          clearInterval(pollInterval);
+          toast.error('Vérification du paiement en cours...', {
+            description: 'Cela peut prendre quelques instants.'
+          });
+        }
+      }, 30000);
+
+      return () => {
+        clearInterval(pollInterval);
+        clearTimeout(timeout);
+      };
     }
   }, [thanksParam, txParam, contributionConfirmed, id, team, queryClient]);
 
@@ -592,29 +621,81 @@ export default function Cagnotte() {
                 </div>
               )}
 
-              {/* Liste des contributions */}
+              {/* Liste des contributions avec badges */}
               {contributions && contributions.length > 0 && (
                 <div>
-                  <h4 className="font-semibold mb-2">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
                     Contributions ({contributions.length})
                   </h4>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {contributions.map(contrib => (
-                      <div
-                        key={contrib.id}
-                        className="flex justify-between items-center bg-card border rounded p-3"
-                      >
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(contrib.created_at).toLocaleTimeString('fr-FR', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                        <span className="font-semibold text-primary">
-                          +{contrib.amount.toLocaleString()} XOF
-                        </span>
-                      </div>
-                    ))}
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {contributions.map(contrib => {
+                      const displayName = contrib.handle_snapshot 
+                        ? `@${contrib.handle_snapshot}`
+                        : contrib.payer_phone_masked 
+                          ? `Joueur ${contrib.payer_phone_masked}`
+                          : 'Joueur anonyme';
+                      
+                      const badgeEmoji = contrib.identity_badge === 'VERIFIED' 
+                        ? '✅' 
+                        : contrib.identity_badge === 'LINKED' 
+                          ? '🔗' 
+                          : '';
+                      
+                      const badgeTooltip = contrib.identity_badge === 'VERIFIED'
+                        ? 'Numéro du compte = numéro de paiement'
+                        : contrib.identity_badge === 'LINKED'
+                          ? 'Contribution réclamée (numéro différent)'
+                          : '';
+
+                      return (
+                        <div
+                          key={contrib.id}
+                          className="flex justify-between items-center bg-card border rounded-lg p-3 hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">
+                                {displayName}
+                              </span>
+                              {badgeEmoji && (
+                                <span title={badgeTooltip} className="cursor-help">
+                                  {badgeEmoji}
+                                </span>
+                              )}
+                              {contrib.team && (
+                                <Badge variant="outline" className="text-xs">
+                                  Équipe {contrib.team}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span>
+                                {new Date(contrib.created_at).toLocaleTimeString('fr-FR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                              {contrib.proof_code && (
+                                <button
+                                  onClick={() => {
+                                    const proofUrl = `${window.location.origin}/p/${contrib.proof_code}`;
+                                    navigator.clipboard.writeText(proofUrl);
+                                    toast.success('Lien de preuve copié !');
+                                  }}
+                                  className="text-primary hover:underline flex items-center gap-1"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                  Partager preuve
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <span className="font-bold text-primary text-lg">
+                            +{contrib.amount.toLocaleString()} XOF
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

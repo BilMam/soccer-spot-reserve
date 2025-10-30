@@ -337,10 +337,17 @@ export type Database = {
           amount: number
           cagnotte_id: string
           created_at: string
+          handle_snapshot: string | null
           id: string
+          identity_badge: string | null
+          instrument_type: string | null
           metadata: Json | null
           method: string | null
           paid_at: string | null
+          payer_phone_hash: string | null
+          payer_phone_masked: string | null
+          proof_code: string | null
+          proof_token: string | null
           psp_tx_id: string | null
           refund_initiated_at: string | null
           refunded_at: string | null
@@ -352,10 +359,17 @@ export type Database = {
           amount: number
           cagnotte_id: string
           created_at?: string
+          handle_snapshot?: string | null
           id?: string
+          identity_badge?: string | null
+          instrument_type?: string | null
           metadata?: Json | null
           method?: string | null
           paid_at?: string | null
+          payer_phone_hash?: string | null
+          payer_phone_masked?: string | null
+          proof_code?: string | null
+          proof_token?: string | null
           psp_tx_id?: string | null
           refund_initiated_at?: string | null
           refunded_at?: string | null
@@ -367,10 +381,17 @@ export type Database = {
           amount?: number
           cagnotte_id?: string
           created_at?: string
+          handle_snapshot?: string | null
           id?: string
+          identity_badge?: string | null
+          instrument_type?: string | null
           metadata?: Json | null
           method?: string | null
           paid_at?: string | null
+          payer_phone_hash?: string | null
+          payer_phone_masked?: string | null
+          proof_code?: string | null
+          proof_token?: string | null
           psp_tx_id?: string | null
           refund_initiated_at?: string | null
           refunded_at?: string | null
@@ -957,8 +978,11 @@ export type Database = {
           created_at: string | null
           email: string | null
           full_name: string | null
+          handle: string | null
           id: string
           phone: string | null
+          phone_hash: string | null
+          phone_verified: boolean | null
           updated_at: string | null
         }
         Insert: {
@@ -966,8 +990,11 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           full_name?: string | null
+          handle?: string | null
           id: string
           phone?: string | null
+          phone_hash?: string | null
+          phone_verified?: boolean | null
           updated_at?: string | null
         }
         Update: {
@@ -975,8 +1002,11 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           full_name?: string | null
+          handle?: string | null
           id?: string
           phone?: string | null
+          phone_hash?: string | null
+          phone_verified?: boolean | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1457,16 +1487,28 @@ export type Database = {
         Args: { p_cagnotte_id: string }
         Returns: Json
       }
-      contribute_to_cagnotte: {
-        Args: {
-          p_amount: number
-          p_cagnotte_id: string
-          p_method?: string
-          p_psp_tx_id?: string
-          p_team?: string
-        }
-        Returns: Json
-      }
+      contribute_to_cagnotte:
+        | {
+            Args: {
+              p_amount: number
+              p_cagnotte_id: string
+              p_metadata?: Json
+              p_method?: string
+              p_psp_tx_id?: string
+              p_team?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_amount: number
+              p_cagnotte_id: string
+              p_method?: string
+              p_psp_tx_id?: string
+              p_team?: string
+            }
+            Returns: Json
+          }
       create_availability_for_period: {
         Args: {
           p_end_date: string
@@ -1502,6 +1544,8 @@ export type Database = {
         }
         Returns: Json
       }
+      generate_proof_code: { Args: never; Returns: string }
+      generate_proof_token: { Args: never; Returns: string }
       generate_unique_confirmation_code: { Args: never; Returns: string }
       get_all_owner_applications: {
         Args: never

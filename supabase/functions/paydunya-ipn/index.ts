@@ -67,28 +67,62 @@ serve(async (req) => {
       payload: payload
     });
 
+    // Fonction pour normaliser et hasher le numéro de téléphone
+    function normalizePhone(msisdn: string): { e164: string; hash: string; masked: string } | null {
+      if (!msisdn) return null;
+      
+      // Nettoyer le numéro
+      let clean = msisdn.replace(/[\s\-\(\)]/g, '');
+      
+      // Normaliser en E.164 (+225...)
+      if (clean.startsWith('00225')) clean = '+' + clean.substring(2);
+      else if (clean.startsWith('225')) clean = '+' + clean;
+      else if (clean.startsWith('0')) clean = '+225' + clean.substring(1);
+      else if (!clean.startsWith('+')) clean = '+225' + clean;
+      
+      // Valider format
+      if (!/^\+225[0-9]{8,10}$/.test(clean)) return null;
+      
+      const e164 = clean;
+      
+      // Créer le hash SHA256
+      const encoder = new TextEncoder();
+      const data = encoder.encode(e164);
+      
+      return crypto.subtle.digest('SHA-256', data).then(hashBuffer => {
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        // Masquer le numéro (garder les 2 derniers chiffres)
+        const digits = e164.replace(/\D/g, '');
+        const masked = '****' + digits.slice(-2);
+        
+        return { e164, hash: hashHex, masked };
+      });
+    }
+
     // PayDunya envoie les données sous forme data[...] dans form-urlencoded
     // Il faut extraire les valeurs correctement
-    let status, invoice_token, total_amount;
+    let status, invoice_token, total_amount, msisdn;
     
     if (payload['data[status]']) {
       // Format form-urlencoded avec clés data[...]
       status = payload['data[status]'];
-      // CORRECTION CRITIQUE: Utiliser le custom_data[invoice_token] qui correspond à ce qu'on sauvegarde
       invoice_token = payload['data[custom_data][invoice_token]'] || payload['data[invoice][token]'];
       total_amount = payload['data[invoice][total_amount]'];
+      msisdn = payload['data[customer][phone]'] || payload['data[customer][msisdn]'];
     } else if (payload.data) {
       // Format JSON avec objet data
       status = payload.data.status;
-      // CORRECTION CRITIQUE: Utiliser le custom_data[invoice_token] qui correspond à ce qu'on sauvegarde
       invoice_token = payload.data.custom_data?.invoice_token || payload.data.invoice?.token;
       total_amount = payload.data.invoice?.total_amount;
+      msisdn = payload.data.customer?.phone || payload.data.customer?.msisdn;
     } else {
       // Format direct
       status = payload.status;
-      // CORRECTION CRITIQUE: Prioriser invoice_token (notre format) avant token (PayDunya format)
       invoice_token = payload.invoice_token || payload.token;
       total_amount = payload.total_amount;
+      msisdn = payload.customer_phone || payload.msisdn;
     }
 
     const master = Deno.env.get("PAYDUNYA_MASTER_KEY") ?? "";
@@ -140,7 +174,28 @@ serve(async (req) => {
         return new Response('OK', { headers: corsHeaders });
       }
 
-      // Appeler contribute_to_cagnotte
+      // Extraire et normaliser le numéro du payeur
+      let phoneData = null;
+      if (msisdn) {
+        try {
+          phoneData = await normalizePhone(msisdn);
+          console.log('[paydunya-ipn] Numéro normalisé:', phoneData ? phoneData.masked : 'invalid');
+        } catch (err) {
+          console.warn('[paydunya-ipn] Erreur normalisation numéro:', err);
+        }
+      }
+
+      // Préparer les métadonnées
+      const metadata: any = {
+        instrument_type: 'mobile_money'
+      };
+      
+      if (phoneData) {
+        metadata.payer_phone_hash = phoneData.hash;
+        metadata.payer_phone_masked = phoneData.masked;
+      }
+
+      // Appeler contribute_to_cagnotte avec métadonnées
       const { data: contributeResult, error: contributeError } = await supabaseClient.rpc(
         'contribute_to_cagnotte',
         {
@@ -148,7 +203,8 @@ serve(async (req) => {
           p_amount: parseFloat(customData.contribution_amount),
           p_team: customData.team || null,
           p_method: 'PAYDUNYA',
-          p_psp_tx_id: invoice_token
+          p_psp_tx_id: invoice_token,
+          p_metadata: metadata
         }
       );
 
