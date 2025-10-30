@@ -7,12 +7,11 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { ArrowLeft, Clock, Users, MapPin, Copy, Check, CheckCircle2, XCircle, Loader2, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Clock, Users, MapPin, Copy, Check, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 interface TeamInfo {
   team: 'A' | 'B';
@@ -261,36 +260,21 @@ export default function Cagnotte() {
 
   const progress = (cagnotte.collected_amount / cagnotte.total_amount) * 100;
   
-  // Team-specific calculations avec breakdown des frais opérateur
-  const MIN_CONTRIBUTION = 3000;
+  // Team-specific calculations - exact amounts, capped to team remaining
   let suggestedPart = 0;
   let teamRemaining = 0;
-  let chosenAmount = 0;
-  let operatorTopUp = 0;
-  let totalToPay = MIN_CONTRIBUTION;
-  let isLastPayment = false;
+  let payAmount = 0;
   
   if (team && teamInfo) {
     suggestedPart = teamInfo.suggested_part || 0;
     teamRemaining = teamInfo.team_remaining || 0;
     
     const inputAmount = parseInt(customAmount) || suggestedPart;
-    isLastPayment = teamRemaining <= MIN_CONTRIBUTION;
-    
-    if (isLastPayment) {
-      chosenAmount = teamRemaining;
-      operatorTopUp = 0;
-      totalToPay = teamRemaining;
-    } else {
-      chosenAmount = Math.min(Math.max(suggestedPart, inputAmount), teamRemaining);
-      operatorTopUp = Math.max(0, MIN_CONTRIBUTION - chosenAmount);
-      totalToPay = chosenAmount + operatorTopUp;
-    }
+    // Cap automatically to team remaining
+    payAmount = Math.min(Math.max(0, inputAmount), teamRemaining);
   }
   
-  const payButtonLabel = isLastPayment 
-    ? `Payer le reste (${totalToPay.toLocaleString()} XOF)`
-    : `Payer ${totalToPay.toLocaleString()} XOF`;
+  const payButtonLabel = `Payer ${payAmount.toLocaleString()} XOF`;
   
   const progressA = teamInfo ? (teamInfo.teama_collected / teamInfo.teama_target * 100) : 0;
   const progressB = teamInfo ? (teamInfo.teamb_collected / teamInfo.teamb_target * 100) : 0;
@@ -493,7 +477,7 @@ export default function Cagnotte() {
                     </div>
                   </div>
 
-                  <div>
+                   <div>
                     <label className="text-sm font-medium mb-2 block">
                       Montant de contribution (XOF)
                     </label>
@@ -501,33 +485,32 @@ export default function Cagnotte() {
                       type="number"
                       value={customAmount}
                       onChange={(e) => setCustomAmount(e.target.value)}
-                      min={isLastPayment ? teamRemaining : MIN_CONTRIBUTION}
+                      min={1}
                       max={teamRemaining}
                       placeholder={String(suggestedPart)}
                       className="text-lg"
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Votre part inclut déjà les frais opérateur.
+                    </p>
                   </div>
 
                   <div className="flex gap-2 flex-wrap">
-                    {!isLastPayment && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCustomAmount(String(suggestedPart))}
-                        >
-                          1 part
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCustomAmount(String(suggestedPart * 2))}
-                          disabled={suggestedPart * 2 > teamRemaining}
-                        >
-                          +2 parts
-                        </Button>
-                      </>
-                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCustomAmount(String(suggestedPart))}
+                    >
+                      1 part
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCustomAmount(String(suggestedPart * 2))}
+                      disabled={suggestedPart * 2 > teamRemaining}
+                    >
+                      +2 parts
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -537,40 +520,17 @@ export default function Cagnotte() {
                     </Button>
                   </div>
 
-                  {/* Breakdown des frais */}
-                  <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Votre part :</span>
-                      <span className="font-medium">{chosenAmount.toLocaleString()} XOF</span>
-                    </div>
+                  {/* Affichage du montant */}
+                  <div className="bg-muted/50 rounded-lg p-4">
                     <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        Ajustement opérateur :
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <HelpCircle className="h-3 w-3 cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <p className="text-xs">
-                                Le prestataire de paiement impose 3 000 XOF minimum par transaction. 
-                                Seul le dernier paiement (pour boucler la cagnotte) peut être inférieur.
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </span>
-                      <span className="font-medium">{operatorTopUp.toLocaleString()} XOF</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-border">
                       <span className="font-semibold">Total débité :</span>
-                      <span className="font-bold text-lg">{totalToPay.toLocaleString()} XOF</span>
+                      <span className="font-bold text-lg text-primary">{payAmount.toLocaleString()} XOF</span>
                     </div>
                   </div>
 
                   <Button
-                    onClick={() => contributeMutation.mutate({ amount: totalToPay, team })}
-                    disabled={contributeMutation.isPending || teamRemaining <= 0}
+                    onClick={() => contributeMutation.mutate({ amount: payAmount, team })}
+                    disabled={contributeMutation.isPending || teamRemaining <= 0 || payAmount <= 0}
                     className="w-full text-lg py-6"
                     size="lg"
                   >
@@ -578,11 +538,6 @@ export default function Cagnotte() {
                       ? 'Redirection...' 
                       : payButtonLabel}
                   </Button>
-                  {operatorTopUp > 0 && (
-                    <p className="text-xs text-center text-muted-foreground">
-                      dont ajustement opérateur {operatorTopUp.toLocaleString()} XOF
-                    </p>
-                  )}
                 </div>
               ) : !team && (
                 <div className="text-center p-6 bg-muted rounded-lg">
