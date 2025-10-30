@@ -156,6 +156,16 @@ export default function Cagnotte() {
 
   const progress = (cagnotte.collected_amount / cagnotte.total_amount) * 100;
   const remainingAmount = cagnotte.total_amount - cagnotte.collected_amount;
+  
+  // Calcul du montant de contribution suggéré
+  const MIN_CONTRIBUTION = 3000;
+  const isLastPayment = remainingAmount < MIN_CONTRIBUTION;
+  const payAmount = isLastPayment 
+    ? remainingAmount 
+    : Math.min(Math.max(MIN_CONTRIBUTION, Math.ceil(remainingAmount / 2)), remainingAmount);
+  const payButtonLabel = isLastPayment 
+    ? `Payer le reste (${payAmount.toLocaleString()} XOF)`
+    : `Payer ma part (${payAmount.toLocaleString()} XOF)`;
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
@@ -288,14 +298,14 @@ export default function Cagnotte() {
 
               {/* CTA Payer */}
               <Button
-                onClick={() => contributeMutation.mutate(Math.min(remainingAmount, Math.ceil(remainingAmount / 2)))}
+                onClick={() => contributeMutation.mutate(payAmount)}
                 disabled={contributeMutation.isPending}
                 className="w-full text-lg py-6"
                 size="lg"
               >
                 {contributeMutation.isPending 
                   ? 'Redirection...' 
-                  : `Payer ma part (${Math.min(remainingAmount, Math.ceil(remainingAmount / 2)).toLocaleString()} XOF)`}
+                  : payButtonLabel}
               </Button>
 
               {/* Infos importantes */}
@@ -305,8 +315,8 @@ export default function Cagnotte() {
                   Avant, il reste public.
                 </p>
                 <p>
-                  💰 Si la cagnotte échoue, vous êtes automatiquement remboursé sur votre 
-                  moyen de paiement.
+                  💰 Si la cagnotte échoue, le remboursement est lancé automatiquement. 
+                  Délai 1–5 jours ouvrés selon l'opérateur.
                 </p>
               </div>
 
