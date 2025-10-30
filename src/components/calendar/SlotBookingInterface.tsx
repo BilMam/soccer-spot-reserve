@@ -221,31 +221,74 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
             {/* Bouton Créer une cagnotte */}
             {selectedStartTime && selectedEndTime && rangeIsAvailable && (
               <Button
+                type="button"
                 onClick={async () => {
+                  if (isCreatingCagnotte) return;
                   setIsCreatingCagnotte(true);
                   try {
-                    const { data, error } = await supabase.rpc('create_cagnotte', {
+                    // Vérifier que l'utilisateur est connecté
+                    const { data: userRes } = await supabase.auth.getUser();
+                    if (!userRes?.user) {
+                      toast.error("Connexion requise", { 
+                        description: "Veuillez vous connecter pour créer une cagnotte." 
+                      });
+                      return;
+                    }
+
+                    // Valider le montant total
+                    const total = Number(finalTotal);
+                    if (!Number.isFinite(total) || total <= 0) {
+                      throw new Error("Montant total invalide");
+                    }
+
+                    // Préparer le payload RPC
+                    const payload = {
                       p_field_id: fieldId,
                       p_slot_date: format(selectedDate, 'yyyy-MM-dd'),
                       p_slot_start_time: selectedStartTime,
                       p_slot_end_time: selectedEndTime,
-                      p_total_amount: finalTotal  // Utiliser le prix déjà calculé dans l'UI
-                    } as any) as { data: any; error: any };
+                      p_total_amount: total,
+                      // Optionnels: p_split_teama, p_split_teamb, p_teama_size, p_teamb_size
+                      // peuvent être ajoutés ici si présents dans l'UI
+                    };
 
-                    if (error) throw error;
+                    console.log('📝 Creating cagnotte with payload:', payload);
+                    
+                    const { data, error } = await supabase.rpc('create_cagnotte', payload as any) as { data: any; error: any };
 
-                    toast.success('Cagnotte créée !', {
-                      description: 'Partagez le lien avec votre équipe'
-                    });
+                    if (error) {
+                      console.error('❌ create_cagnotte error:', error);
+                      throw error;
+                    }
 
-                    // Copier le lien
-                    const url = `${window.location.origin}/cagnotte/${data.cagnotte_id}`;
-                    await navigator.clipboard.writeText(url);
+                    const cagnotteId = data?.cagnotte_id;
+                    if (!cagnotteId) {
+                      throw new Error("create_cagnotte n'a pas renvoyé d'identifiant.");
+                    }
 
-                    // Rediriger
-                    navigate(`/cagnotte/${data.cagnotte_id}`);
+                    console.log('✅ Cagnotte created:', cagnotteId);
+
+                    // 🔁 NAVIGUER D'ABORD pour ne pas être bloqué par le clipboard
+                    navigate(`/cagnotte/${cagnotteId}`);
+
+                    // Copier le lien SANS bloquer la redirection
+                    try {
+                      const url = `${window.location.origin}/cagnotte/${cagnotteId}`;
+                      await navigator.clipboard.writeText(url);
+                      toast.success("Cagnotte créée !", { 
+                        description: "Lien copié dans le presse-papier." 
+                      });
+                    } catch (clipboardError) {
+                      console.warn("Clipboard write failed:", clipboardError);
+                      toast.success("Cagnotte créée !", { 
+                        description: "Lien prêt sur la page suivante." 
+                      });
+                    }
                   } catch (error: any) {
-                    toast.error('Erreur : ' + error.message);
+                    console.error('❌ Cagnotte creation failed:', error);
+                    toast.error("Impossible de créer la cagnotte", { 
+                      description: error.message ?? String(error) 
+                    });
                   } finally {
                     setIsCreatingCagnotte(false);
                   }
