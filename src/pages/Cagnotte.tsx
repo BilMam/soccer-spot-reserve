@@ -1,3 +1,4 @@
+import { getBaseUrl } from '@/lib/config';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -195,7 +196,7 @@ export default function Cagnotte() {
 
   // Handle copy to clipboard
   const handleCopyLink = (teamToCopy: 'A' | 'B') => {
-    const url = `${window.location.origin}/cagnotte/${id}?team=${teamToCopy}`;
+    const url = `${getBaseUrl()}/cagnotte/${id}?team=${teamToCopy}`;
     navigator.clipboard.writeText(url);
     setCopiedTeam(teamToCopy);
     toast.success(`Lien équipe ${teamToCopy} copié`);
@@ -212,56 +213,88 @@ export default function Cagnotte() {
   // Polling pour vérifier la contribution après retour de paiement
   useEffect(() => {
     if (thanksParam === '1' && txParam && !contributionConfirmed) {
+      let pollCount = 0;
+      const maxPolls = 20; // 20 * 3s = 60s max
+      
       const pollInterval = setInterval(async () => {
+        pollCount++;
+        
         try {
           const { data, error } = await supabase
             .from('cagnotte_contribution')
-            .select('status, proof_code')
+            .select('status, proof_code, proof_token, amount, team, identity_badge, handle_snapshot, payer_phone_masked')
             .eq('psp_tx_id', txParam)
             .eq('status', 'SUCCEEDED')
             .maybeSingle();
           
           if (data) {
             setContributionConfirmed(true);
+            clearInterval(pollInterval);
             
-            // Afficher le toast de succès avec le lien de preuve
-            if (data.proof_code) {
-              const proofUrl = `${window.location.origin}/p/${data.proof_code}`;
-              toast.success('Contribution enregistrée ! 🎉', {
-                description: 'Partage ta preuve de paiement avec ton équipe',
-                action: {
-                  label: 'Copier le lien',
-                  onClick: () => {
-                    navigator.clipboard.writeText(proofUrl);
-                    toast.success('Lien de preuve copié !');
-                  }
-                }
-              });
+            // Build contributor label
+            let contributorLabel = 'Joueur';
+            let badgeEmoji = '';
+            
+            if (data.identity_badge === 'VERIFIED') {
+              contributorLabel = data.handle_snapshot || data.payer_phone_masked || 'Joueur';
+              badgeEmoji = ' ✅';
+            } else if (data.identity_badge === 'LINKED') {
+              contributorLabel = data.handle_snapshot || data.payer_phone_masked || 'Joueur';
+              badgeEmoji = ' 🔗';
+            } else if (data.payer_phone_masked) {
+              contributorLabel = data.payer_phone_masked;
             }
+            
+            // Show success toast with proof and receipt links
+            const proofUrl = `${getBaseUrl()}/p/${data.proof_code}`;
+            const receiptUrl = `${getBaseUrl()}/receipt/${data.proof_token}`;
+            
+            toast.success(`Contribution enregistrée ! 🎉`, {
+              description: (
+                <div className="space-y-2 mt-2">
+                  <p className="font-semibold">{contributorLabel}{badgeEmoji}</p>
+                  <p>{data.amount.toLocaleString()} XOF - Équipe {data.team}</p>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(proofUrl);
+                        toast.success('Lien de preuve copié !');
+                      }}
+                      className="text-xs underline"
+                    >
+                      📋 Copier ma preuve
+                    </button>
+                    <button
+                      onClick={() => {
+                        window.open(receiptUrl, '_blank');
+                      }}
+                      className="text-xs underline"
+                    >
+                      🧾 Voir mon reçu
+                    </button>
+                  </div>
+                </div>
+              ),
+              duration: 10000
+            });
             
             queryClient.invalidateQueries({ queryKey: ['cagnotte', id] });
             queryClient.invalidateQueries({ queryKey: ['team-info', id, team] });
             queryClient.invalidateQueries({ queryKey: ['contributions', id, team] });
+          } else if (pollCount >= maxPolls) {
+            // Timeout - show fallback message
             clearInterval(pollInterval);
+            toast.error('Paiement reçu — confirmation en cours', {
+              description: 'Rechargez dans 1–2 minutes pour voir votre contribution.'
+            });
           }
         } catch (err) {
           console.error('Poll error:', err);
         }
-      }, 2000);
-
-      // Timeout après 30 secondes - fallback pour appeler le PSP
-      const timeout = setTimeout(() => {
-        if (!contributionConfirmed) {
-          clearInterval(pollInterval);
-          toast.error('Vérification du paiement en cours...', {
-            description: 'Cela peut prendre quelques instants.'
-          });
-        }
-      }, 30000);
+      }, 3000); // Poll every 3 seconds
 
       return () => {
         clearInterval(pollInterval);
-        clearTimeout(timeout);
       };
     }
   }, [thanksParam, txParam, contributionConfirmed, id, team, queryClient]);
@@ -567,7 +600,7 @@ export default function Cagnotte() {
                       className="text-lg"
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Votre part inclut déjà les frais opérateur.
+                      Montant exact débité.
                     </p>
                   </div>
 
@@ -596,37 +629,6 @@ export default function Cagnotte() {
                     </Button>
                   </div>
 
-                   {/* Affichage du montant avec ajustement opérateur */}
-                  <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Ta part :</span>
-                      <span className="font-semibold">{payAmount.toLocaleString()} XOF</span>
-                    </div>
-                    {payAmount < 3000 && (
-                      <>
-                        <div className="flex justify-between items-center text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            Ajustement opérateur
-                            <span 
-                              title="Minimum imposé par l'opérateur de paiement"
-                              className="cursor-help text-xs border border-muted-foreground rounded-full w-4 h-4 flex items-center justify-center"
-                            >
-                              ?
-                            </span>
-                          </span>
-                          <span>+{(3000 - payAmount).toLocaleString()} XOF</span>
-                        </div>
-                        <div className="border-t border-border pt-2"></div>
-                      </>
-                    )}
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold">Total débité :</span>
-                      <span className="font-bold text-lg text-primary">
-                        {Math.max(payAmount, 3000).toLocaleString()} XOF
-                      </span>
-                    </div>
-                  </div>
-
                   <Button
                     onClick={() => contributeMutation.mutate({ amount: payAmount, team })}
                     disabled={contributeMutation.isPending || teamRemaining <= 0 || payAmount <= 0}
@@ -635,7 +637,7 @@ export default function Cagnotte() {
                   >
                     {contributeMutation.isPending 
                       ? 'Redirection...' 
-                      : payButtonLabel}
+                      : `Payer ${payAmount.toLocaleString()} XOF`}
                   </Button>
                 </div>
               ) : !team && (
@@ -748,7 +750,7 @@ export default function Cagnotte() {
                               {contrib.proof_code && (
                                 <button
                                   onClick={() => {
-                                    const proofUrl = `${window.location.origin}/p/${contrib.proof_code}`;
+                                    const proofUrl = `${getBaseUrl()}/p/${contrib.proof_code}`;
                                     navigator.clipboard.writeText(proofUrl);
                                     toast.success('Lien de preuve copié !');
                                   }}

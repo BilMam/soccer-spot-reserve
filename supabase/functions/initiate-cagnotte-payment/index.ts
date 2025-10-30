@@ -48,9 +48,9 @@ serve(async (req) => {
     const invoiceToken = `cagnotte_${cagnotte_id}_${Date.now()}`;
     
     // Récupérer l'origine frontend (env ou fallback sur l'origine de la requête)
-    const frontendBase = Deno.env.get('FRONTEND_BASE_URL') || new URL(req.url).origin;
-    const returnUrl = `${frontendBase}/cagnotte/${cagnotte_id}?thanks=1&team=${team}&amount=${amount}&tx=${invoiceToken}`;
-    const cancelUrl = `${frontendBase}/cagnotte/${cagnotte_id}?cancel=1&team=${team}`;
+    const APP_BASE_URL = Deno.env.get('APP_BASE_URL') || new URL(req.url).origin;
+    const returnUrl = `${APP_BASE_URL}/cagnotte/${cagnotte_id}?thanks=1&team=${team}&tx=${invoiceToken}`;
+    const cancelUrl = `${APP_BASE_URL}/cagnotte/${cagnotte_id}?canceled=1`;
     
     const paydunyaData = {
       invoice: {

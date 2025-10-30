@@ -10,6 +10,9 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  signUpWithPhone: (phone: string) => Promise<{ error: any }>;
+  signInWithPhone: (phone: string) => Promise<{ error: any }>;
+  verifyOtp: (phone: string, token: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -65,8 +68,56 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await supabase.auth.signOut();
   };
 
+  const signUpWithPhone = async (phone: string) => {
+    // For phone auth, signup and signin use the same OTP flow
+    const { error } = await supabase.auth.signInWithOtp({
+      phone,
+      options: { 
+        channel: 'sms',
+        data: { signup_method: 'phone' }
+      }
+    });
+    return { error };
+  };
+
+  const signInWithPhone = async (phone: string) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      phone,
+      options: { channel: 'sms' }
+    });
+    return { error };
+  };
+
+  const verifyOtp = async (phone: string, token: string) => {
+    const { data, error } = await supabase.auth.verifyOtp({
+      phone,
+      token,
+      type: 'sms'
+    });
+    
+    if (!error && data.user) {
+      // Update profile with phone verification
+      const { normalizePhoneE164, hashPhone } = await import('@/utils/phoneHash');
+      const e164Phone = normalizePhoneE164(phone);
+      
+      if (e164Phone) {
+        const phoneHash = await hashPhone(e164Phone);
+        const phoneMasked = '****' + e164Phone.slice(-2);
+        
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          phone_verified: true,
+          phone_hash: phoneHash,
+          phone_masked: phoneMasked
+        });
+      }
+    }
+    
+    return { error };
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, signUpWithPhone, signInWithPhone, verifyOtp }}>
       {children}
     </AuthContext.Provider>
   );
