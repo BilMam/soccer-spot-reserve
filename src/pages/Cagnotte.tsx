@@ -50,7 +50,8 @@ export default function Cagnotte() {
   const [holdTimeLeft, setHoldTimeLeft] = useState<string>('');
   const [customAmount, setCustomAmount] = useState<string>('');
   const [copiedTeam, setCopiedTeam] = useState<'A' | 'B' | null>(null);
-  const [operatorAdjustment, setOperatorAdjustment] = useState<number>(0);
+  const [amountHint, setAmountHint] = useState<string>('');
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
 
   // Charger la cagnotte
   const { data: cagnotte, isLoading } = useQuery({
@@ -176,23 +177,45 @@ export default function Cagnotte() {
       );
 
       if (paymentError) throw paymentError;
-      
-      // Stocker l'ajustement opérateur pour l'afficher dans l'UI
-      if (paymentData?.operator_adjustment) {
-        setOperatorAdjustment(paymentData.operator_adjustment);
-      }
-      
-      // Rediriger vers la page de paiement PSP
-      if (paymentData?.payment_url) {
-        window.location.href = paymentData.payment_url;
-      }
+      return paymentData;
     },
     onError: (error: any) => {
       toast.error('Erreur lors du paiement', {
         description: error.message
       });
+      setIsPaymentProcessing(false);
     }
   });
+
+  // Handler pour contribuer avec arrondi et cap
+  const handleContribute = async (amountInput: number) => {
+    setIsPaymentProcessing(true);
+    
+    // Arrondir au supérieur et caper au reliquat
+    const amountInt = Math.ceil(amountInput);
+    const teamRemainingInt = teamInfo ? Math.floor(teamInfo.team_remaining) : 0;
+    const cappedAmount = Math.min(amountInt, teamRemainingInt);
+    
+    if (cappedAmount <= 0) {
+      toast.error("Montant invalide ou équipe déjà complète");
+      setIsPaymentProcessing(false);
+      return;
+    }
+    
+    console.log(`💰 Paiement: demandé ${amountInt}, cappé à ${cappedAmount} XOF`);
+    
+    contributeMutation.mutate({ amount: cappedAmount, team: team! }, {
+      onSuccess: (data) => {
+        console.log("✅ Redirection vers PayDunya:", data.payment_url);
+        window.location.href = data.payment_url;
+      },
+      onError: (error: any) => {
+        console.error("❌ Erreur initiate-payment:", error);
+        toast.error(error.message || "Erreur lors de l'initiation du paiement");
+        setIsPaymentProcessing(false);
+      }
+    });
+  };
 
   // Handle copy to clipboard
   const handleCopyLink = (teamToCopy: 'A' | 'B') => {
@@ -203,12 +226,35 @@ export default function Cagnotte() {
     setTimeout(() => setCopiedTeam(null), 2000);
   };
 
-  // Initialize custom amount when team info loads
+  // Initialiser avec le montant suggéré (entier)
   useEffect(() => {
-    if (teamInfo && !customAmount) {
-      setCustomAmount(String(teamInfo.suggested_part || 0));
+    if (teamInfo?.suggested_part) {
+      const suggestedInt = Math.ceil(teamInfo.suggested_part);
+      setCustomAmount(String(suggestedInt));
     }
-  }, [teamInfo]);
+  }, [teamInfo?.suggested_part]);
+
+  // Gérer l'arrondi en live lors de la saisie
+  const handleAmountChange = (value: string) => {
+    // Autoriser la saisie avec virgule ou point
+    const numValue = parseFloat(value.replace(',', '.'));
+    
+    if (isNaN(numValue) || numValue <= 0) {
+      setCustomAmount(value);
+      setAmountHint('');
+      return;
+    }
+    
+    // Si décimal, afficher le hint et arrondir
+    if (!Number.isInteger(numValue)) {
+      const rounded = Math.ceil(numValue);
+      setAmountHint(`Le XOF n'a pas de décimales : ${value} → ${rounded}`);
+      setCustomAmount(String(rounded));
+    } else {
+      setAmountHint('');
+      setCustomAmount(value);
+    }
+  };
 
   // Polling pour vérifier la contribution après retour de paiement
   useEffect(() => {
@@ -581,8 +627,8 @@ export default function Cagnotte() {
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground space-y-1">
-                      <p>Part suggérée: {suggestedPart.toLocaleString()} XOF</p>
-                      <p>Reste équipe: {teamRemaining.toLocaleString()} XOF</p>
+                      <p>Part suggérée: {Math.ceil(teamInfo.suggested_part).toLocaleString()} XOF</p>
+                      <p>Reste équipe: {Math.floor(teamInfo.team_remaining).toLocaleString()} XOF</p>
                     </div>
                   </div>
 
@@ -591,53 +637,71 @@ export default function Cagnotte() {
                       Montant de contribution (XOF)
                     </label>
                     <Input
-                      type="number"
+                      type="text"
                       value={customAmount}
-                      onChange={(e) => setCustomAmount(e.target.value)}
-                      min={1}
-                      max={teamRemaining}
-                      placeholder={String(suggestedPart)}
+                      onChange={(e) => handleAmountChange(e.target.value)}
+                      placeholder={String(Math.ceil(teamInfo.suggested_part))}
                       className="text-lg"
                     />
+                    {amountHint && (
+                      <p className="text-xs text-muted-foreground mt-1">{amountHint}</p>
+                    )}
                     <p className="text-xs text-muted-foreground mt-1">
-                      Montant exact débité.
+                      Montant exact débité (en XOF entiers).
                     </p>
                   </div>
 
                   <div className="flex gap-2 flex-wrap">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCustomAmount(String(suggestedPart))}
-                    >
-                      1 part
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCustomAmount(String(suggestedPart * 2))}
-                      disabled={suggestedPart * 2 > teamRemaining}
-                    >
-                      +2 parts
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCustomAmount(String(teamRemaining))}
-                    >
-                      Tout le reliquat
-                    </Button>
+                    {(() => {
+                      const suggestedInt = Math.ceil(teamInfo.suggested_part);
+                      const twoPartsInt = Math.ceil(teamInfo.suggested_part * 2);
+                      const remainingInt = Math.floor(teamInfo.team_remaining);
+                      
+                      return (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCustomAmount(String(suggestedInt))}
+                          >
+                            1 part ({suggestedInt.toLocaleString()} XOF)
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCustomAmount(String(twoPartsInt))}
+                            disabled={twoPartsInt > remainingInt}
+                          >
+                            +2 parts ({twoPartsInt.toLocaleString()} XOF)
+                          </Button>
+                          {remainingInt > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCustomAmount(String(remainingInt))}
+                            >
+                              Tout le reliquat ({remainingInt.toLocaleString()} XOF)
+                            </Button>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
 
                   <Button
-                    onClick={() => contributeMutation.mutate({ amount: payAmount, team })}
-                    disabled={contributeMutation.isPending || teamRemaining <= 0 || payAmount <= 0}
-                    className="w-full text-lg py-6"
+                    onClick={() => handleContribute(Number(customAmount))}
+                    disabled={isPaymentProcessing || !customAmount || Number(customAmount) <= 0}
+                    className="w-full"
                     size="lg"
                   >
-                    {contributeMutation.isPending 
-                      ? 'Redirection...' 
-                      : `Payer ${payAmount.toLocaleString()} XOF`}
+                    {isPaymentProcessing ? (
+                      <>⏳ Redirection...</>
+                    ) : (() => {
+                      const amountInt = Math.ceil(Number(customAmount));
+                      const teamRemainingInt = Math.floor(teamInfo.team_remaining);
+                      const cappedAmount = Math.min(amountInt, teamRemainingInt);
+                      return <>💳 Payer {cappedAmount.toLocaleString()} XOF</>;
+                    })()}
                   </Button>
                 </div>
               ) : !team && (
