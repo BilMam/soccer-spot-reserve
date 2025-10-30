@@ -75,6 +75,15 @@ verify_jwt = true
 [functions.cleanup-cagnotte-cron]
 verify_jwt = false
 
+[functions.get-contribution-proof]
+verify_jwt = false
+
+[functions.get-contribution-receipt]
+verify_jwt = false
+
+[functions.link-contribution]
+verify_jwt = true
+
 [realtime]
 enabled = true
 

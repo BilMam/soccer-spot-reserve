@@ -17,14 +17,26 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
+    console.log('[cleanup-cagnotte-cron] Starting cleanup...');
+
     const { data, error } = await supabase.rpc('cleanup_expired_cagnottes');
 
-    if (error) throw error;
+    if (error) {
+      console.error('[cleanup-cagnotte-cron] RPC error:', error);
+      throw error;
+    }
 
-    console.log('[cleanup-cagnotte-cron] Cleanup completed:', data);
+    console.log('[cleanup-cagnotte-cron] Cleanup completed:', {
+      cleaned_count: data?.[0]?.cleaned_count || 0,
+      refund_count: data?.[0]?.refund_count || 0
+    });
 
     return new Response(
-      JSON.stringify({ success: true, result: data }),
+      JSON.stringify({ 
+        success: true, 
+        cleaned_count: data?.[0]?.cleaned_count || 0,
+        refund_count: data?.[0]?.refund_count || 0
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {

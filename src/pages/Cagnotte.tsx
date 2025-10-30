@@ -49,6 +49,7 @@ export default function Cagnotte() {
   const [holdTimeLeft, setHoldTimeLeft] = useState<string>('');
   const [customAmount, setCustomAmount] = useState<string>('');
   const [copiedTeam, setCopiedTeam] = useState<'A' | 'B' | null>(null);
+  const [operatorAdjustment, setOperatorAdjustment] = useState<number>(0);
 
   // Charger la cagnotte
   const { data: cagnotte, isLoading } = useQuery({
@@ -174,6 +175,11 @@ export default function Cagnotte() {
       );
 
       if (paymentError) throw paymentError;
+      
+      // Stocker l'ajustement opérateur pour l'afficher dans l'UI
+      if (paymentData?.operator_adjustment) {
+        setOperatorAdjustment(paymentData.operator_adjustment);
+      }
       
       // Rediriger vers la page de paiement PSP
       if (paymentData?.payment_url) {
@@ -380,47 +386,88 @@ export default function Cagnotte() {
             />
           )}
           
-          {/* Boutons de partage si pas d'équipe sélectionnée */}
+          {/* Sélection d'équipe si pas spécifiée */}
           {!team && cagnotte.status === 'IN_PROGRESS' && (
-            <div className="grid grid-cols-2 gap-4">
-              <Button
-                variant="outline"
-                onClick={() => handleCopyLink('A')}
-                className="flex items-center gap-2"
-              >
-                {copiedTeam === 'A' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                Partager Équipe A
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleCopyLink('B')}
-                className="flex items-center gap-2"
-              >
-                {copiedTeam === 'B' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                Partager Équipe B
-              </Button>
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+                <h4 className="font-bold text-blue-900 mb-3 text-lg">
+                  Choisis ton équipe pour contribuer
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <Button
+                    onClick={() => navigate(`/cagnotte/${id}?team=A`)}
+                    className="h-20 text-lg"
+                    variant="default"
+                  >
+                    Je suis Équipe A
+                  </Button>
+                  <Button
+                    onClick={() => navigate(`/cagnotte/${id}?team=B`)}
+                    className="h-20 text-lg"
+                    variant="default"
+                  >
+                    Je suis Équipe B
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="text-center text-sm text-muted-foreground">
+                <p className="mb-2">Ou partage ces liens avec tes équipes :</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleCopyLink('A')}
+                    className="flex items-center gap-2"
+                  >
+                    {copiedTeam === 'A' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    Lien Équipe A
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleCopyLink('B')}
+                    className="flex items-center gap-2"
+                  >
+                    {copiedTeam === 'B' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    Lien Équipe B
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Statut de la cagnotte */}
           {cagnotte.status === 'CONFIRMED' ? (
-            <div className="bg-green-50 border-2 border-green-500 rounded-lg p-6 text-center">
-              <div className="text-4xl mb-2">🎉</div>
-              <h3 className="text-xl font-bold text-green-800 mb-2">
-                Réservation confirmée !
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg p-8 text-center shadow-lg">
+              <div className="text-6xl mb-4">🎉</div>
+              <h3 className="text-2xl font-bold text-green-900 mb-3">
+                Match confirmé !
               </h3>
-              <p className="text-green-700 mb-4">
-                Réservé au nom de : <span className="font-semibold">{cagnotte.creator?.full_name}</span>
-              </p>
-              <div className="text-sm text-green-600 space-y-1">
-                <p>{format(new Date(cagnotte.slot_date), 'EEEE dd MMMM', { locale: fr })}</p>
-                <p>
-                  {cagnotte.slot_start_time.slice(0, 5)} - {cagnotte.slot_end_time.slice(0, 5)}
+              <div className="bg-white/80 rounded-lg p-4 mb-4 space-y-2">
+                <p className="text-green-700 font-medium">
+                  Réservé au nom de : <span className="font-bold">{cagnotte.creator?.full_name}</span>
                 </p>
-                <p className="font-semibold">{cagnotte.field?.name}</p>
+                <div className="text-sm text-green-700 space-y-1 pt-2 border-t border-green-200">
+                  <p className="font-semibold text-base">
+                    {format(new Date(cagnotte.slot_date), 'EEEE dd MMMM yyyy', { locale: fr })}
+                  </p>
+                  <p className="text-lg font-bold text-green-900">
+                    {cagnotte.slot_start_time.slice(0, 5)} - {cagnotte.slot_end_time.slice(0, 5)}
+                  </p>
+                  <p className="font-semibold text-base">{cagnotte.field?.name}</p>
+                  {cagnotte.field?.address && (
+                    <p className="text-xs text-muted-foreground">{cagnotte.field.address}</p>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-gray-500 mt-4">
-                Présentez-vous directement au centre, c'est enregistré.
+              <Button 
+                onClick={() => navigate('/mes-reservations')}
+                className="w-full max-w-xs"
+                size="lg"
+              >
+                Voir ma réservation
+              </Button>
+              <p className="text-xs text-green-600 mt-4">
+                Présentez-vous directement au centre avec votre confirmation.
               </p>
             </div>
           ) : cagnotte.status === 'EXPIRED' || cagnotte.status === 'REFUNDING' || cagnotte.status === 'REFUNDED' ? (
@@ -549,11 +596,34 @@ export default function Cagnotte() {
                     </Button>
                   </div>
 
-                  {/* Affichage du montant */}
-                  <div className="bg-muted/50 rounded-lg p-4">
+                   {/* Affichage du montant avec ajustement opérateur */}
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="font-semibold">Total débité :</span>
-                      <span className="font-bold text-lg text-primary">{payAmount.toLocaleString()} XOF</span>
+                      <span className="text-sm">Ta part :</span>
+                      <span className="font-semibold">{payAmount.toLocaleString()} XOF</span>
+                    </div>
+                    {payAmount < 3000 && (
+                      <>
+                        <div className="flex justify-between items-center text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            Ajustement opérateur
+                            <span 
+                              title="Minimum imposé par l'opérateur de paiement"
+                              className="cursor-help text-xs border border-muted-foreground rounded-full w-4 h-4 flex items-center justify-center"
+                            >
+                              ?
+                            </span>
+                          </span>
+                          <span>+{(3000 - payAmount).toLocaleString()} XOF</span>
+                        </div>
+                        <div className="border-t border-border pt-2"></div>
+                      </>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold">Total débité :</span>
+                      <span className="font-bold text-lg text-primary">
+                        {Math.max(payAmount, 3000).toLocaleString()} XOF
+                      </span>
                     </div>
                   </div>
 

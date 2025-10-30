@@ -1,10 +1,22 @@
 ---
-# MySport - CinetPay Transfer Check Schedule
-# Vérifie le statut des transferts vers les propriétaires toutes les 15 minutes
+# MySport - Scheduled Tasks
+# Automatisation des tâches de maintenance
 
 schedules:
   - name: check-cinetpay-transfers
     description: "Vérification du statut des transferts CinetPay vers les propriétaires"
     cron: "*/15 * * * *"  # Toutes les 15 minutes
     function: check-cinetpay-transfers
+    timezone: "UTC"
+
+  - name: cleanup-expired-cagnottes
+    description: "Nettoyage des cagnottes expirées et initiation des remboursements"
+    cron: "* * * * *"  # Toutes les 1 minute
+    function: cleanup-cagnotte-cron
+    timezone: "UTC"
+
+  - name: process-cagnotte-refunds
+    description: "Traitement des remboursements de cagnottes (manuel via PSP)"
+    cron: "*/2 * * * *"  # Toutes les 2 minutes
+    function: process-cagnotte-refunds
     timezone: "UTC"

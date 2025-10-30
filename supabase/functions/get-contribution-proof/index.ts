@@ -29,53 +29,46 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    // Récupérer la contribution avec les infos de la cagnotte
-    const { data: contribution, error } = await supabase
-      .from('cagnotte_contribution')
-      .select(`
-        id,
-        amount,
-        team,
-        status,
-        paid_at,
-        handle_snapshot,
-        identity_badge,
-        payer_phone_masked,
-        cagnotte:cagnotte_id (
-          id,
-          slot_date,
-          slot_start_time,
-          slot_end_time,
-          status,
-          field:field_id (
-            name,
-            location
-          )
-        )
-      `)
-      .eq('proof_code', proofCode)
-      .maybeSingle();
+    // Utiliser la RPC sécurisée au lieu d'accéder directement à la table
+    const { data, error } = await supabase.rpc('get_contribution_public', {
+      p_proof_code: proofCode
+    });
 
-    if (error || !contribution) {
+    if (error) {
+      console.error('[get-contribution-proof] RPC error:', error);
+      return new Response(
+        JSON.stringify({ error: 'Erreur serveur' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!data || data.length === 0) {
       return new Response(
         JSON.stringify({ error: 'Preuve introuvable' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    const contribution = data[0];
+
     // Formater les données pour l'affichage
     const proof = {
       amount: contribution.amount,
       team: contribution.team,
-      status: contribution.status,
       paid_at: contribution.paid_at,
       display_name: contribution.handle_snapshot 
         ? `@${contribution.handle_snapshot}` 
         : contribution.payer_phone_masked 
-          ? `Joueur ${contribution.payer_phone_masked}`
+          ? `Joueur — ${contribution.payer_phone_masked}`
           : 'Joueur anonyme',
       badge: contribution.identity_badge,
-      cagnotte: contribution.cagnotte,
+      cagnotte: {
+        slot_date: contribution.slot_date,
+        slot_start_time: contribution.slot_start_time,
+        slot_end_time: contribution.slot_end_time,
+        field_name: contribution.field_name,
+        field_city: contribution.field_city
+      },
       proof_code: proofCode
     };
 

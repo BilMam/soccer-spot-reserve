@@ -24,6 +24,17 @@ serve(async (req) => {
       throw new Error('Équipe invalide: doit être A ou B');
     }
 
+    // Gérer le minimum PSP (3000 XOF pour PayDunya)
+    const PSP_MINIMUM = 3000;
+    let invoiceAmount = amount;
+    let operatorAdjustment = 0;
+
+    if (amount < PSP_MINIMUM) {
+      operatorAdjustment = PSP_MINIMUM - amount;
+      invoiceAmount = PSP_MINIMUM;
+      console.log(`[initiate-cagnotte-payment] Ajustement opérateur: ${amount} XOF → ${invoiceAmount} XOF (+${operatorAdjustment})`);
+    }
+
     // Récupérer la cagnotte
     const { data: cagnotte, error: cagnotteError } = await supabase
       .from('cagnotte')
@@ -43,7 +54,7 @@ serve(async (req) => {
     
     const paydunyaData = {
       invoice: {
-        total_amount: amount,
+        total_amount: invoiceAmount,
         description: `Contribution cagnotte - ${cagnotte.field.name} - ${cagnotte.slot_date}`,
       },
       store: {
@@ -63,7 +74,8 @@ serve(async (req) => {
         cagnotte_id,
         contribution_amount: amount,
         team,
-        invoice_token: invoiceToken
+        invoice_token: invoiceToken,
+        operator_adjustment: operatorAdjustment
       }
     };
 
@@ -89,7 +101,10 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         payment_url: paydunyaResult.response_text,
-        invoice_token: invoiceToken
+        invoice_token: invoiceToken,
+        operator_adjustment: operatorAdjustment,
+        invoice_amount: invoiceAmount,
+        requested_amount: amount
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
