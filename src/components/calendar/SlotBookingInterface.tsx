@@ -225,10 +225,16 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                 onClick={async () => {
                   if (isCreatingCagnotte) return;
                   setIsCreatingCagnotte(true);
+                  
+                  console.log('🎯 Tentative création cagnotte - utilisateur:', { fieldId, selectedDate: format(selectedDate, 'yyyy-MM-dd'), selectedStartTime, selectedEndTime, finalTotal });
+                  
                   try {
                     // Vérifier que l'utilisateur est connecté
-                    const { data: userRes } = await supabase.auth.getUser();
+                    const { data: userRes, error: userError } = await supabase.auth.getUser();
+                    console.log('👤 Auth check:', userRes?.user?.id ? 'Connecté' : 'Non connecté', userError);
+                    
                     if (!userRes?.user) {
+                      setIsCreatingCagnotte(false);
                       toast.error("Connexion requise", { 
                         description: "Veuillez vous connecter pour créer une cagnotte." 
                       });
@@ -238,7 +244,11 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                     // Valider le montant total
                     const total = Number(finalTotal);
                     if (!Number.isFinite(total) || total <= 0) {
-                      throw new Error("Montant total invalide");
+                      setIsCreatingCagnotte(false);
+                      toast.error("Montant invalide", {
+                        description: `Le montant total (${total}) n'est pas valide.`
+                      });
+                      return;
                     }
 
                     // Préparer le payload RPC
@@ -248,25 +258,47 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                       p_slot_start_time: selectedStartTime,
                       p_slot_end_time: selectedEndTime,
                       p_total_amount: total,
-                      // Optionnels: p_split_teama, p_split_teamb, p_teama_size, p_teamb_size
-                      // peuvent être ajoutés ici si présents dans l'UI
                     };
 
                     console.log('📝 Creating cagnotte with payload:', payload);
+                    console.log('🔄 Calling supabase.rpc("create_cagnotte")...');
                     
                     const { data, error } = await supabase.rpc('create_cagnotte', payload as any) as { data: any; error: any };
 
                     if (error) {
-                      console.error('❌ create_cagnotte error:', error);
-                      throw error;
+                      console.error('❌ create_cagnotte RPC error:', { error, code: error?.code, message: error?.message, details: error?.details, hint: error?.hint });
+                      
+                      // Messages d'erreur personnalisés selon le type
+                      let errorMessage = "Impossible de créer la cagnotte";
+                      let errorDescription = error.message || String(error);
+                      
+                      if (error.message?.includes('already has 2 active')) {
+                        errorMessage = "Limite atteinte";
+                        errorDescription = "Tu as déjà 2 matchs en collecte. Attends qu'ils se finalisent.";
+                      } else if (error.message?.includes('not available') || error.message?.includes('indisponible')) {
+                        errorMessage = "Créneau indisponible";
+                        errorDescription = "Ce créneau n'est plus disponible. Choisis un autre horaire.";
+                      } else if (error.code === 'PGRST116') {
+                        errorMessage = "Fonction introuvable";
+                        errorDescription = "La fonction create_cagnotte n'existe pas en base.";
+                      }
+                      
+                      setIsCreatingCagnotte(false);
+                      toast.error(errorMessage, { description: errorDescription });
+                      return;
                     }
 
                     const cagnotteId = data?.cagnotte_id;
                     if (!cagnotteId) {
-                      throw new Error("create_cagnotte n'a pas renvoyé d'identifiant.");
+                      console.error('❌ No cagnotte_id in response:', data);
+                      setIsCreatingCagnotte(false);
+                      toast.error("Erreur interne", {
+                        description: "La cagnotte n'a pas renvoyé d'identifiant."
+                      });
+                      return;
                     }
 
-                    console.log('✅ Cagnotte created:', cagnotteId);
+                    console.log('✅ Cagnotte created successfully:', cagnotteId);
 
                     // 🔁 NAVIGUER D'ABORD pour ne pas être bloqué par le clipboard
                     navigate(`/cagnotte/${cagnotteId}`);
@@ -284,13 +316,15 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                         description: "Lien prêt sur la page suivante." 
                       });
                     }
-                  } catch (error: any) {
-                    console.error('❌ Cagnotte creation failed:', error);
-                    toast.error("Impossible de créer la cagnotte", { 
-                      description: error.message ?? String(error) 
-                    });
-                  } finally {
+                    
+                    // Réinitialiser le state après navigation (pour éviter double-click pendant transition)
                     setIsCreatingCagnotte(false);
+                  } catch (error: any) {
+                    console.error('❌ Cagnotte creation failed (unexpected):', error);
+                    setIsCreatingCagnotte(false);
+                    toast.error("Erreur inattendue", { 
+                      description: error?.message || String(error) 
+                    });
                   }
                 }}
                 variant="outline"
