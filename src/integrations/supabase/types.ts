@@ -260,7 +260,9 @@ export type Database = {
           split_pct_teama: number | null
           split_pct_teamb: number | null
           status: string
+          teama_size: number
           teama_target: number | null
+          teamb_size: number
           teamb_target: number | null
           total_amount: number
           updated_at: string
@@ -285,7 +287,9 @@ export type Database = {
           split_pct_teama?: number | null
           split_pct_teamb?: number | null
           status: string
+          teama_size?: number
           teama_target?: number | null
+          teamb_size?: number
           teamb_target?: number | null
           total_amount: number
           updated_at?: string
@@ -310,7 +314,9 @@ export type Database = {
           split_pct_teama?: number | null
           split_pct_teamb?: number | null
           status?: string
+          teama_size?: number
           teama_target?: number | null
+          teamb_size?: number
           teamb_target?: number | null
           total_amount?: number
           updated_at?: string
@@ -1514,6 +1520,10 @@ export type Database = {
           user_email: string
           user_id: string
         }[]
+      }
+      get_cagnotte_team_info: {
+        Args: { p_cagnotte_id: string; p_team: string }
+        Returns: Json
       }
       get_field_bookings: {
         Args: { p_end_date: string; p_field_id: string; p_start_date: string }

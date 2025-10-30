@@ -19,6 +19,11 @@ serve(async (req) => {
 
     const { cagnotte_id, amount, team } = await req.json();
 
+    // Validate team
+    if (!team || !['A', 'B'].includes(team)) {
+      throw new Error('Équipe invalide: doit être A ou B');
+    }
+
     // Récupérer la cagnotte
     const { data: cagnotte, error: cagnotteError } = await supabase
       .from('cagnotte')

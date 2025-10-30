@@ -1,21 +1,46 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { ArrowLeft, Clock, Users, MapPin } from 'lucide-react';
+import { ArrowLeft, Clock, Users, MapPin, Copy, Check } from 'lucide-react';
+
+interface TeamInfo {
+  team: 'A' | 'B';
+  team_target: number;
+  team_collected: number;
+  team_remaining: number;
+  team_size: number;
+  suggested_part: number;
+  teama_collected: number;
+  teama_target: number;
+  teamb_collected: number;
+  teamb_target: number;
+  total_collected: number;
+  total_amount: number;
+  status: string;
+  expires_at: string;
+  hold_expires_at: string | null;
+}
 
 export default function Cagnotte() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const team = searchParams.get('team') as 'A' | 'B' | null;
+  
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [holdTimeLeft, setHoldTimeLeft] = useState<string>('');
+  const [customAmount, setCustomAmount] = useState<string>('');
+  const [copiedTeam, setCopiedTeam] = useState<'A' | 'B' | null>(null);
 
   // Charger la cagnotte
   const { data: cagnotte, isLoading } = useQuery({
@@ -45,17 +70,40 @@ export default function Cagnotte() {
     enabled: !!id
   });
 
+  // Charger les infos d'équipe si un team est spécifié
+  const { data: teamInfo, isLoading: teamInfoLoading } = useQuery<TeamInfo | null>({
+    queryKey: ['team-info', id, team],
+    queryFn: async () => {
+      if (!team) return null;
+      
+      const { data, error } = await supabase.rpc('get_cagnotte_team_info', {
+        p_cagnotte_id: id,
+        p_team: team
+      });
+      
+      if (error) throw error;
+      return data as unknown as TeamInfo;
+    },
+    refetchInterval: 5000,
+    enabled: !!id && !!team
+  });
+
   // Charger les contributions
   const { data: contributions } = useQuery({
-    queryKey: ['contributions', id],
+    queryKey: ['contributions', id, team],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const query = supabase
         .from('cagnotte_contribution')
         .select('*')
         .eq('cagnotte_id', id)
         .eq('status', 'SUCCEEDED')
         .order('created_at', { ascending: false });
+      
+      if (team) {
+        query.eq('team', team);
+      }
 
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -101,14 +149,18 @@ export default function Cagnotte() {
 
   // Mutation pour contribuer
   const contributeMutation = useMutation({
-    mutationFn: async (amount: number) => {
+    mutationFn: async ({ amount, team }: { amount: number; team: 'A' | 'B' }) => {
+      if (!team) {
+        throw new Error('Équipe non spécifiée');
+      }
+      
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke(
         'initiate-cagnotte-payment',
         {
           body: {
             cagnotte_id: id,
             amount,
-            team: null
+            team
           }
         }
       );
@@ -126,6 +178,22 @@ export default function Cagnotte() {
       });
     }
   });
+
+  // Handle copy to clipboard
+  const handleCopyLink = (teamToCopy: 'A' | 'B') => {
+    const url = `${window.location.origin}/cagnotte/${id}?team=${teamToCopy}`;
+    navigator.clipboard.writeText(url);
+    setCopiedTeam(teamToCopy);
+    toast.success(`Lien équipe ${teamToCopy} copié`);
+    setTimeout(() => setCopiedTeam(null), 2000);
+  };
+
+  // Initialize custom amount when team info loads
+  useEffect(() => {
+    if (teamInfo && !customAmount) {
+      setCustomAmount(String(teamInfo.suggested_part || 0));
+    }
+  }, [teamInfo]);
 
   if (isLoading) {
     return (
@@ -155,17 +223,34 @@ export default function Cagnotte() {
   }
 
   const progress = (cagnotte.collected_amount / cagnotte.total_amount) * 100;
-  const remainingAmount = cagnotte.total_amount - cagnotte.collected_amount;
   
-  // Calcul du montant de contribution suggéré
+  // Team-specific calculations
   const MIN_CONTRIBUTION = 3000;
-  const isLastPayment = remainingAmount < MIN_CONTRIBUTION;
-  const payAmount = isLastPayment 
-    ? remainingAmount 
-    : Math.min(Math.max(MIN_CONTRIBUTION, Math.ceil(remainingAmount / 2)), remainingAmount);
+  let suggestedPart = 0;
+  let teamRemaining = 0;
+  let payAmount = MIN_CONTRIBUTION;
+  let isLastPayment = false;
+  
+  if (team && teamInfo) {
+    suggestedPart = teamInfo.suggested_part || 0;
+    teamRemaining = teamInfo.team_remaining || 0;
+    
+    const inputAmount = parseInt(customAmount) || suggestedPart;
+    isLastPayment = teamRemaining < MIN_CONTRIBUTION;
+    
+    if (isLastPayment) {
+      payAmount = teamRemaining;
+    } else {
+      payAmount = Math.min(Math.max(MIN_CONTRIBUTION, inputAmount), teamRemaining);
+    }
+  }
+  
   const payButtonLabel = isLastPayment 
     ? `Payer le reste (${payAmount.toLocaleString()} XOF)`
-    : `Payer ma part (${payAmount.toLocaleString()} XOF)`;
+    : `Contribuer ${payAmount.toLocaleString()} XOF`;
+  
+  const progressA = teamInfo ? (teamInfo.teama_collected / teamInfo.teama_target * 100) : 0;
+  const progressB = teamInfo ? (teamInfo.teamb_collected / teamInfo.teamb_target * 100) : 0;
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
@@ -208,6 +293,28 @@ export default function Cagnotte() {
               alt={cagnotte.field.name}
               className="w-full h-48 object-cover rounded-lg"
             />
+          )}
+          
+          {/* Boutons de partage si pas d'équipe sélectionnée */}
+          {!team && cagnotte.status === 'IN_PROGRESS' && (
+            <div className="grid grid-cols-2 gap-4">
+              <Button
+                variant="outline"
+                onClick={() => handleCopyLink('A')}
+                className="flex items-center gap-2"
+              >
+                {copiedTeam === 'A' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                Partager Équipe A
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleCopyLink('B')}
+                className="flex items-center gap-2"
+              >
+                {copiedTeam === 'B' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                Partager Équipe B
+              </Button>
+            </div>
           )}
 
           {/* Statut de la cagnotte */}
@@ -291,22 +398,91 @@ export default function Cagnotte() {
                     {holdTimeLeft}
                   </p>
                   <p className="text-xs text-yellow-600 mt-2">
-                    Reste à collecter : {remainingAmount.toLocaleString()} XOF
+                    Reste à collecter : {(cagnotte.total_amount - cagnotte.collected_amount).toLocaleString()} XOF
                   </p>
                 </div>
               )}
 
               {/* CTA Payer */}
-              <Button
-                onClick={() => contributeMutation.mutate(payAmount)}
-                disabled={contributeMutation.isPending}
-                className="w-full text-lg py-6"
-                size="lg"
-              >
-                {contributeMutation.isPending 
-                  ? 'Redirection...' 
-                  : payButtonLabel}
-              </Button>
+              {team && teamInfo ? (
+                <div className="space-y-4">
+                  <div className="bg-muted rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge variant="outline" className="text-lg">
+                        Équipe {team}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {teamInfo.team_size} joueurs
+                      </span>
+                    </div>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <p>Part suggérée: {suggestedPart.toLocaleString()} XOF</p>
+                      <p>Reste équipe: {teamRemaining.toLocaleString()} XOF</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">
+                      Montant de contribution (XOF)
+                    </label>
+                    <Input
+                      type="number"
+                      value={customAmount}
+                      onChange={(e) => setCustomAmount(e.target.value)}
+                      min={isLastPayment ? teamRemaining : MIN_CONTRIBUTION}
+                      max={teamRemaining}
+                      placeholder={String(suggestedPart)}
+                      className="text-lg"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 flex-wrap">
+                    {!isLastPayment && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCustomAmount(String(suggestedPart))}
+                        >
+                          1 part
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCustomAmount(String(suggestedPart * 2))}
+                          disabled={suggestedPart * 2 > teamRemaining}
+                        >
+                          +2 parts
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCustomAmount(String(teamRemaining))}
+                    >
+                      Tout le reliquat
+                    </Button>
+                  </div>
+
+                  <Button
+                    onClick={() => contributeMutation.mutate({ amount: payAmount, team })}
+                    disabled={contributeMutation.isPending || teamRemaining <= 0}
+                    className="w-full text-lg py-6"
+                    size="lg"
+                  >
+                    {contributeMutation.isPending 
+                      ? 'Redirection...' 
+                      : payButtonLabel}
+                  </Button>
+                </div>
+              ) : !team && (
+                <div className="text-center p-6 bg-muted rounded-lg">
+                  <p className="text-muted-foreground mb-4">
+                    Partage les liens ci-dessus avec tes équipes pour commencer la collecte !
+                  </p>
+                </div>
+              )}
 
               {/* Infos importantes */}
               <div className="bg-muted rounded-lg p-4 text-sm text-muted-foreground space-y-2">
@@ -319,6 +495,39 @@ export default function Cagnotte() {
                   Délai 1–5 jours ouvrés selon l'opérateur.
                 </p>
               </div>
+
+              {/* Barres de progression par équipe */}
+              {teamInfo && (
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Équipe A</span>
+                      <span className="text-sm font-bold">
+                        {progressA.toFixed(0)}%
+                      </span>
+                    </div>
+                    <Progress value={progressA} className="h-3" />
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                      <span>{teamInfo.teama_collected.toLocaleString()} XOF</span>
+                      <span>{teamInfo.teama_target.toLocaleString()} XOF</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Équipe B</span>
+                      <span className="text-sm font-bold">
+                        {progressB.toFixed(0)}%
+                      </span>
+                    </div>
+                    <Progress value={progressB} className="h-3" />
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                      <span>{teamInfo.teamb_collected.toLocaleString()} XOF</span>
+                      <span>{teamInfo.teamb_target.toLocaleString()} XOF</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Liste des contributions */}
               {contributions && contributions.length > 0 && (
