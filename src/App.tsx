@@ -20,6 +20,8 @@ import BookingSuccess from '@/pages/BookingSuccess';
 import PaymentPage from '@/pages/PaymentPage';
 import MesReservations from '@/pages/MesReservations';
 import Cagnotte from '@/pages/Cagnotte';
+import ContributionProof from '@/pages/ContributionProof';
+import ContributionReceipt from '@/pages/ContributionReceipt';
 import NotFound from '@/pages/NotFound';
 import { AuthProvider } from '@/hooks/useAuth';
 
