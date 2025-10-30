@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,8 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Phone, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/components/ui/use-toast';
-import { normalizePhoneE164 } from '@/utils/phoneHash';
+import { useToast } from '@/hooks/use-toast';
+import { PhoneField } from '@/components/auth/PhoneField';
+import { isValidPhoneNumber } from '@/lib/phone';
 
 type AuthMethod = 'email' | 'phone';
 
@@ -23,7 +23,7 @@ const Auth = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    phone: '',
+    phoneE164: undefined as string | undefined,
     fullName: '',
     confirmPassword: ''
   });
@@ -103,11 +103,10 @@ const Auth = () => {
     e.preventDefault();
     setIsLoading(true);
     
-    const e164Phone = normalizePhoneE164(formData.phone);
-    if (!e164Phone) {
+    if (!formData.phoneE164 || !isValidPhoneNumber(formData.phoneE164)) {
       toast({
         title: "Numéro invalide",
-        description: "Veuillez entrer un numéro ivoirien valide",
+        description: "Veuillez entrer un numéro valide pour le pays sélectionné",
         variant: "destructive"
       });
       setIsLoading(false);
@@ -115,18 +114,29 @@ const Auth = () => {
     }
     
     const { error } = mode === 'signup' 
-      ? await signUpWithPhone(e164Phone)
-      : await signInWithPhone(e164Phone);
+      ? await signUpWithPhone(formData.phoneE164)
+      : await signInWithPhone(formData.phoneE164);
     
     if (error) {
+      let errorMessage = error.message;
+      
+      // Friendly error messages
+      if (error.message.includes('rate limit')) {
+        errorMessage = "Trop de tentatives. Veuillez patienter quelques minutes.";
+      } else if (error.message.includes('invalid phone')) {
+        errorMessage = "Numéro non valide. Vérifiez le pays et le format.";
+      } else if (error.message.includes('not routable')) {
+        errorMessage = "Impossible d'envoyer le code vers ce numéro.";
+      }
+      
       toast({
-        title: mode === 'signup' ? "Erreur d'inscription" : "Erreur de connexion",
-        description: error.message,
+        title: "Impossible d'envoyer le code",
+        description: errorMessage,
         variant: "destructive"
       });
       setIsLoading(false);
     } else {
-      setPhoneForOtp(e164Phone);
+      setPhoneForOtp(formData.phoneE164);
       setShowOtpInput(true);
       toast({
         title: "Code envoyé !",
@@ -312,23 +322,17 @@ const Auth = () => {
                   <form onSubmit={(e) => handlePhoneAuth(e, 'signin')} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="phone-signin">Numéro de téléphone</Label>
-                      <Input
-                        id="phone-signin"
-                        name="phone"
-                        type="tel"
-                        placeholder="+225 07 07 07 07 07"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        required
+                      <PhoneField
+                        valueE164={formData.phoneE164}
+                        onChangeE164={(value) => setFormData({ ...formData, phoneE164: value })}
+                        defaultCountry="CI"
+                        placeholder="Entrez votre numéro"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Format: +225XXXXXXXX ou 0707070707
-                      </p>
                     </div>
                     <Button 
                       type="submit" 
                       className="w-full bg-green-600 hover:bg-green-700"
-                      disabled={isLoading}
+                      disabled={isLoading || !formData.phoneE164 || !isValidPhoneNumber(formData.phoneE164)}
                     >
                       {isLoading ? "Envoi..." : "Recevoir le code"}
                     </Button>
@@ -428,23 +432,17 @@ const Auth = () => {
                   <form onSubmit={(e) => handlePhoneAuth(e, 'signup')} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="phone-signup">Numéro de téléphone</Label>
-                      <Input
-                        id="phone-signup"
-                        name="phone"
-                        type="tel"
-                        placeholder="+225 07 07 07 07 07"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        required
+                      <PhoneField
+                        valueE164={formData.phoneE164}
+                        onChangeE164={(value) => setFormData({ ...formData, phoneE164: value })}
+                        defaultCountry="CI"
+                        placeholder="Entrez votre numéro"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Format: +225XXXXXXXX ou 0707070707
-                      </p>
                     </div>
                     <Button 
                       type="submit" 
                       className="w-full bg-green-600 hover:bg-green-700"
-                      disabled={isLoading}
+                      disabled={isLoading || !formData.phoneE164 || !isValidPhoneNumber(formData.phoneE164)}
                     >
                       {isLoading ? "Envoi..." : "Recevoir le code"}
                     </Button>

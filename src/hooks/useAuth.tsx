@@ -1,7 +1,7 @@
-
 import { useState, useEffect, createContext, useContext } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { hashPhone } from '@/lib/phone';
 
 interface AuthContextType {
   user: User | null;
@@ -97,20 +97,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     if (!error && data.user) {
       // Update profile with phone verification
-      const { normalizePhoneE164, hashPhone } = await import('@/utils/phoneHash');
-      const e164Phone = normalizePhoneE164(phone);
+      const phoneHash = hashPhone(phone);
+      const phoneMasked = '****' + phone.slice(-2);
       
-      if (e164Phone) {
-        const phoneHash = await hashPhone(e164Phone);
-        const phoneMasked = '****' + e164Phone.slice(-2);
-        
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          phone_verified: true,
-          phone_hash: phoneHash,
-          phone_masked: phoneMasked
-        });
-      }
+      await supabase.from('profiles').upsert({
+        id: data.user.id,
+        phone_verified: true,
+        phone_hash: phoneHash,
+        phone_masked: phoneMasked
+      });
     }
     
     return { error };

@@ -67,21 +67,37 @@ serve(async (req) => {
       payload: payload
     });
 
-    // Fonction pour normaliser et hasher le numéro de téléphone
-    function normalizePhone(msisdn: string): { e164: string; hash: string; masked: string } | null {
+    // Fonction pour normaliser et hasher le numéro de téléphone (multi-pays E.164)
+    async function normalizeAndHashPhone(msisdn: string): Promise<{ e164: string; hash: string; masked: string } | null> {
       if (!msisdn) return null;
       
       // Nettoyer le numéro
       let clean = msisdn.replace(/[\s\-\(\)]/g, '');
       
-      // Normaliser en E.164 (+225...)
-      if (clean.startsWith('00225')) clean = '+' + clean.substring(2);
-      else if (clean.startsWith('225')) clean = '+' + clean;
-      else if (clean.startsWith('0')) clean = '+225' + clean.substring(1);
-      else if (!clean.startsWith('+')) clean = '+225' + clean;
+      // Normaliser en E.164
+      // Si commence par 00, remplacer par +
+      if (clean.startsWith('00')) {
+        clean = '+' + clean.substring(2);
+      }
+      // Si commence par + déjà, OK
+      else if (clean.startsWith('+')) {
+        // OK, already E.164
+      }
+      // Si commence par un chiffre sans +, essayer de détecter le pays
+      // Pour CI: si commence par 0, remplacer par +225
+      else if (clean.startsWith('0') && clean.length <= 10) {
+        clean = '+225' + clean.substring(1);
+      }
+      // Si pas de +, assumer CI par défaut pour retro-compatibilité
+      else if (!clean.startsWith('+')) {
+        clean = '+225' + clean;
+      }
       
-      // Valider format
-      if (!/^\+225[0-9]{8,10}$/.test(clean)) return null;
+      // Valider que c'est un format E.164 raisonnable (+XXX...)
+      if (!/^\+[1-9]\d{6,14}$/.test(clean)) {
+        console.warn('[paydunya-ipn] Invalid E.164 format:', clean);
+        return null;
+      }
       
       const e164 = clean;
       
@@ -89,16 +105,15 @@ serve(async (req) => {
       const encoder = new TextEncoder();
       const data = encoder.encode(e164);
       
-      return crypto.subtle.digest('SHA-256', data).then(hashBuffer => {
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        
-        // Masquer le numéro (garder les 2 derniers chiffres)
-        const digits = e164.replace(/\D/g, '');
-        const masked = '****' + digits.slice(-2);
-        
-        return { e164, hash: hashHex, masked };
-      });
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      // Masquer le numéro (garder les 2 derniers chiffres)
+      const digits = e164.replace(/\D/g, '');
+      const masked = '****' + digits.slice(-2);
+      
+      return { e164, hash: hashHex, masked };
     }
 
     // PayDunya envoie les données sous forme data[...] dans form-urlencoded
@@ -178,8 +193,8 @@ serve(async (req) => {
       let phoneData = null;
       if (msisdn) {
         try {
-          phoneData = await normalizePhone(msisdn);
-          console.log('[paydunya-ipn] Numéro normalisé:', phoneData ? phoneData.masked : 'invalid');
+          phoneData = await normalizeAndHashPhone(msisdn);
+          console.log('[paydunya-ipn] Numéro normalisé:', phoneData ? `${phoneData.masked} (E.164: ${phoneData.e164})` : 'invalid');
         } catch (err) {
           console.warn('[paydunya-ipn] Erreur normalisation numéro:', err);
         }
