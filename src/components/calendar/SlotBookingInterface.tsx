@@ -229,11 +229,11 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                   console.log('🎯 Tentative création cagnotte - utilisateur:', { fieldId, selectedDate: format(selectedDate, 'yyyy-MM-dd'), selectedStartTime, selectedEndTime, finalTotal });
                   
                   try {
-                    // Vérifier que l'utilisateur est connecté
-                    const { data: userRes, error: userError } = await supabase.auth.getUser();
-                    console.log('👤 Auth check:', userRes?.user?.id ? 'Connecté' : 'Non connecté', userError);
+                    // Vérifier que l'utilisateur est connecté (getSession est recommandé)
+                    const { data: { session }, error: authError } = await supabase.auth.getSession();
+                    console.log('👤 Auth check:', session?.user?.id ? 'Connecté' : 'Non connecté', authError);
                     
-                    if (!userRes?.user) {
+                    if (!session?.user) {
                       setIsCreatingCagnotte(false);
                       toast.error("Connexion requise", { 
                         description: "Veuillez vous connecter pour créer une cagnotte." 
