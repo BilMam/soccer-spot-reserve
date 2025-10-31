@@ -18,6 +18,7 @@ import { Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AvailabilitySlot {
   id: string;
@@ -57,6 +58,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   const [unavailableSlots, setUnavailableSlots] = useState<string[]>([]);
   const [isCreatingCagnotte, setIsCreatingCagnotte] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // Utiliser le hook temps réel pour les réservations
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -224,22 +226,21 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                 type="button"
                 onClick={async () => {
                   if (isCreatingCagnotte) return;
+                  
+                  console.log('🎯 Tentative création cagnotte - utilisateur:', { fieldId, selectedDate: format(selectedDate, 'yyyy-MM-dd'), selectedStartTime, selectedEndTime, finalTotal, user });
+                  
+                  // Vérifier que l'utilisateur est connecté
+                  if (!user) {
+                    console.log('❌ Utilisateur non connecté');
+                    toast.error("Connexion requise", { 
+                      description: "Veuillez vous connecter pour créer une cagnotte." 
+                    });
+                    return;
+                  }
+                  
                   setIsCreatingCagnotte(true);
                   
-                  console.log('🎯 Tentative création cagnotte - utilisateur:', { fieldId, selectedDate: format(selectedDate, 'yyyy-MM-dd'), selectedStartTime, selectedEndTime, finalTotal });
-                  
                   try {
-                    // Vérifier que l'utilisateur est connecté (getSession est recommandé)
-                    const { data: { session }, error: authError } = await supabase.auth.getSession();
-                    console.log('👤 Auth check:', session?.user?.id ? 'Connecté' : 'Non connecté', authError);
-                    
-                    if (!session?.user) {
-                      setIsCreatingCagnotte(false);
-                      toast.error("Connexion requise", { 
-                        description: "Veuillez vous connecter pour créer une cagnotte." 
-                      });
-                      return;
-                    }
 
                     // Valider le montant total
                     const total = Number(finalTotal);
