@@ -16,7 +16,7 @@ import { useAvailableTimesForDate } from '@/hooks/useAvailableTimesForDate';
 import { Button } from '@/components/ui/button';
 import { Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -59,6 +59,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   const [isCreatingCagnotte, setIsCreatingCagnotte] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
 
   // Utiliser le hook temps réel pour les réservations
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -227,14 +228,14 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                 onClick={async () => {
                   if (isCreatingCagnotte) return;
                   
-                  console.log('🎯 Tentative création cagnotte - utilisateur:', { fieldId, selectedDate: format(selectedDate, 'yyyy-MM-dd'), selectedStartTime, selectedEndTime, finalTotal, user });
-                  
-                  // Vérifier que l'utilisateur est connecté
+                  // Vérifier que l'utilisateur est connecté (vérification immédiate et synchrone)
                   if (!user) {
-                    console.log('❌ Utilisateur non connecté');
-                    toast.error("Connexion requise", { 
-                      description: "Veuillez vous connecter pour créer une cagnotte." 
+                    toast({
+                      title: "Connexion requise",
+                      description: "Veuillez vous connecter pour créer une cagnotte.",
+                      variant: "destructive"
                     });
+                    navigate('/auth');
                     return;
                   }
                   
@@ -246,8 +247,10 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                     const total = Number(finalTotal);
                     if (!Number.isFinite(total) || total <= 0) {
                       setIsCreatingCagnotte(false);
-                      toast.error("Montant invalide", {
-                        description: `Le montant total (${total}) n'est pas valide.`
+                      toast({
+                        title: "Montant invalide",
+                        description: `Le montant total (${total}) n'est pas valide.`,
+                        variant: "destructive"
                       });
                       return;
                     }
@@ -285,7 +288,11 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                       }
                       
                       setIsCreatingCagnotte(false);
-                      toast.error(errorMessage, { description: errorDescription });
+                      toast({
+                        title: errorMessage,
+                        description: errorDescription,
+                        variant: "destructive"
+                      });
                       return;
                     }
 
@@ -293,8 +300,10 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                     if (!cagnotteId) {
                       console.error('❌ No cagnotte_id in response:', data);
                       setIsCreatingCagnotte(false);
-                      toast.error("Erreur interne", {
-                        description: "La cagnotte n'a pas renvoyé d'identifiant."
+                      toast({
+                        title: "Erreur interne",
+                        description: "La cagnotte n'a pas renvoyé d'identifiant.",
+                        variant: "destructive"
                       });
                       return;
                     }
@@ -308,13 +317,15 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                     try {
                       const url = `${window.location.origin}/cagnotte/${cagnotteId}`;
                       await navigator.clipboard.writeText(url);
-                      toast.success("Cagnotte créée !", { 
-                        description: "Lien copié dans le presse-papier." 
+                      toast({
+                        title: "Cagnotte créée !",
+                        description: "Lien copié dans le presse-papier."
                       });
                     } catch (clipboardError) {
                       console.warn("Clipboard write failed:", clipboardError);
-                      toast.success("Cagnotte créée !", { 
-                        description: "Lien prêt sur la page suivante." 
+                      toast({
+                        title: "Cagnotte créée !",
+                        description: "Lien prêt sur la page suivante."
                       });
                     }
                     
@@ -323,8 +334,10 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                   } catch (error: any) {
                     console.error('❌ Cagnotte creation failed (unexpected):', error);
                     setIsCreatingCagnotte(false);
-                    toast.error("Erreur inattendue", { 
-                      description: error?.message || String(error) 
+                    toast({
+                      title: "Erreur inattendue",
+                      description: error?.message || String(error),
+                      variant: "destructive"
                     });
                   }
                 }}
