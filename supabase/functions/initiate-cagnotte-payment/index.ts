@@ -76,10 +76,10 @@ serve(async (req) => {
     // Créer l'invoice PayDunya avec URLs de retour appropriées
     const invoiceToken = `cagnotte_${cagnotte_id}_${Date.now()}`;
     
-    // Récupérer l'origine frontend (env ou fallback sur l'origine de la requête)
-    const APP_BASE_URL = Deno.env.get('APP_BASE_URL') || new URL(req.url).origin;
-    const returnUrl = `${APP_BASE_URL}/cagnotte/${cagnotte_id}?thanks=1&team=${team}&tx=${invoiceToken}`;
-    const cancelUrl = `${APP_BASE_URL}/cagnotte/${cagnotte_id}?canceled=1`;
+    // Utiliser l'URL publique de l'application (comme dans create-paydunya-invoice)
+    const frontendBaseUrl = 'https://pisport.app';
+    const returnUrl = `${frontendBaseUrl}/cagnotte/${cagnotte_id}?thanks=1&team=${team}&tx=${invoiceToken}`;
+    const cancelUrl = `${frontendBaseUrl}/cagnotte/${cagnotte_id}?canceled=1`;
     
     console.log(`[initiate-cagnotte-payment] Montant demandé: ${requestedInt} XOF, Cap équipe: ${teamRemainingInt} XOF, Montant facture: ${amountInt} XOF`);
     
