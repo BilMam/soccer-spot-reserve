@@ -28,7 +28,7 @@ serve(async (req) => {
     const requestedInt = Math.ceil(amount);
     
     if (requestedInt <= 0) {
-      throw new Error('Montant invalide');
+      throw new Error('Montant invalide : doit être supérieur à 0');
     }
 
     // Récupérer la cagnotte
@@ -38,19 +38,39 @@ serve(async (req) => {
       .eq('id', cagnotte_id)
       .single();
 
-    if (cagnotteError) throw cagnotteError;
+    if (cagnotteError) {
+      console.error('[initiate-cagnotte-payment] Cagnotte not found:', cagnotteError);
+      throw new Error('Cagnotte introuvable');
+    }
+    
+    if (!cagnotte) {
+      console.error('[initiate-cagnotte-payment] Cagnotte is null for id:', cagnotte_id);
+      throw new Error('Cagnotte introuvable');
+    }
 
     // Calculer le reliquat d'équipe et caper le montant
     const { data: teamInfo, error: teamError } = await supabase
       .rpc('get_cagnotte_team_info', { p_cagnotte_id: cagnotte_id, p_team: team });
     
-    if (teamError) throw teamError;
+    if (teamError) {
+      console.error('[initiate-cagnotte-payment] Error fetching team info:', teamError);
+      throw new Error('Impossible de récupérer les informations d\'équipe');
+    }
     
     const teamRemainingInt = Math.max(0, Math.floor(teamInfo.team_remaining));
     const amountInt = Math.min(requestedInt, teamRemainingInt);
     
+    console.log(`[initiate-cagnotte-payment] Team info:`, {
+      team,
+      team_remaining: teamInfo.team_remaining,
+      team_collected: teamInfo.team_collected,
+      team_target: teamInfo.team_target,
+      requested: requestedInt,
+      capped: amountInt
+    });
+    
     if (amountInt <= 0) {
-      throw new Error('Montant invalide ou équipe déjà complète');
+      throw new Error(`Montant invalide (${requestedInt} XOF demandé, ${teamRemainingInt} XOF restant pour l'équipe ${team})`);
     }
 
     // Créer l'invoice PayDunya avec URLs de retour appropriées
@@ -62,6 +82,8 @@ serve(async (req) => {
     const cancelUrl = `${APP_BASE_URL}/cagnotte/${cagnotte_id}?canceled=1`;
     
     console.log(`[initiate-cagnotte-payment] Montant demandé: ${requestedInt} XOF, Cap équipe: ${teamRemainingInt} XOF, Montant facture: ${amountInt} XOF`);
+    
+    console.log('[initiate-cagnotte-payment] PayDunya API URL:', 'https://app.paydunya.com/api/v1/checkout-invoice/create');
     
     const paydunyaData = {
       invoice: {
@@ -89,6 +111,8 @@ serve(async (req) => {
       }
     };
 
+    console.log('[initiate-cagnotte-payment] PayDunya request payload:', JSON.stringify(paydunyaData, null, 2));
+
     const paydunyaResponse = await fetch('https://app.paydunya.com/api/v1/checkout-invoice/create', {
       method: 'POST',
       headers: {
@@ -101,7 +125,12 @@ serve(async (req) => {
       body: JSON.stringify(paydunyaData)
     });
 
+    console.log('[initiate-cagnotte-payment] PayDunya response status:', paydunyaResponse.status);
+    console.log('[initiate-cagnotte-payment] PayDunya response headers:', Object.fromEntries(paydunyaResponse.headers.entries()));
+
     const paydunyaResult = await paydunyaResponse.json();
+    
+    console.log('[initiate-cagnotte-payment] PayDunya response body:', JSON.stringify(paydunyaResult, null, 2));
 
     if (paydunyaResult.response_code !== '00') {
       const errorMsg = paydunyaResult.response_text || 'Erreur PayDunya';

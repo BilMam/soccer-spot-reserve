@@ -176,7 +176,17 @@ export default function Cagnotte() {
         }
       );
 
+      // Vérifier à la fois paymentError ET paymentData.error
       if (paymentError) throw paymentError;
+      if (paymentData?.error) {
+        throw new Error(paymentData.error);
+      }
+
+      // Vérifier que payment_url existe avant de retourner
+      if (!paymentData?.payment_url) {
+        throw new Error('URL de paiement manquante dans la réponse');
+      }
+
       return paymentData;
     },
     onError: (error: any) => {
@@ -191,9 +201,23 @@ export default function Cagnotte() {
   const handleContribute = async (amountInput: number) => {
     setIsPaymentProcessing(true);
     
+    // Vérifier que teamInfo existe
+    if (!teamInfo) {
+      toast.error("Impossible de charger les informations d'équipe");
+      setIsPaymentProcessing(false);
+      return;
+    }
+
+    // Vérifier que la cagnotte est active
+    if (cagnotte?.status === 'EXPIRED' || cagnotte?.status === 'CANCELED') {
+      toast.error("Cette cagnotte n'est plus active");
+      setIsPaymentProcessing(false);
+      return;
+    }
+    
     // Arrondir au supérieur et caper au reliquat
     const amountInt = Math.ceil(amountInput);
-    const teamRemainingInt = teamInfo ? Math.floor(teamInfo.team_remaining) : 0;
+    const teamRemainingInt = Math.floor(teamInfo.team_remaining);
     const cappedAmount = Math.min(amountInt, teamRemainingInt);
     
     if (cappedAmount <= 0) {
