@@ -76,9 +76,8 @@ serve(async (req) => {
     // Créer l'invoice PayDunya avec URLs de retour appropriées
     const invoiceToken = `cagnotte_${cagnotte_id}_${Date.now()}`;
     
-    // Utiliser APP_BASE_URL depuis les variables d'environnement (pour tests preview) ou fallback sur production
-    // Pour tester avec preview: configurer APP_BASE_URL dans Supabase Dashboard > Edge Functions > Secrets
-    const frontendBaseUrl = Deno.env.get('APP_BASE_URL') || 'https://pisport.app';
+    // Utiliser FRONTEND_BASE_URL (secret existant) pour tests preview ou fallback sur production
+    const frontendBaseUrl = Deno.env.get('FRONTEND_BASE_URL') || 'https://pisport.app';
     const returnUrl = `${frontendBaseUrl}/cagnotte/${cagnotte_id}?thanks=1&team=${team}&tx=${invoiceToken}`;
     const cancelUrl = `${frontendBaseUrl}/cagnotte/${cagnotte_id}?canceled=1`;
     
