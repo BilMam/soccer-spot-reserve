@@ -8,6 +8,8 @@ interface AvailabilitySlot {
   start_time: string;
   end_time: string;
   is_available: boolean;
+  on_hold_until?: string | null;
+  hold_cagnotte_id?: string | null;
   price_override?: number;
   unavailability_reason?: string;
   is_maintenance?: boolean;
@@ -93,6 +95,16 @@ export class SlotValidationLogic {
       if (!slot.is_available) {
         console.log('🔍🔒 Créneau indisponible:', `${normalizedSlotStart}-${normalizedSlotEnd}`);
         return false;
+      }
+
+      // 2.5. Vérifier si le créneau est en HOLD actif (cagnotte en cours)
+      if (slot.on_hold_until) {
+        const holdUntil = new Date(slot.on_hold_until);
+        const now = new Date();
+        if (holdUntil > now) {
+          console.log('🔍🔒 Créneau en HOLD (cagnotte active):', `${normalizedSlotStart}-${normalizedSlotEnd}`, 'expire:', slot.on_hold_until);
+          return false;
+        }
       }
       
       // 3. Vérifier qu'il n'est pas dans les créneaux réservés (ancien système)

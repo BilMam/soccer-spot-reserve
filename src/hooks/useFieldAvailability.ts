@@ -10,7 +10,7 @@ export const useFieldAvailability = (fieldId: string) => {
       queryFn: async () => {
         const { data, error } = await supabase
           .from('field_availability')
-          .select('*')
+          .select('*, on_hold_until, hold_cagnotte_id')
           .eq('field_id', fieldId)
           .gte('date', startDate)
           .lte('date', endDate)

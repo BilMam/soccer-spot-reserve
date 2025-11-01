@@ -14,6 +14,8 @@ interface AvailabilitySlot {
   start_time: string;
   end_time: string;
   is_available: boolean;
+  on_hold_until?: string | null;
+  hold_cagnotte_id?: string | null;
   price_override?: number;
   unavailability_reason?: string;
   is_maintenance?: boolean;
