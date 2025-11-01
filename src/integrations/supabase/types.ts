@@ -1553,18 +1553,31 @@ export type Database = {
         }
         Returns: number
       }
-      create_cagnotte: {
-        Args: {
-          p_field_id: string
-          p_slot_date: string
-          p_slot_end_time: string
-          p_slot_start_time: string
-          p_split_teama?: number
-          p_split_teamb?: number
-          p_total_amount: number
-        }
-        Returns: Json
-      }
+      create_cagnotte:
+        | {
+            Args: {
+              p_field_id: string
+              p_slot_date: string
+              p_slot_end_time: string
+              p_slot_start_time: string
+              p_split_teama?: number
+              p_split_teamb?: number
+              p_total_amount: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_field_id: string
+              p_slot_date: string
+              p_slot_end_time: string
+              p_slot_start_time: string
+              p_teama_size?: number
+              p_teamb_size?: number
+              p_total_amount: number
+            }
+            Returns: Json
+          }
       generate_proof_code: { Args: never; Returns: string }
       generate_proof_token: { Args: never; Returns: string }
       generate_unique_confirmation_code: { Args: never; Returns: string }

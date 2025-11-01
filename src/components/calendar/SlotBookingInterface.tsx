@@ -10,6 +10,7 @@ import OccupiedSlotsDisplay from './OccupiedSlotsDisplay';
 import TimeSlotSelector from './TimeSlotSelector';
 import BookingSummary from './BookingSummary';
 import SlotBookingActions from './SlotBookingActions';
+import { CagnotteConfigDialog } from './CagnotteConfigDialog';
 import { useBookingData } from '@/hooks/useBookingData';
 import { useRecurringSlots } from '@/hooks/useRecurringSlots';
 import { useAvailableTimesForDate } from '@/hooks/useAvailableTimesForDate';
@@ -59,6 +60,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   const [selectedEndTime, setSelectedEndTime] = useState<string>('');
   const [unavailableSlots, setUnavailableSlots] = useState<string[]>([]);
   const [isCreatingCagnotte, setIsCreatingCagnotte] = useState(false);
+  const [showCagnotteConfig, setShowCagnotteConfig] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -227,122 +229,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
             {selectedStartTime && selectedEndTime && rangeIsAvailable && (
               <Button
                 type="button"
-                onClick={async () => {
-                  if (isCreatingCagnotte) return;
-                  
-                  // Vérifier que l'utilisateur est connecté (vérification immédiate et synchrone)
-                  if (!user) {
-                    toast({
-                      title: "Connexion requise",
-                      description: "Veuillez vous connecter pour créer une cagnotte.",
-                      variant: "destructive"
-                    });
-                    navigate('/auth');
-                    return;
-                  }
-                  
-                  setIsCreatingCagnotte(true);
-                  
-                  try {
-
-                    // Valider le montant total
-                    const total = Number(finalTotal);
-                    if (!Number.isFinite(total) || total <= 0) {
-                      setIsCreatingCagnotte(false);
-                      toast({
-                        title: "Montant invalide",
-                        description: `Le montant total (${total}) n'est pas valide.`,
-                        variant: "destructive"
-                      });
-                      return;
-                    }
-
-                    // Préparer le payload RPC
-                    const payload = {
-                      p_field_id: fieldId,
-                      p_slot_date: format(selectedDate, 'yyyy-MM-dd'),
-                      p_slot_start_time: selectedStartTime,
-                      p_slot_end_time: selectedEndTime,
-                      p_total_amount: total,
-                    };
-
-                    console.log('📝 Creating cagnotte with payload:', payload);
-                    console.log('🔄 Calling supabase.rpc("create_cagnotte")...');
-                    
-                    const { data, error } = await supabase.rpc('create_cagnotte', payload as any) as { data: any; error: any };
-
-                    if (error) {
-                      console.error('❌ create_cagnotte RPC error:', { error, code: error?.code, message: error?.message, details: error?.details, hint: error?.hint });
-                      
-                      // Messages d'erreur personnalisés selon le type
-                      let errorMessage = "Impossible de créer la cagnotte";
-                      let errorDescription = error.message || String(error);
-                      
-                      if (error.message?.includes('already has 2 active')) {
-                        errorMessage = "Limite atteinte";
-                        errorDescription = "Tu as déjà 2 matchs en collecte. Attends qu'ils se finalisent.";
-                      } else if (error.message?.includes('not available') || error.message?.includes('indisponible')) {
-                        errorMessage = "Créneau indisponible";
-                        errorDescription = "Ce créneau n'est plus disponible. Choisis un autre horaire.";
-                      } else if (error.code === 'PGRST116') {
-                        errorMessage = "Fonction introuvable";
-                        errorDescription = "La fonction create_cagnotte n'existe pas en base.";
-                      }
-                      
-                      setIsCreatingCagnotte(false);
-                      toast({
-                        title: errorMessage,
-                        description: errorDescription,
-                        variant: "destructive"
-                      });
-                      return;
-                    }
-
-                    const cagnotteId = data?.cagnotte_id;
-                    if (!cagnotteId) {
-                      console.error('❌ No cagnotte_id in response:', data);
-                      setIsCreatingCagnotte(false);
-                      toast({
-                        title: "Erreur interne",
-                        description: "La cagnotte n'a pas renvoyé d'identifiant.",
-                        variant: "destructive"
-                      });
-                      return;
-                    }
-
-                    console.log('✅ Cagnotte created successfully:', cagnotteId);
-
-                    // 🔁 NAVIGUER D'ABORD pour ne pas être bloqué par le clipboard
-                    navigate(`/cagnotte/${cagnotteId}`);
-
-                    // Copier le lien SANS bloquer la redirection
-                    try {
-                      const url = `${window.location.origin}/cagnotte/${cagnotteId}`;
-                      await navigator.clipboard.writeText(url);
-                      toast({
-                        title: "Cagnotte créée !",
-                        description: "Lien copié dans le presse-papier."
-                      });
-                    } catch (clipboardError) {
-                      console.warn("Clipboard write failed:", clipboardError);
-                      toast({
-                        title: "Cagnotte créée !",
-                        description: "Lien prêt sur la page suivante."
-                      });
-                    }
-                    
-                    // Réinitialiser le state après navigation (pour éviter double-click pendant transition)
-                    setIsCreatingCagnotte(false);
-                  } catch (error: any) {
-                    console.error('❌ Cagnotte creation failed (unexpected):', error);
-                    setIsCreatingCagnotte(false);
-                    toast({
-                      title: "Erreur inattendue",
-                      description: error?.message || String(error),
-                      variant: "destructive"
-                    });
-                  }
-                }}
+                onClick={() => setShowCagnotteConfig(true)}
                 variant="outline"
                 className="w-full border-primary/50 text-primary hover:bg-primary/5"
                 size="lg"
@@ -352,6 +239,135 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                 {isCreatingCagnotte ? 'Création...' : '💰 Créer une cagnotte équipe'}
               </Button>
             )}
+            
+            {/* Dialog de configuration de la cagnotte */}
+            <CagnotteConfigDialog
+              open={showCagnotteConfig}
+              onOpenChange={setShowCagnotteConfig}
+              totalAmount={finalTotal}
+              isCreating={isCreatingCagnotte}
+              onConfirm={async (teamASize, teamBSize) => {
+                if (isCreatingCagnotte) return;
+                
+                // Vérifier que l'utilisateur est connecté (vérification immédiate et synchrone)
+                if (!user) {
+                  toast({
+                    title: "Connexion requise",
+                    description: "Veuillez vous connecter pour créer une cagnotte.",
+                    variant: "destructive"
+                  });
+                  navigate('/auth');
+                  return;
+                }
+                
+                setIsCreatingCagnotte(true);
+                
+                try {
+
+                  // Valider le montant total
+                  const total = Number(finalTotal);
+                  if (!Number.isFinite(total) || total <= 0) {
+                    setIsCreatingCagnotte(false);
+                    toast({
+                      title: "Montant invalide",
+                      description: `Le montant total (${total}) n'est pas valide.`,
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+
+                  // Préparer le payload RPC avec les tailles d'équipes
+                  const payload = {
+                    p_field_id: fieldId,
+                    p_slot_date: format(selectedDate, 'yyyy-MM-dd'),
+                    p_slot_start_time: selectedStartTime,
+                    p_slot_end_time: selectedEndTime,
+                    p_total_amount: total,
+                    p_teama_size: teamASize,
+                    p_teamb_size: teamBSize,
+                  };
+
+                  console.log('📝 Creating cagnotte with payload:', payload);
+                  console.log('🔄 Calling supabase.rpc("create_cagnotte")...');
+                  
+                  const { data, error } = await supabase.rpc('create_cagnotte', payload as any) as { data: any; error: any };
+
+                  if (error) {
+                    console.error('❌ create_cagnotte RPC error:', { error, code: error?.code, message: error?.message, details: error?.details, hint: error?.hint });
+                    
+                    // Messages d'erreur personnalisés selon le type
+                    let errorMessage = "Impossible de créer la cagnotte";
+                    let errorDescription = error.message || String(error);
+                    
+                    if (error.message?.includes('already has 2 active')) {
+                      errorMessage = "Limite atteinte";
+                      errorDescription = "Tu as déjà 2 matchs en collecte. Attends qu'ils se finalisent.";
+                    } else if (error.message?.includes('not available') || error.message?.includes('indisponible')) {
+                      errorMessage = "Créneau indisponible";
+                      errorDescription = "Ce créneau n'est plus disponible. Choisis un autre horaire.";
+                    } else if (error.code === 'PGRST116') {
+                      errorMessage = "Fonction introuvable";
+                      errorDescription = "La fonction create_cagnotte n'existe pas en base.";
+                    }
+                    
+                    setIsCreatingCagnotte(false);
+                    toast({
+                      title: errorMessage,
+                      description: errorDescription,
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+
+                  const cagnotteId = data?.cagnotte_id;
+                  if (!cagnotteId) {
+                    console.error('❌ No cagnotte_id in response:', data);
+                    setIsCreatingCagnotte(false);
+                    toast({
+                      title: "Erreur interne",
+                      description: "La cagnotte n'a pas renvoyé d'identifiant.",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+
+                  console.log('✅ Cagnotte created successfully:', cagnotteId);
+
+                  // Fermer le dialog
+                  setShowCagnotteConfig(false);
+
+                  // 🔁 NAVIGUER D'ABORD pour ne pas être bloqué par le clipboard
+                  navigate(`/cagnotte/${cagnotteId}`);
+
+                  // Copier le lien SANS bloquer la redirection
+                  try {
+                    const url = `${window.location.origin}/cagnotte/${cagnotteId}`;
+                    await navigator.clipboard.writeText(url);
+                    toast({
+                      title: "Cagnotte créée !",
+                      description: "Lien copié dans le presse-papier."
+                    });
+                  } catch (clipboardError) {
+                    console.warn("Clipboard write failed:", clipboardError);
+                    toast({
+                      title: "Cagnotte créée !",
+                      description: "Lien prêt sur la page suivante."
+                    });
+                  }
+                  
+                  // Réinitialiser le state après navigation (pour éviter double-click pendant transition)
+                  setIsCreatingCagnotte(false);
+                } catch (error: any) {
+                  console.error('❌ Cagnotte creation failed (unexpected):', error);
+                  setIsCreatingCagnotte(false);
+                  toast({
+                    title: "Erreur inattendue",
+                    description: error?.message || String(error),
+                    variant: "destructive"
+                  });
+                }
+              }}
+            />
           </>
         )}
       </CardContent>
