@@ -10,6 +10,8 @@ interface AvailabilitySlot {
   start_time: string;
   end_time: string;
   is_available: boolean;
+  on_hold_until?: string | null;
+  hold_cagnotte_id?: string | null;
   price_override?: number;
   unavailability_reason?: string;
   is_maintenance?: boolean;
@@ -75,7 +77,19 @@ export class SlotStatusUtils {
       return slotNormalizedStart === normalizedStart && slotNormalizedEnd === normalizedEnd;
     });
     
-    const available = slot ? slot.is_available : false;
+    if (!slot) return false;
+    
+    // Vérifier si le slot est en HOLD actif (cagnotte en cours)
+    if (slot.on_hold_until) {
+      const holdUntil = new Date(slot.on_hold_until);
+      const now = new Date();
+      if (holdUntil > now) {
+        console.log('🔍 Slot en HOLD actif:', `${normalizedStart}-${normalizedEnd}`, 'expire:', slot.on_hold_until);
+        return false;
+      }
+    }
+    
+    const available = slot.is_available;
     console.log('🔍 isSlotAvailable:', `${normalizedStart}-${normalizedEnd}`, 'available:', available);
     return available;
   }
@@ -97,19 +111,29 @@ export class SlotStatusUtils {
       return 'not_created';
     }
     
-    // 2. PRIORITÉ: Vérifier les chevauchements avec les réservations (nouveau)
+    // 2. PRIORITÉ 1: Vérifier si le slot est en HOLD actif (cagnotte en cours)
+    if (slot.on_hold_until) {
+      const holdUntil = new Date(slot.on_hold_until);
+      const now = new Date();
+      if (holdUntil > now) {
+        console.log('🔍 getSlotStatus: booked (HOLD actif) pour', `${normalizedStart}-${normalizedEnd}`);
+        return 'booked';
+      }
+    }
+    
+    // 3. PRIORITÉ 2: Vérifier les chevauchements avec les réservations
     if (this.isRangeOverlapping(startTime, endTime)) {
       console.log('🔍 getSlotStatus: booked (chevauchement) pour', `${normalizedStart}-${normalizedEnd}`);
       return 'booked';
     }
     
-    // 3. Vérifier la réservation exacte (ancien système)
+    // 4. Vérifier la réservation exacte (ancien système)
     if (this.isSlotBooked(startTime, endTime)) {
       console.log('🔍 getSlotStatus: booked (exact) pour', `${normalizedStart}-${normalizedEnd}`);
       return 'booked';
     }
     
-    // 4. Vérifier la disponibilité du créneau
+    // 5. Vérifier la disponibilité du créneau
     if (!slot.is_available) {
       console.log('🔍 getSlotStatus: unavailable pour', `${normalizedStart}-${normalizedEnd}`);
       return 'unavailable';
