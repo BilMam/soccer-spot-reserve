@@ -165,7 +165,8 @@ serve(async (req) => {
         cagnotte_id: payload['data[custom_data][cagnotte_id]'],
         contribution_amount: payload['data[custom_data][contribution_amount]'],
         team: payload['data[custom_data][team]'],
-        invoice_token: payload['data[custom_data][invoice_token]']
+        invoice_token: payload['data[custom_data][invoice_token]'],
+        user_id: payload['data[custom_data][user_id]'] || null
       };
     } else if (payload.data?.custom_data) {
       customData = payload.data.custom_data;
@@ -210,16 +211,17 @@ serve(async (req) => {
         metadata.payer_phone_masked = phoneData.masked;
       }
 
-      // Appeler contribute_to_cagnotte avec métadonnées
+      // Appeler contribute_to_cagnotte avec métadonnées et user_id
       const { data: contributeResult, error: contributeError } = await supabaseClient.rpc(
         'contribute_to_cagnotte',
         {
           p_cagnotte_id: customData.cagnotte_id,
           p_amount: parseFloat(customData.contribution_amount),
           p_team: customData.team || null,
-          p_method: 'PAYDUNYA',
           p_psp_tx_id: invoice_token,
-          p_metadata: metadata
+          p_method: 'PAYDUNYA',
+          p_metadata: metadata,
+          p_user_id: customData.user_id || null  // Passer l'utilisateur connecté
         }
       );
 

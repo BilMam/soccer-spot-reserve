@@ -1503,6 +1503,18 @@ export type Database = {
             Args: {
               p_amount: number
               p_cagnotte_id: string
+              p_metadata?: Json
+              p_method?: string
+              p_psp_tx_id?: string
+              p_team?: string
+              p_user_id?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_amount: number
+              p_cagnotte_id: string
               p_method?: string
               p_psp_tx_id?: string
               p_team?: string

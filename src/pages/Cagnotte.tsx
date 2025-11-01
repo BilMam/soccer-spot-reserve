@@ -165,9 +165,18 @@ export default function Cagnotte() {
         throw new Error('Équipe non spécifiée');
       }
       
+      // Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke(
         'initiate-cagnotte-payment',
         {
+          headers,
           body: {
             cagnotte_id: id,
             amount,
@@ -241,13 +250,20 @@ export default function Cagnotte() {
     });
   };
 
-  // Handle copy to clipboard
-  const handleCopyLink = (teamToCopy: 'A' | 'B') => {
+  // Handle copy to clipboard with error handling
+  const handleCopyLink = async (teamToCopy: 'A' | 'B') => {
     const url = `${getBaseUrl()}/cagnotte/${id}?team=${teamToCopy}`;
-    navigator.clipboard.writeText(url);
-    setCopiedTeam(teamToCopy);
-    toast.success(`Lien équipe ${teamToCopy} copié`);
-    setTimeout(() => setCopiedTeam(null), 2000);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedTeam(teamToCopy);
+      toast.success(`Lien équipe ${teamToCopy} copié`);
+      setTimeout(() => setCopiedTeam(null), 2000);
+    } catch (err) {
+      toast.info('Impossible de copier automatiquement', {
+        description: url,
+        duration: 10000
+      });
+    }
   };
 
   // Initialiser avec le montant suggéré (entier)
@@ -835,19 +851,26 @@ export default function Cagnotte() {
                                   minute: '2-digit'
                                 })}
                               </span>
-                              {contrib.proof_code && (
-                                <button
-                                  onClick={() => {
-                                    const proofUrl = `${getBaseUrl()}/p/${contrib.proof_code}`;
-                                    navigator.clipboard.writeText(proofUrl);
-                                    toast.success('Lien de preuve copié !');
-                                  }}
-                                  className="text-primary hover:underline flex items-center gap-1"
-                                >
-                                  <Copy className="h-3 w-3" />
-                                  Partager preuve
-                                </button>
-                              )}
+                               {contrib.proof_code && (
+                                 <button
+                                   onClick={async () => {
+                                     const proofUrl = `${getBaseUrl()}/p/${contrib.proof_code}`;
+                                     try {
+                                       await navigator.clipboard.writeText(proofUrl);
+                                       toast.success('Lien de preuve copié !');
+                                     } catch (err) {
+                                       toast.info('Impossible de copier automatiquement', {
+                                         description: proofUrl,
+                                         duration: 10000
+                                       });
+                                     }
+                                   }}
+                                   className="text-primary hover:underline flex items-center gap-1"
+                                 >
+                                   <Copy className="h-3 w-3" />
+                                   Partager preuve
+                                 </button>
+                               )}
                             </div>
                           </div>
                           <span className="font-bold text-primary text-lg">

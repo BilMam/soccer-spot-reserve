@@ -17,6 +17,28 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
+    // Récupérer l'utilisateur connecté si disponible
+    const authHeader = req.headers.get('Authorization');
+    let currentUserId = null;
+    
+    if (authHeader) {
+      const supabaseAuth = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        {
+          global: {
+            headers: { Authorization: authHeader }
+          }
+        }
+      );
+      
+      const { data: { user } } = await supabaseAuth.auth.getUser();
+      if (user) {
+        currentUserId = user.id;
+        console.log('[initiate-cagnotte-payment] Utilisateur connecté:', user.id);
+      }
+    }
+
     const { cagnotte_id, amount, team } = await req.json();
 
     // Validate team
@@ -108,7 +130,8 @@ serve(async (req) => {
         cagnotte_id,
         contribution_amount: amountInt,
         team,
-        invoice_token: invoiceToken
+        invoice_token: invoiceToken,
+        user_id: currentUserId  // Inclure l'utilisateur connecté
       }
     };
 
