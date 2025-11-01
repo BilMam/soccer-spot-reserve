@@ -1472,6 +1472,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_recurring_slot_conflict: {
+        Args: {
+          p_date: string
+          p_end_time: string
+          p_field_id: string
+          p_start_time: string
+        }
+        Returns: boolean
+      }
       check_slot_booking_status: {
         Args: {
           p_date: string
@@ -1670,6 +1679,10 @@ export type Database = {
       reject_owner_application: {
         Args: { application_id: string; notes: string }
         Returns: undefined
+      }
+      resync_all_recurring_slots: {
+        Args: { p_field_id?: string }
+        Returns: number
       }
       revoke_role_from_user: {
         Args: {
