@@ -506,7 +506,7 @@ export default function Cagnotte() {
           )}
           
           {/* Sélection d'équipe si pas spécifiée */}
-          {!team && cagnotte.status === 'IN_PROGRESS' && (
+          {!team && (cagnotte.status === 'IN_PROGRESS' || cagnotte.status === 'HOLD') && (
             <div className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
                 <h4 className="font-bold text-blue-900 mb-3 text-lg">
