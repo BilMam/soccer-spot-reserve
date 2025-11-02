@@ -97,7 +97,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
       if (paymentError || !paymentData?.url) {
         console.error('❌ Erreur création facture PayDunya:', paymentError);
-        throw new Error('Impossible de créer la facture de paiement');
+        const errorMessage = paymentData?.error || paymentError?.message || 'Impossible de créer la facture de paiement';
+        throw new Error(errorMessage);
       }
 
       console.log('✅ Facture PayDunya créée, redirection...');

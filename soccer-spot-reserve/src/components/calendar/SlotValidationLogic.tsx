@@ -65,6 +65,18 @@ export class SlotValidationLogic {
         console.log('🔍🔒 Créneau indisponible:', `${normalizedSlotStart}-${normalizedSlotEnd}`);
         return false;
       }
+
+      // 2.5. Vérifier si le créneau est en HOLD actif (cagnotte confirmée uniquement)
+      if ((slot as any).on_hold_until && (slot as any).hold_cagnotte_id) {
+        const holdUntil = new Date((slot as any).on_hold_until);
+        const now = new Date();
+        if (holdUntil > now) {
+          console.log('🔍🔒 Créneau en HOLD actif (cagnotte confirmée):', `${normalizedSlotStart}-${normalizedSlotEnd}`, 'expire:', (slot as any).on_hold_until);
+          return false;
+        } else {
+          console.log('✅ HOLD expiré, créneau disponible:', `${normalizedSlotStart}-${normalizedSlotEnd}`);
+        }
+      }
       
       // 3. Vérifier qu'il n'est pas dans les créneaux réservés (ancien système)
       const slotKey = `${normalizedSlotStart}-${normalizedSlotEnd}`;

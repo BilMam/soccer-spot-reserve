@@ -130,7 +130,8 @@ const FieldDetail = () => {
       });
 
       if (paymentError || !paymentData?.url) {
-        throw new Error(paymentError?.message || 'Erreur lors de la génération du paiement');
+        const errorMessage = paymentData?.error || paymentError?.message || 'Erreur lors de la génération du paiement';
+        throw new Error(errorMessage);
       }
 
       // Rediriger directement vers PayDunya

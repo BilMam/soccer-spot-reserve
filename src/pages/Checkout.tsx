@@ -170,12 +170,9 @@ const Checkout = () => {
         body: paymentRequestData
       });
 
-      if (paymentError) {
-        throw new Error(`Erreur de paiement PayDunya: ${paymentError.message}`);
-      }
-
-      if (!paymentData?.url) {
-        throw new Error('URL de paiement PayDunya non générée');
+      if (paymentError || !paymentData?.url) {
+        const errorMessage = paymentData?.error || paymentError?.message || 'URL de paiement PayDunya non générée';
+        throw new Error(errorMessage);
       }
 
       // Rediriger vers PayDunya

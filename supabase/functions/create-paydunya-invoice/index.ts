@@ -111,6 +111,36 @@ serve(async (req) => {
       throw new Error('Accès non autorisé à cette réservation');
     }
 
+    // Vérifier conflit avec cagnotte HOLD/CONFIRMED (filet de sécurité backend)
+    const { data: conflict } = await supabaseClient
+      .from('cagnotte')
+      .select('id,status,slot_start_time,slot_end_time')
+      .eq('field_id', existingBooking.field_id)
+      .eq('slot_date', booking.booking_date)
+      .in('status', ['HOLD','CONFIRMED'])
+      .maybeSingle();
+
+    const overlap = (aS:string, aE:string, bS:string, bE:string) => (aS < bE && aE > bS);
+
+    if (conflict && overlap(
+      booking.start_time, 
+      booking.end_time,
+      conflict.slot_start_time,  
+      conflict.slot_end_time
+    )) {
+      console.error(`[${timestamp}] Conflit avec cagnotte ${conflict.status}:`, conflict.id);
+      return new Response(
+        JSON.stringify({
+          code: "CAGNOTTE_BLOCKED",
+          error: "Ce créneau est temporairement réservé par une cagnotte d'équipe."
+        }),
+        { 
+          status: 409, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
+
     // Le montant reçu est déjà le finalTotal (prix public + frais opérateurs 3%)
     const amountCheckout = amount;
     
@@ -180,8 +210,10 @@ serve(async (req) => {
 
     console.log(`[${timestamp}] Payment intent linked successfully: ${invoiceToken}`);
     
-    // URL de retour après paiement
-    const frontendBaseUrl = 'https://pisport.app';
+    // URL de retour après paiement (dynamique pour preview/prod)
+    const frontendBaseUrl = Deno.env.get('APP_BASE_URL') || 
+                             Deno.env.get('FRONTEND_BASE_URL') || 
+                             'https://pisport.app';
     
     const returnUrl = `${frontendBaseUrl}/mes-reservations`;
     const cancelUrl = `${frontendBaseUrl}/mes-reservations`;

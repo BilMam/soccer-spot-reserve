@@ -118,8 +118,8 @@ serve(async (req) => {
         tagline: "Réservation de terrains de sport",
         postal_address: "Abidjan, Côte d'Ivoire",
         phone_number: "+225 0707070707",
-        website_url: "https://pisport.app",
-        logo_url: "https://pisport.app/logo.png"
+        website_url: frontendBaseUrl,
+        logo_url: `${frontendBaseUrl}/logo.png`
       },
       actions: {
         cancel_url: cancelUrl,
