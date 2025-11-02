@@ -36,21 +36,23 @@ export function calculateAdaptivePrice(
     case 60: // 1h
       if (pricingData.public_price_1h) return pricingData.public_price_1h;
       if (pricingData.net_price_1h) return calculatePublicPrice(pricingData.net_price_1h);
-      return pricingData.price_per_hour || 0;
+      return pricingData.price_per_hour ? calculatePublicPrice(pricingData.price_per_hour) : 0;
     
     case 90: // 1h30
       if (pricingData.public_price_1h30) return pricingData.public_price_1h30;
       if (pricingData.net_price_1h30) return calculatePublicPrice(pricingData.net_price_1h30);
       // Fallback: calculer à partir du net 1h ou ancien prix
       if (pricingData.net_price_1h) return calculatePublicPrice(pricingData.net_price_1h * 1.5);
-      return pricingData.price_1h30 || (pricingData.price_per_hour || 0) * 1.5;
+      return pricingData.price_1h30 ? calculatePublicPrice(pricingData.price_1h30) :
+        pricingData.price_per_hour ? calculatePublicPrice(pricingData.price_per_hour * 1.5) : 0;
     
     case 120: // 2h
       if (pricingData.public_price_2h) return pricingData.public_price_2h;
       if (pricingData.net_price_2h) return calculatePublicPrice(pricingData.net_price_2h);
       // Fallback: calculer à partir du net 1h ou ancien prix
       if (pricingData.net_price_1h) return calculatePublicPrice(pricingData.net_price_1h * 2);
-      return pricingData.price_2h || (pricingData.price_per_hour || 0) * 2;
+      return pricingData.price_2h ? calculatePublicPrice(pricingData.price_2h) :
+        pricingData.price_per_hour ? calculatePublicPrice(pricingData.price_per_hour * 2) : 0;
     
     default:
       // Pour les autres durées, calcul proportionnel
@@ -59,7 +61,7 @@ export function calculateAdaptivePrice(
         const netPrice = pricingData.net_price_1h * hours;
         return calculatePublicPrice(netPrice);
       }
-      return Math.round((pricingData.price_per_hour || 0) * hours);
+      return pricingData.price_per_hour ? calculatePublicPrice(pricingData.price_per_hour * hours) : 0;
   }
 }
 

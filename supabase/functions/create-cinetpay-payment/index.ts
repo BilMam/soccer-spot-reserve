@@ -126,7 +126,9 @@ serve(async (req) => {
 
     // CinetPay Checkout v2
     const transactionId = `checkout_${booking.id}_${Date.now()}`;
-    const baseUrl = 'https://pisport.app';
+    // Respecter les variables d'environnement sans forcer pisport.app pour preview
+    const envUrl = Deno.env.get('APP_BASE_URL') || Deno.env.get('FRONTEND_BASE_URL');
+    const baseUrl = envUrl || 'https://pisport.app';
     const returnUrl = `${baseUrl}/mes-reservations?success=true&ref=${transactionId}`;
     const notifyUrl = `https://zldawmyoscicxoiqvfpu.supabase.co/functions/v1/cinetpay-webhook`;
 

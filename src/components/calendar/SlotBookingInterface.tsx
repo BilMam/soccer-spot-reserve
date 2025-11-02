@@ -22,6 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { getBaseUrl } from '@/lib/config';
 import type { FieldPricing } from '@/types/pricing';
+import { calculatePublicPrice } from '@/utils/publicPricing';
 
 interface AvailabilitySlot {
   id: string;
@@ -197,9 +198,15 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               subtotal={publicPrice}
               serviceFee={operatorFee}
               total={finalTotal}
-              fieldPrice={pricing.public_price_1h || pricing.price_per_hour || 0}
-              price1h30={pricing.public_price_1h30 || pricing.price_1h30}
-              price2h={pricing.public_price_2h || pricing.price_2h}
+              fieldPrice={
+                pricing.public_price_1h ?? (pricing.price_per_hour ? calculatePublicPrice(pricing.price_per_hour) : 0)
+              }
+              price1h30={
+                pricing.public_price_1h30 ?? (pricing.price_1h30 ? calculatePublicPrice(pricing.price_1h30) : undefined)
+              }
+              price2h={
+                pricing.public_price_2h ?? (pricing.price_2h ? calculatePublicPrice(pricing.price_2h) : undefined)
+              }
               durationMinutes={durationMinutes}
               rangeIsAvailable={rangeIsAvailable}
               durationDisplay={durationDisplay}
@@ -213,9 +220,15 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               bookedSlots={bookedSlots}
               bookings={bookings}
               recurringSlots={recurringSlots}
-              fieldPrice={pricing.public_price_1h || pricing.price_per_hour || 0}
-              price1h30={pricing.public_price_1h30 || pricing.price_1h30}
-              price2h={pricing.public_price_2h || pricing.price_2h}
+              fieldPrice={
+                pricing.public_price_1h ?? (pricing.price_per_hour ? calculatePublicPrice(pricing.price_per_hour) : 0)
+              }
+              price1h30={
+                pricing.public_price_1h30 ?? (pricing.price_1h30 ? calculatePublicPrice(pricing.price_1h30) : undefined)
+              }
+              price2h={
+                pricing.public_price_2h ?? (pricing.price_2h ? calculatePublicPrice(pricing.price_2h) : undefined)
+              }
               onTimeSlotSelect={onTimeSlotSelect}
             />
 

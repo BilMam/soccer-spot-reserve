@@ -98,10 +98,10 @@ export class SlotValidationLogic {
       }
 
       // 2.5. Vérifier si le créneau est en HOLD actif (cagnotte en cours)
-      if (slot.on_hold_until) {
+      // Un créneau est en HOLD uniquement si on_hold_until > maintenant ET qu'un ID de cagnotte est présent
+      if (slot.on_hold_until && slot.hold_cagnotte_id) {
         const holdUntil = new Date(slot.on_hold_until);
-        const now = new Date();
-        if (holdUntil > now) {
+        if (holdUntil > new Date()) {
           console.log('🔍🔒 Créneau en HOLD (cagnotte active):', `${normalizedSlotStart}-${normalizedSlotEnd}`, 'expire:', slot.on_hold_until);
           return false;
         }

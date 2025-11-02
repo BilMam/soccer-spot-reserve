@@ -1454,15 +1454,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      cancel_conflicting_cagnottes: {
-        Args: {
-          p_date: string
-          p_end_time: string
-          p_field_id: string
-          p_start_time: string
-        }
-        Returns: number
-      }
       cancel_conflicting_cagnottes_in_progress: {
         Args: {
           p_date: string
@@ -1510,7 +1501,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_bookings: { Args: never; Returns: undefined }
-      cleanup_expired_cagnottes: { Args: never; Returns: Json }
+      cleanup_expired_cagnottes: { Args: never; Returns: undefined }
       confirm_cagnotte_and_lock_slot: {
         Args: { p_cagnotte_id: string }
         Returns: Json
