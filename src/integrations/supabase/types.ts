@@ -1453,6 +1453,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      cancel_conflicting_cagnottes: {
+        Args: {
+          p_date: string
+          p_end_time: string
+          p_field_id: string
+          p_start_time: string
+        }
+        Returns: number
+      }
       change_user_type: {
         Args: {
           new_role?: Database["public"]["Enums"]["user_role_type"]
