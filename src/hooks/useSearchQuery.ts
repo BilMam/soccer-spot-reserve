@@ -83,8 +83,8 @@ export const useSearchQuery = ({ location, date, timeSlot, players, filters }: U
       const fieldsWithNumericCoords = allFields?.map(field => {
         // Calculer le prix public à partir du net si le public n'existe pas
         const publicPrice1h = field.public_price_1h 
-          || (field.net_price_1h ? calculatePublicPrice(field.net_price_1h) : null)
-          || field.price_per_hour;
+          ?? (field.net_price_1h ? calculatePublicPrice(field.net_price_1h) : null)
+          ?? (field.price_per_hour ? calculatePublicPrice(field.price_per_hour) : null);
         
         const numericField = {
           ...field,

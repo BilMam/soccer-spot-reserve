@@ -61,8 +61,8 @@ const FeaturedFields = () => {
   const transformedFields = fields?.map((field: DatabaseField) => {
     // Utiliser le prix PUBLIC pour l'affichage
     const publicPrice = field.public_price_1h 
-      || (field.net_price_1h ? calculatePublicPrice(field.net_price_1h) : null)
-      || field.price_per_hour;
+      ?? (field.net_price_1h ? calculatePublicPrice(field.net_price_1h) : null)
+      ?? (field.price_per_hour ? calculatePublicPrice(field.price_per_hour) : null);
     
     return {
       id: field.id,

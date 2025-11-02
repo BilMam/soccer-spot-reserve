@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { calculatePublicPrice } from '@/utils/publicPricing';
 
 export const useFavorites = () => {
   const { user } = useAuth();
@@ -25,6 +26,8 @@ export const useFavorites = () => {
             name,
             location,
             price_per_hour,
+            net_price_1h,
+            public_price_1h,
             rating,
             total_reviews,
             images,
@@ -34,7 +37,23 @@ export const useFavorites = () => {
         .eq('user_id', user.id);
 
       if (error) throw error;
-      return data;
+      
+      // Transformer les données pour calculer le prix public
+      const favoritesWithPublicPrice = data?.map((fav) => {
+        const field = fav.fields;
+        const publicPrice = field.public_price_1h
+          ?? (field.net_price_1h ? calculatePublicPrice(field.net_price_1h) : null)
+          ?? (field.price_per_hour ? calculatePublicPrice(field.price_per_hour) : null);
+        return {
+          ...fav,
+          fields: {
+            ...field,
+            price_per_hour: publicPrice,
+          },
+        };
+      }) || [];
+      
+      return favoritesWithPublicPrice;
     },
     enabled: !!user
   });
