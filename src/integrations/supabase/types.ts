@@ -1438,6 +1438,7 @@ export type Database = {
         Returns: undefined
       }
       award_reviewer_badge: { Args: { p_user_id: string }; Returns: undefined }
+      batch_cleanup_expired_holds: { Args: never; Returns: number }
       calculate_cagnotte_timers: {
         Args: { slot_datetime: string }
         Returns: Json

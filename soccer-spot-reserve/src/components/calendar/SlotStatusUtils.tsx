@@ -12,6 +12,8 @@ interface AvailabilitySlot {
   unavailability_reason?: string;
   is_maintenance?: boolean;
   notes?: string;
+  on_hold_until?: string;
+  hold_cagnotte_id?: string;
 }
 
 interface BookingSlot {
@@ -71,7 +73,7 @@ export class SlotStatusUtils {
   }
 
   // MISE À JOUR: Déterminer le statut d'un créneau avec vérification des chevauchements
-  getSlotStatus(startTime: string, endTime: string): 'available' | 'booked' | 'unavailable' | 'not_created' {
+  getSlotStatus(startTime: string, endTime: string): 'available' | 'booked' | 'unavailable' | 'not_created' | 'on_hold' {
     const normalizedStart = normalizeTime(startTime);
     const normalizedEnd = normalizeTime(endTime);
     
@@ -87,19 +89,31 @@ export class SlotStatusUtils {
       return 'not_created';
     }
     
-    // 2. PRIORITÉ: Vérifier les chevauchements avec les réservations (nouveau)
+    // 2. PRIORITÉ: Vérifier si le créneau est en HOLD (cagnotte active)
+    if (slot.on_hold_until && slot.hold_cagnotte_id) {
+      const holdUntil = new Date(slot.on_hold_until);
+      const now = new Date();
+      if (holdUntil > now) {
+        console.log('🔒 getSlotStatus: on_hold (HOLD actif) pour', `${normalizedStart}-${normalizedEnd}`);
+        return 'on_hold';
+      } else {
+        console.log('✅ HOLD expiré, slot redevient disponible:', `${normalizedStart}-${normalizedEnd}`);
+      }
+    }
+    
+    // 3. Vérifier les chevauchements avec les réservations
     if (this.isRangeOverlapping(startTime, endTime)) {
       console.log('🔍 getSlotStatus: booked (chevauchement) pour', `${normalizedStart}-${normalizedEnd}`);
       return 'booked';
     }
     
-    // 3. Vérifier la réservation exacte (ancien système)
+    // 4. Vérifier la réservation exacte (ancien système)
     if (this.isSlotBooked(startTime, endTime)) {
       console.log('🔍 getSlotStatus: booked (exact) pour', `${normalizedStart}-${normalizedEnd}`);
       return 'booked';
     }
     
-    // 4. Vérifier la disponibilité du créneau
+    // 5. Vérifier la disponibilité du créneau
     if (!slot.is_available) {
       console.log('🔍 getSlotStatus: unavailable pour', `${normalizedStart}-${normalizedEnd}`);
       return 'unavailable';
@@ -110,7 +124,7 @@ export class SlotStatusUtils {
   }
 
   // MISE À JOUR: Vérifier le statut pour les heures de début (avec chevauchements)
-  getStartTimeStatus(startTime: string): 'available' | 'booked' | 'unavailable' | 'not_created' {
+  getStartTimeStatus(startTime: string): 'available' | 'booked' | 'unavailable' | 'not_created' | 'on_hold' {
     // Vérifier si c'est une heure passée pour aujourd'hui
     if (this.isPastTime(startTime)) {
       console.log('🔍 getStartTimeStatus: unavailable (heure passée) pour', startTime);
