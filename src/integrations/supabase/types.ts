@@ -242,6 +242,7 @@ export type Database = {
       }
       cagnotte: {
         Row: {
+          cancellation_reason: string | null
           collect_window_sec: number
           collected_amount: number
           created_at: string
@@ -254,6 +255,7 @@ export type Database = {
           hold_threshold_pct: number
           id: string
           preset_mode: string
+          refund_completed_at: string | null
           slot_date: string
           slot_end_time: string
           slot_start_time: string
@@ -269,6 +271,7 @@ export type Database = {
           version: number
         }
         Insert: {
+          cancellation_reason?: string | null
           collect_window_sec: number
           collected_amount?: number
           created_at?: string
@@ -281,6 +284,7 @@ export type Database = {
           hold_threshold_pct: number
           id?: string
           preset_mode?: string
+          refund_completed_at?: string | null
           slot_date: string
           slot_end_time: string
           slot_start_time: string
@@ -296,6 +300,7 @@ export type Database = {
           version?: number
         }
         Update: {
+          cancellation_reason?: string | null
           collect_window_sec?: number
           collected_amount?: number
           created_at?: string
@@ -308,6 +313,7 @@ export type Database = {
           hold_threshold_pct?: number
           id?: string
           preset_mode?: string
+          refund_completed_at?: string | null
           slot_date?: string
           slot_end_time?: string
           slot_start_time?: string
@@ -349,7 +355,12 @@ export type Database = {
           proof_code: string | null
           proof_token: string | null
           psp_tx_id: string | null
+          refund_attempt_count: number | null
           refund_initiated_at: string | null
+          refund_last_attempt_at: string | null
+          refund_last_error: string | null
+          refund_reference: string | null
+          refund_status: string | null
           refunded_at: string | null
           status: string
           team: string | null
@@ -371,7 +382,12 @@ export type Database = {
           proof_code?: string | null
           proof_token?: string | null
           psp_tx_id?: string | null
+          refund_attempt_count?: number | null
           refund_initiated_at?: string | null
+          refund_last_attempt_at?: string | null
+          refund_last_error?: string | null
+          refund_reference?: string | null
+          refund_status?: string | null
           refunded_at?: string | null
           status: string
           team?: string | null
@@ -393,7 +409,12 @@ export type Database = {
           proof_code?: string | null
           proof_token?: string | null
           psp_tx_id?: string | null
+          refund_attempt_count?: number | null
           refund_initiated_at?: string | null
+          refund_last_attempt_at?: string | null
+          refund_last_error?: string | null
+          refund_reference?: string | null
+          refund_status?: string | null
           refunded_at?: string | null
           status?: string
           team?: string | null
@@ -1737,6 +1758,10 @@ export type Database = {
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       test_role_system: { Args: never; Returns: boolean }
+      update_cagnotte_refund_status: {
+        Args: { p_cagnotte_id: string }
+        Returns: undefined
+      }
       update_owner_stats_for_field: {
         Args: { field_uuid: string }
         Returns: undefined

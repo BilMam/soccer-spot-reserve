@@ -218,7 +218,7 @@ export default function Cagnotte() {
     }
 
     // Vérifier que la cagnotte est active
-    if (cagnotte?.status === 'EXPIRED' || cagnotte?.status === 'CANCELLED') {
+    if (cagnotte?.status === 'EXPIRED' || cagnotte?.status === 'CANCELLED' || cagnotte?.status === 'REFUNDING' || cagnotte?.status === 'REFUNDED') {
       toast.error("Cette cagnotte n'est plus active");
       setIsPaymentProcessing(false);
       return;
@@ -610,19 +610,58 @@ export default function Cagnotte() {
                 Les contributions seront remboursées automatiquement (1–5 jours ouvrés selon l'opérateur).
               </p>
             </div>
-          ) : cagnotte.status === 'EXPIRED' || cagnotte.status === 'REFUNDING' || cagnotte.status === 'REFUNDED' ? (
+          ) : cagnotte.status === 'REFUNDED' ? (
+            <div className="bg-green-50 border-2 border-green-500 rounded-lg p-6 text-center">
+              <div className="text-4xl mb-2">✅</div>
+              <h3 className="text-xl font-bold text-green-800 mb-2">
+                Remboursements effectués
+              </h3>
+              <p className="text-green-700 mb-2">
+                Tous les paiements ont été remboursés avec succès.
+              </p>
+              {(cagnotte as any).cancellation_reason && (
+                <p className="text-sm text-green-600 mb-2">
+                  Raison : {(cagnotte as any).cancellation_reason}
+                </p>
+              )}
+              <p className="text-sm text-green-600">
+                Les fonds ont été retournés sur vos moyens de paiement.
+              </p>
+            </div>
+          ) : cagnotte.status === 'REFUNDING' ? (
+            <div className="bg-orange-50 border-2 border-orange-500 rounded-lg p-6 text-center">
+              <div className="text-4xl mb-2">⏳</div>
+              <h3 className="text-xl font-bold text-orange-800 mb-2">
+                Remboursement en cours
+              </h3>
+              <p className="text-orange-700 mb-2">
+                Vos paiements sont en cours de remboursement.
+              </p>
+              {(cagnotte as any).cancellation_reason && (
+                <p className="text-sm text-orange-600 mb-2">
+                  Raison : {(cagnotte as any).cancellation_reason}
+                </p>
+              )}
+              <p className="text-sm text-orange-600">
+                Vous serez recrédité sous 1 à 5 jours ouvrés selon l'opérateur.
+              </p>
+            </div>
+          ) : cagnotte.status === 'EXPIRED' ? (
             <div className="bg-red-50 border-2 border-red-500 rounded-lg p-6 text-center">
-              <div className="text-4xl mb-2">😔</div>
+              <div className="text-4xl mb-2">⏰</div>
               <h3 className="text-xl font-bold text-red-800 mb-2">
-                Cagnotte échouée
+                Cagnotte expirée
               </h3>
               <p className="text-red-700 mb-2">
-                {cagnotte.status === 'REFUNDED' 
-                  ? 'Tous les paiements ont été remboursés.'
-                  : 'Remboursement en cours…'}
+                Le délai de collecte est écoulé.
               </p>
+              {(cagnotte as any).cancellation_reason && (
+                <p className="text-sm text-red-600 mb-2">
+                  {(cagnotte as any).cancellation_reason}
+                </p>
+              )}
               <p className="text-sm text-red-600">
-                Vous serez recrédité sur votre moyen de paiement (1–5 jours ouvrés selon l'opérateur).
+                Les contributions seront remboursées automatiquement (1–5 jours ouvrés).
               </p>
             </div>
           ) : (

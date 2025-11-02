@@ -19,23 +19,33 @@ serve(async (req) => {
 
     console.log('[cleanup-cagnotte-cron] Starting cleanup...');
 
-    const { data, error } = await supabase.rpc('cleanup_expired_cagnottes');
+    // Appeler la fonction de nettoyage (retourne void maintenant)
+    const { error } = await supabase.rpc('cleanup_expired_cagnottes');
 
     if (error) {
       console.error('[cleanup-cagnotte-cron] RPC error:', error);
       throw error;
     }
 
-    console.log('[cleanup-cagnotte-cron] Cleanup completed:', {
-      cleaned_count: data?.[0]?.cleaned_count || 0,
-      refund_count: data?.[0]?.refund_count || 0
-    });
+    console.log('[cleanup-cagnotte-cron] Cleanup completed successfully');
+
+    // Appeler la fonction de traitement des remboursements
+    try {
+      const { data: refundData, error: refundError } = await supabase.functions.invoke('process-cagnotte-refunds');
+      
+      if (refundError) {
+        console.error('[cleanup-cagnotte-cron] Refund processing error:', refundError);
+      } else {
+        console.log('[cleanup-cagnotte-cron] Refunds processed:', refundData);
+      }
+    } catch (refundErr) {
+      console.error('[cleanup-cagnotte-cron] Error invoking refund function:', refundErr);
+    }
 
     return new Response(
       JSON.stringify({ 
-        success: true, 
-        cleaned_count: data?.[0]?.cleaned_count || 0,
-        refund_count: data?.[0]?.refund_count || 0
+        success: true,
+        message: 'Cleanup and refund processing completed'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

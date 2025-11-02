@@ -174,6 +174,98 @@ serve(async (req) => {
       customData = payload.custom_data;
     }
 
+    // Détecter le type de webhook : disbursement (remboursement) ou invoice (paiement)
+    const isDisbursementWebhook = payload.transaction_type === 'disbursement' || 
+                                   payload['data[transaction_type]'] === 'disbursement' ||
+                                   payload.data?.transaction_type === 'disbursement';
+
+    // Traiter les webhooks de remboursement (disbursements)
+    if (isDisbursementWebhook) {
+      console.log('[paydunya-ipn] 💸 Webhook de remboursement détecté');
+      
+      const disbursementRef = payload.transaction_id || 
+                              payload['data[transaction_id]'] || 
+                              payload.data?.transaction_id ||
+                              payload.reference ||
+                              payload['data[reference]'] ||
+                              payload.data?.reference;
+      
+      const disbursementStatus = payload.status || 
+                                  payload['data[status]'] || 
+                                  payload.data?.status;
+
+      if (!disbursementRef) {
+        console.error('[paydunya-ipn] ⚠️ Référence de remboursement manquante');
+        return new Response('OK', { headers: corsHeaders });
+      }
+
+      console.log(`[paydunya-ipn] Remboursement ${disbursementRef} - Statut: ${disbursementStatus}`);
+
+      // Trouver la contribution correspondante
+      const { data: contribution, error: findError } = await supabaseClient
+        .from('cagnotte_contribution')
+        .select('id, cagnotte_id, amount, refund_status')
+        .eq('refund_reference', disbursementRef)
+        .maybeSingle();
+
+      if (findError) {
+        console.error('[paydunya-ipn] ❌ Erreur recherche contribution:', findError);
+        return new Response('OK', { headers: corsHeaders });
+      }
+
+      if (!contribution) {
+        console.log(`[paydunya-ipn] ℹ️ Aucune contribution trouvée pour le remboursement ${disbursementRef}`);
+        return new Response('OK', { headers: corsHeaders });
+      }
+
+      // Mettre à jour le statut selon la notification PayDunya
+      let newRefundStatus = contribution.refund_status;
+
+      if (disbursementStatus === 'completed' || disbursementStatus === 'success') {
+        newRefundStatus = 'REFUNDED';
+        console.log(`[paydunya-ipn] ✅ Remboursement confirmé pour contribution ${contribution.id}`);
+      } else if (disbursementStatus === 'failed' || disbursementStatus === 'cancelled') {
+        newRefundStatus = 'FAILED';
+        console.log(`[paydunya-ipn] ❌ Remboursement échoué pour contribution ${contribution.id}`);
+      } else if (disbursementStatus === 'pending' || disbursementStatus === 'processing') {
+        newRefundStatus = 'PROCESSING';
+        console.log(`[paydunya-ipn] ⏳ Remboursement en cours pour contribution ${contribution.id}`);
+      }
+
+      // Mettre à jour la contribution
+      const { error: updateError } = await supabaseClient
+        .from('cagnotte_contribution')
+        .update({
+          refund_status: newRefundStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', contribution.id);
+
+      if (updateError) {
+        console.error('[paydunya-ipn] ❌ Erreur mise à jour contribution:', updateError);
+      }
+
+      // Si le remboursement est confirmé, vérifier si la cagnotte peut être marquée comme REFUNDED
+      if (newRefundStatus === 'REFUNDED') {
+        const { error: rpcError } = await supabaseClient.rpc('update_cagnotte_refund_status', {
+          p_cagnotte_id: contribution.cagnotte_id
+        });
+
+        if (rpcError) {
+          console.error('[paydunya-ipn] ❌ Erreur update_cagnotte_refund_status:', rpcError);
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          contribution_id: contribution.id,
+          refund_status: newRefundStatus 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Vérifier si c'est une contribution cagnotte
     const isCagnotteContribution = customData?.cagnotte_id;
 

@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const PAYDUNYA_API_BASE = 'https://app.paydunya.com/api/v1';
+const MAX_REFUND_ATTEMPTS = 5; // Nombre maximum de tentatives de remboursement
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -17,75 +20,268 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    console.log('[process-cagnotte-refunds] Starting refund processing...');
+    const paydunyaToken = Deno.env.get('PAYDUNYA_TOKEN');
+    const paydunyaMasterKey = Deno.env.get('PAYDUNYA_MASTER_KEY');
 
-    // Récupérer les contributions à rembourser
+    if (!paydunyaToken || !paydunyaMasterKey) {
+      throw new Error('PAYDUNYA_TOKEN ou PAYDUNYA_MASTER_KEY manquant');
+    }
+
+    console.log('[process-cagnotte-refunds] 🔄 Démarrage du traitement des remboursements...');
+
+    // Récupérer les contributions à rembourser (PENDING ou FAILED avec moins de 5 tentatives)
     const { data: contributions, error } = await supabase
       .from('cagnotte_contribution')
-      .select('*, cagnotte:cagnotte(*)')
-      .eq('status', 'REFUND_PENDING');
+      .select(`
+        *,
+        cagnotte:cagnotte(
+          id,
+          status,
+          field_id,
+          slot_date,
+          slot_start_time,
+          cancellation_reason
+        )
+      `)
+      .in('refund_status', ['PENDING', 'FAILED'])
+      .lt('refund_attempt_count', MAX_REFUND_ATTEMPTS)
+      .eq('status', 'SUCCEEDED'); // Seules les contributions réussies sont remboursables
 
     if (error) {
-      console.error('[process-cagnotte-refunds] Error fetching contributions:', error);
+      console.error('[process-cagnotte-refunds] ❌ Erreur récupération contributions:', error);
       throw error;
     }
 
-    console.log(`[process-cagnotte-refunds] Found ${contributions?.length || 0} contributions to refund`);
+    if (!contributions || contributions.length === 0) {
+      console.log('[process-cagnotte-refunds] ✅ Aucune contribution à rembourser');
+      return new Response(
+        JSON.stringify({ success: true, processed: 0, message: 'Aucune contribution à rembourser' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`[process-cagnotte-refunds] 📋 ${contributions.length} contribution(s) à traiter`);
 
     const results = [];
 
-    for (const contrib of contributions || []) {
+    for (const contrib of contributions) {
       try {
-        // Appeler l'API PayDunya pour rembourser
-        // Note: PayDunya ne supporte pas encore les remboursements automatiques
-        // Pour l'instant, on marque comme REFUNDED et on traite manuellement
+        const contributionId = contrib.id;
+        const pspTxId = contrib.psp_tx_id;
+        const amount = contrib.amount;
+
+        console.log(`[process-cagnotte-refunds] 💰 Traitement contribution ${contributionId} - ${amount} XOF`);
+
+        // Vérifier l'idempotence : si refund_reference existe déjà, ne pas créer un nouveau remboursement
+        if (contrib.refund_reference) {
+          console.log(`[process-cagnotte-refunds] ℹ️ Contribution ${contributionId} a déjà une référence: ${contrib.refund_reference}`);
+          
+          // Vérifier le statut du remboursement existant
+          try {
+            const statusResponse = await fetch(
+              `${PAYDUNYA_API_BASE}/disbursements/${contrib.refund_reference}`,
+              {
+                method: 'GET',
+                headers: {
+                  'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
+                  'PAYDUNYA-PRIVATE-KEY': paydunyaToken,
+                  'PAYDUNYA-TOKEN': paydunyaToken,
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+
+            if (statusResponse.ok) {
+              const statusData = await statusResponse.json();
+              console.log(`[process-cagnotte-refunds] Statut remboursement existant:`, statusData);
+
+              // Mettre à jour selon le statut PayDunya
+              if (statusData.status === 'completed' || statusData.status === 'success') {
+                await supabase
+                  .from('cagnotte_contribution')
+                  .update({
+                    refund_status: 'REFUNDED',
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', contributionId);
+
+                // Vérifier si la cagnotte peut être marquée comme REFUNDED
+                await supabase.rpc('update_cagnotte_refund_status', {
+                  p_cagnotte_id: contrib.cagnotte_id
+                });
+
+                results.push({ id: contributionId, status: 'REFUNDED', reference: contrib.refund_reference });
+              } else if (statusData.status === 'failed' || statusData.status === 'cancelled') {
+                await supabase
+                  .from('cagnotte_contribution')
+                  .update({
+                    refund_status: 'FAILED',
+                    refund_last_error: `PayDunya status: ${statusData.status}`,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', contributionId);
+
+                results.push({ id: contributionId, status: 'FAILED', error: statusData.status });
+              }
+            }
+          } catch (statusError) {
+            console.error(`[process-cagnotte-refunds] ⚠️ Erreur vérification statut:`, statusError);
+          }
+
+          continue; // Passer à la contribution suivante
+        }
+
+        // Récupérer le numéro de téléphone du payeur via l'API PayDunya
+        console.log(`[process-cagnotte-refunds] 📞 Récupération du numéro pour invoice: ${pspTxId}`);
         
-        // TODO: Implémenter l'API de remboursement PayDunya quand disponible
-        // const refundResponse = await fetch(`${Deno.env.get('PAYDUNYA_API_URL')}/refund`, {
-        //   method: 'POST',
-        //   headers: {
-        //     'Content-Type': 'application/json',
-        //     'PAYDUNYA-MASTER-KEY': Deno.env.get('PAYDUNYA_MASTER_KEY')!
-        //   },
-        //   body: JSON.stringify({
-        //     transaction_id: contrib.psp_tx_id,
-        //     amount: contrib.amount
-        //   })
-        // });
+        const invoiceResponse = await fetch(
+          `${PAYDUNYA_API_BASE}/checkout-invoice/confirm/${pspTxId}`,
+          {
+            method: 'GET',
+            headers: {
+              'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
+              'PAYDUNYA-PRIVATE-KEY': paydunyaToken,
+              'PAYDUNYA-TOKEN': paydunyaToken,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
 
-        // Pour l'instant : NE PAS marquer comme remboursé automatiquement
-        // Laisser en REFUND_PENDING pour traitement manuel
-        console.log(`[process-cagnotte-refunds] ⚠️  REMBOURSEMENT MANUEL NÉCESSAIRE VIA PAYDUNYA`);
-        console.log(`[process-cagnotte-refunds] Contribution ${contrib.id}: ${contrib.amount} XOF vers ${contrib.psp_tx_id}`);
+        if (!invoiceResponse.ok) {
+          const errorText = await invoiceResponse.text();
+          throw new Error(`Erreur récupération invoice: ${invoiceResponse.status} - ${errorText}`);
+        }
 
-        results.push({ 
-          id: contrib.id, 
-          status: 'REFUND_PENDING',
-          note: 'REMBOURSEMENT MANUEL REQUIS - Transaction PSP: ' + contrib.psp_tx_id,
-          amount: contrib.amount
+        const invoiceData = await invoiceResponse.json();
+        const msisdn = invoiceData.customer?.phone || invoiceData.customer?.msisdn;
+
+        if (!msisdn) {
+          throw new Error('Numéro de téléphone introuvable dans les données de l\'invoice');
+        }
+
+        console.log(`[process-cagnotte-refunds] ✅ Numéro récupéré: ${msisdn}`);
+
+        // Incrémenter le compteur de tentatives
+        await supabase
+          .from('cagnotte_contribution')
+          .update({
+            refund_attempt_count: contrib.refund_attempt_count + 1,
+            refund_last_attempt_at: new Date().toISOString(),
+            refund_status: 'PROCESSING',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', contributionId);
+
+        // Envoyer le déboursement via PayDunya
+        console.log(`[process-cagnotte-refunds] 💸 Envoi déboursement: ${amount} XOF vers ${msisdn}`);
+        
+        const disbursementPayload = {
+          account_alias: msisdn,
+          amount: amount,
+          withdraw_mode: 'mobile_money', // ou 'bank' selon le contexte
+          description: `Remboursement cagnotte - Raison: ${contrib.cagnotte?.cancellation_reason || 'Annulation'}`,
+        };
+
+        const disbursementResponse = await fetch(
+          `${PAYDUNYA_API_BASE}/disbursements`,
+          {
+            method: 'POST',
+            headers: {
+              'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
+              'PAYDUNYA-PRIVATE-KEY': paydunyaToken,
+              'PAYDUNYA-TOKEN': paydunyaToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(disbursementPayload),
+          }
+        );
+
+        if (!disbursementResponse.ok) {
+          const errorText = await disbursementResponse.text();
+          throw new Error(`Erreur déboursement: ${disbursementResponse.status} - ${errorText}`);
+        }
+
+        const disbursementData = await disbursementResponse.json();
+        console.log(`[process-cagnotte-refunds] ✅ Déboursement créé:`, disbursementData);
+
+        const refundReference = disbursementData.transaction_id || disbursementData.reference || disbursementData.id;
+
+        if (!refundReference) {
+          throw new Error('Référence de remboursement introuvable dans la réponse PayDunya');
+        }
+
+        // Mettre à jour la contribution avec la référence et le statut
+        const disbursementStatus = disbursementData.status || disbursementData.transaction_status;
+        let refundStatus = 'PROCESSING';
+
+        // Si le statut est immédiatement confirmé
+        if (disbursementStatus === 'completed' || disbursementStatus === 'success') {
+          refundStatus = 'REFUNDED';
+        } else if (disbursementStatus === 'failed' || disbursementStatus === 'cancelled') {
+          refundStatus = 'FAILED';
+        }
+
+        await supabase
+          .from('cagnotte_contribution')
+          .update({
+            refund_reference: refundReference,
+            refund_status: refundStatus,
+            refund_last_error: null, // Réinitialiser l'erreur en cas de succès
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', contributionId);
+
+        // Si le remboursement est déjà confirmé, vérifier si la cagnotte peut être marquée comme REFUNDED
+        if (refundStatus === 'REFUNDED') {
+          await supabase.rpc('update_cagnotte_refund_status', {
+            p_cagnotte_id: contrib.cagnotte_id
+          });
+        }
+
+        results.push({
+          id: contributionId,
+          status: refundStatus,
+          reference: refundReference,
+          amount: amount,
         });
+
+        console.log(`[process-cagnotte-refunds] ✅ Contribution ${contributionId} traitée: ${refundStatus}`);
+
       } catch (err: any) {
-        console.error(`[process-cagnotte-refunds] Error processing contribution ${contrib.id}:`, err);
-        results.push({ id: contrib.id, status: 'ERROR', error: err.message });
+        console.error(`[process-cagnotte-refunds] ❌ Erreur traitement contribution ${contrib.id}:`, err);
+
+        // Mettre à jour avec l'erreur
+        await supabase
+          .from('cagnotte_contribution')
+          .update({
+            refund_status: 'FAILED',
+            refund_last_error: err.message || 'Erreur inconnue',
+            refund_last_attempt_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', contrib.id);
+
+        results.push({
+          id: contrib.id,
+          status: 'FAILED',
+          error: err.message,
+        });
       }
     }
 
-    // Note: On ne passe JAMAIS automatiquement en REFUNDED
-    // car PayDunya n'a pas encore d'API de remboursement automatique
-    // Les cagnottes restent en REFUNDING jusqu'au traitement manuel
-
-    console.log('[process-cagnotte-refunds] Refund processing complete');
+    console.log('[process-cagnotte-refunds] 🏁 Traitement terminé');
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
+        processed: results.length,
         results,
-        processed_count: results.length 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+
   } catch (error: any) {
-    console.error('[process-cagnotte-refunds] Fatal error:', error);
+    console.error('[process-cagnotte-refunds] 💥 Erreur fatale:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
