@@ -19,6 +19,8 @@ export const useOwnerFields = () => {
           location,
           city,
           price_per_hour,
+          net_price_1h,
+          public_price_1h,
           capacity,
           field_type,
           is_active,

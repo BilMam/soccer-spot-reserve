@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { getBaseUrl } from '@/lib/config';
+import type { FieldPricing } from '@/types/pricing';
 
 interface AvailabilitySlot {
   id: string;
@@ -39,9 +40,7 @@ interface AvailabilitySlot {
 interface SlotBookingInterfaceProps {
   selectedDate: Date;
   fieldId: string;
-  fieldPrice: number;
-  price1h30?: number | null;
-  price2h?: number | null;
+  pricing: FieldPricing;
   availableSlots: AvailabilitySlot[];
   isLoading: boolean;
   onTimeSlotSelect: (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => void;
@@ -50,9 +49,7 @@ interface SlotBookingInterfaceProps {
 const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   selectedDate,
   fieldId,
-  fieldPrice,
-  price1h30,
-  price2h,
+  pricing,
   availableSlots,
   isLoading,
   onTimeSlotSelect
@@ -108,11 +105,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
 
   // Initialize utility classes
   const validator = new SlotValidationLogic(availableSlots, bookedSlots, bookings, recurringSlots, dateStr);
-  const priceCalculator = new SlotPriceCalculator(availableSlots, {
-    price_per_hour: fieldPrice,
-    price_1h30: price1h30,
-    price_2h: price2h
-  });
+  const priceCalculator = new SlotPriceCalculator(pricing);
 
   const rangeIsAvailable = validator.isRangeAvailable(selectedStartTime, selectedEndTime);
   
@@ -204,9 +197,9 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               subtotal={publicPrice}
               serviceFee={operatorFee}
               total={finalTotal}
-              fieldPrice={fieldPrice}
-              price1h30={price1h30}
-              price2h={price2h}
+              fieldPrice={pricing.public_price_1h || pricing.price_per_hour || 0}
+              price1h30={pricing.public_price_1h30 || pricing.price_1h30}
+              price2h={pricing.public_price_2h || pricing.price_2h}
               durationMinutes={durationMinutes}
               rangeIsAvailable={rangeIsAvailable}
               durationDisplay={durationDisplay}
@@ -220,9 +213,9 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               bookedSlots={bookedSlots}
               bookings={bookings}
               recurringSlots={recurringSlots}
-              fieldPrice={fieldPrice}
-              price1h30={price1h30}
-              price2h={price2h}
+              fieldPrice={pricing.public_price_1h || pricing.price_per_hour || 0}
+              price1h30={pricing.public_price_1h30 || pricing.price_1h30}
+              price2h={pricing.public_price_2h || pricing.price_2h}
               onTimeSlotSelect={onTimeSlotSelect}
             />
 

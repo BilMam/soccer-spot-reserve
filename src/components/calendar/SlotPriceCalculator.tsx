@@ -1,40 +1,12 @@
 
-import { timeToMinutes, minutesToTime, normalizeTime } from '@/utils/timeUtils';
+import { timeToMinutes } from '@/utils/timeUtils';
 import { calculateAdaptivePrice } from '@/utils/adaptivePricing';
-
-interface AvailabilitySlot {
-  id: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  is_available: boolean;
-  price_override?: number;
-  unavailability_reason?: string;
-  is_maintenance?: boolean;
-  notes?: string;
-}
-
-interface PricingData {
-  // Nouveaux champs (prioritaires)
-  net_price_1h?: number;
-  net_price_1h30?: number | null;
-  net_price_2h?: number | null;
-  public_price_1h?: number;
-  public_price_1h30?: number | null;
-  public_price_2h?: number | null;
-  
-  // Anciens champs (fallback)
-  price_per_hour?: number;
-  price_1h30?: number | null;
-  price_2h?: number | null;
-}
+import type { FieldPricing } from '@/types/pricing';
 
 export class SlotPriceCalculator {
-  private availableSlots: AvailabilitySlot[];
-  private fieldPricing: PricingData;
+  private fieldPricing: FieldPricing;
 
-  constructor(availableSlots: AvailabilitySlot[], pricingData: PricingData) {
-    this.availableSlots = availableSlots;
+  constructor(pricingData: FieldPricing) {
     this.fieldPricing = pricingData;
   }
 

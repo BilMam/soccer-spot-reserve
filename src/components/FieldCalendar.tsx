@@ -4,20 +4,17 @@ import { format } from 'date-fns';
 import { useFieldAvailability } from '@/hooks/useFieldAvailability';
 import CalendarDateSelector from '@/components/calendar/CalendarDateSelector';
 import SlotBookingInterface from '@/components/calendar/SlotBookingInterface';
+import type { FieldPricing } from '@/types/pricing';
 
 interface FieldCalendarProps {
   fieldId: string;
-  fieldPrice: number;
-  price1h30?: number | null;
-  price2h?: number | null;
+  pricing: FieldPricing;
   onTimeSlotSelect: (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => void;
 }
 
 const FieldCalendar: React.FC<FieldCalendarProps> = ({
   fieldId,
-  fieldPrice,
-  price1h30,
-  price2h,
+  pricing,
   onTimeSlotSelect
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -40,9 +37,7 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
         <SlotBookingInterface
           selectedDate={selectedDate}
           fieldId={fieldId}
-          fieldPrice={fieldPrice}
-          price1h30={price1h30}
-          price2h={price2h}
+          pricing={pricing}
           availableSlots={availableSlots}
           isLoading={isLoading}
           onTimeSlotSelect={onTimeSlotSelect}

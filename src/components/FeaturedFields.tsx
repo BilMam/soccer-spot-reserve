@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import FieldCard from './FieldCard';
 import { getDefaultSportImage } from '@/utils/defaultImages';
 import { getFieldTypeLabel } from '@/utils/fieldUtils';
+import { calculatePublicPrice } from '@/utils/publicPricing';
 
 interface DatabaseField {
   id: string;
@@ -14,6 +15,12 @@ interface DatabaseField {
   address: string;
   city: string;
   price_per_hour: number;
+  net_price_1h?: number;
+  net_price_1h30?: number | null;
+  net_price_2h?: number | null;
+  public_price_1h?: number;
+  public_price_1h30?: number | null;
+  public_price_2h?: number | null;
   rating: number;
   total_reviews: number;
   images: string[];
@@ -31,7 +38,15 @@ const FeaturedFields = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('fields')
-        .select('*')
+        .select(`
+          *,
+          net_price_1h,
+          net_price_1h30,
+          net_price_2h,
+          public_price_1h,
+          public_price_1h30,
+          public_price_2h
+        `)
         .eq('is_active', true)
         .order('rating', { ascending: false })
         .limit(6);
@@ -43,18 +58,25 @@ const FeaturedFields = () => {
 
 
   // Transform database fields to FieldCard format
-  const transformedFields = fields?.map(field => ({
-    id: field.id,
-    name: field.name,
-    location: field.location,
-    price: field.price_per_hour,
-    rating: field.rating || 0,
-    reviews: field.total_reviews || 0,
-    image: field.images?.[0] || getDefaultSportImage(field.sport_type),
-    features: field.amenities || [],
-    capacity: field.capacity,
-    type: getFieldTypeLabel(field.field_type)
-  })) || [];
+  const transformedFields = fields?.map((field: DatabaseField) => {
+    // Utiliser le prix PUBLIC pour l'affichage
+    const publicPrice = field.public_price_1h 
+      || (field.net_price_1h ? calculatePublicPrice(field.net_price_1h) : null)
+      || field.price_per_hour;
+    
+    return {
+      id: field.id,
+      name: field.name,
+      location: field.location,
+      price: publicPrice,
+      rating: field.rating || 0,
+      reviews: field.total_reviews || 0,
+      image: field.images?.[0] || getDefaultSportImage(field.sport_type),
+      features: field.amenities || [],
+      capacity: field.capacity,
+      type: getFieldTypeLabel(field.field_type)
+    };
+  }) || [];
 
   if (isLoading) {
     return (

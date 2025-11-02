@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Field, UseSearchQueryProps } from '@/types/search';
 import { checkFieldAvailability } from '@/utils/availabilityChecker';
+import { calculatePublicPrice } from '@/utils/publicPricing';
 
 // Fonction pour normaliser le texte (supprimer accents, apostrophes, etc.)
 const normalizeText = (text: string): string => {
@@ -59,7 +60,15 @@ export const useSearchQuery = ({ location, date, timeSlot, players, filters }: U
       console.log('📋 Récupération de tous les terrains actifs...');
       const { data: allFields, error } = await supabase
         .from('fields')
-        .select('*')
+        .select(`
+          *,
+          net_price_1h,
+          net_price_1h30,
+          net_price_2h,
+          public_price_1h,
+          public_price_1h30,
+          public_price_2h
+        `)
         .eq('is_active', true)
         .order('rating', { ascending: false });
 
@@ -70,12 +79,19 @@ export const useSearchQuery = ({ location, date, timeSlot, players, filters }: U
 
       console.log('📊 Terrains récupérés:', allFields?.length);
 
-      // Convertir latitude et longitude en nombres et ajouter des logs détaillés
+      // Convertir latitude/longitude en nombres et calculer les prix publics si absents
       const fieldsWithNumericCoords = allFields?.map(field => {
+        // Calculer le prix public à partir du net si le public n'existe pas
+        const publicPrice1h = field.public_price_1h 
+          || (field.net_price_1h ? calculatePublicPrice(field.net_price_1h) : null)
+          || field.price_per_hour;
+        
         const numericField = {
           ...field,
           latitude: field.latitude ? Number(field.latitude) : null,
           longitude: field.longitude ? Number(field.longitude) : null,
+          // Utiliser le prix PUBLIC pour l'affichage
+          price_per_hour: publicPrice1h,
         };
         
         console.log(`🏟️ Terrain transformé ${field.name}:`, {

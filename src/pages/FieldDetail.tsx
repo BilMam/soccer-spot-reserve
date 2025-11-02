@@ -26,6 +26,12 @@ interface Field {
   price_per_hour: number;
   price_1h30?: number | null;
   price_2h?: number | null;
+  net_price_1h?: number;
+  net_price_1h30?: number | null;
+  net_price_2h?: number | null;
+  public_price_1h?: number;
+  public_price_1h30?: number | null;
+  public_price_2h?: number | null;
   rating: number;
   total_reviews: number;
   images: string[];
@@ -53,7 +59,15 @@ const FieldDetail = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('fields')
-        .select('*')
+        .select(`
+          *,
+          net_price_1h,
+          net_price_1h30,
+          net_price_2h,
+          public_price_1h,
+          public_price_1h30,
+          public_price_2h
+        `)
         .eq('id', id)
         .eq('is_active', true)
         .single();
@@ -264,13 +278,21 @@ const FieldDetail = () => {
           {/* Sidebar - Calendar seulement */}
           <div className="lg:col-span-1">
             <div className="sticky top-8">
-              <FieldCalendar
-                fieldId={field.id}
-                fieldPrice={field.price_per_hour}
-                price1h30={field.price_1h30}
-                price2h={field.price_2h}
-                onTimeSlotSelect={handleTimeSlotSelect}
-              />
+            <FieldCalendar
+              fieldId={field.id}
+              pricing={{
+                net_price_1h: field.net_price_1h,
+                net_price_1h30: field.net_price_1h30,
+                net_price_2h: field.net_price_2h,
+                public_price_1h: field.public_price_1h,
+                public_price_1h30: field.public_price_1h30,
+                public_price_2h: field.public_price_2h,
+                price_per_hour: field.price_per_hour,
+                price_1h30: field.price_1h30,
+                price_2h: field.price_2h
+              }}
+              onTimeSlotSelect={handleTimeSlotSelect}
+            />
             </div>
           </div>
         </div>
