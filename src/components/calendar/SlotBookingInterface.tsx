@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { getBaseUrl } from '@/lib/config';
 
 interface AvailabilitySlot {
   id: string;
@@ -341,7 +342,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
 
                   // Copier le lien SANS bloquer la redirection
                   try {
-                    const url = `${window.location.origin}/cagnotte/${cagnotteId}`;
+                    const url = `${getBaseUrl()}/cagnotte/${cagnotteId}`;
                     await navigator.clipboard.writeText(url);
                     toast({
                       title: "Cagnotte créée !",
