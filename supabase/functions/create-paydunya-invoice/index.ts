@@ -98,7 +98,7 @@ serve(async (req) => {
     // Get booking from database
     const { data: existingBooking, error: bookingFetchError } = await supabaseClient
       .from('bookings')
-      .select('field_id, user_id, field_price')
+      .select('field_id, user_id, field_price, booking_date, start_time, end_time')
       .eq('id', booking_id)
       .maybeSingle();
 
@@ -116,15 +116,15 @@ serve(async (req) => {
       .from('cagnotte')
       .select('id,status,slot_start_time,slot_end_time')
       .eq('field_id', existingBooking.field_id)
-      .eq('slot_date', booking.booking_date)
+      .eq('slot_date', existingBooking.booking_date)
       .in('status', ['HOLD','CONFIRMED'])
       .maybeSingle();
 
     const overlap = (aS:string, aE:string, bS:string, bE:string) => (aS < bE && aE > bS);
 
     if (conflict && overlap(
-      booking.start_time, 
-      booking.end_time,
+      existingBooking.start_time, 
+      existingBooking.end_time,
       conflict.slot_start_time,  
       conflict.slot_end_time
     )) {
