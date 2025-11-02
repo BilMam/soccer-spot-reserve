@@ -218,7 +218,7 @@ export default function Cagnotte() {
     }
 
     // Vérifier que la cagnotte est active
-    if (cagnotte?.status === 'EXPIRED' || cagnotte?.status === 'CANCELED') {
+    if (cagnotte?.status === 'EXPIRED' || cagnotte?.status === 'CANCELLED') {
       toast.error("Cette cagnotte n'est plus active");
       setIsPaymentProcessing(false);
       return;
@@ -437,7 +437,14 @@ export default function Cagnotte() {
     <div className="container mx-auto p-6 max-w-4xl">
       <Button
         variant="ghost"
-        onClick={() => navigate(-1)}
+        onClick={() => {
+          // Si un paramètre team est présent, revenir à la page principale de la cagnotte
+          if (team) {
+            navigate(`/cagnotte/${id}`);
+          } else {
+            navigate(-1);
+          }
+        }}
         className="mb-4"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -587,6 +594,20 @@ export default function Cagnotte() {
               </Button>
               <p className="text-xs text-green-600 mt-4">
                 Présentez-vous directement au centre avec votre confirmation.
+              </p>
+            </div>
+          ) : cagnotte.status === 'CANCELLED' ? (
+            <div className="bg-yellow-50 border-2 border-yellow-500 rounded-lg p-6 text-center">
+              <div className="text-4xl mb-2">🚫</div>
+              <h3 className="text-xl font-bold text-yellow-800 mb-2">
+                Cagnotte annulée
+              </h3>
+              <p className="text-yellow-700 mb-2">
+                {(cagnotte as any).cancellation_reason ||
+                  "Une réservation directe a été confirmée sur ce créneau."}
+              </p>
+              <p className="text-sm text-yellow-600">
+                Les contributions seront remboursées automatiquement (1–5 jours ouvrés selon l'opérateur).
               </p>
             </div>
           ) : cagnotte.status === 'EXPIRED' || cagnotte.status === 'REFUNDING' || cagnotte.status === 'REFUNDED' ? (
@@ -754,6 +775,12 @@ export default function Cagnotte() {
 
               {/* Infos importantes */}
               <div className="bg-muted rounded-lg p-4 text-sm text-muted-foreground space-y-2">
+                <p>
+                  🛡️ Dès que la cagnotte atteint {cagnotte.hold_threshold_pct}% du total
+                  (soit {Math.ceil((cagnotte.total_amount * cagnotte.hold_threshold_pct) / 100).toLocaleString()} XOF),
+                  le créneau est réservé en exclusivité pendant {Math.floor(cagnotte.hold_duration_sec / 60)} minutes.
+                  Continuez à contribuer pour confirmer définitivement la réservation.
+                </p>
                 <p>
                   ℹ️ Le créneau se bloque définitivement quand la cagnotte atteint 100%. 
                   Avant, il reste public.
