@@ -210,10 +210,22 @@ serve(async (req) => {
 
     console.log(`[${timestamp}] Payment intent linked successfully: ${invoiceToken}`);
     
-    // URL de retour après paiement (dynamique pour preview/prod)
-    const frontendBaseUrl = Deno.env.get('APP_BASE_URL') || 
-                             Deno.env.get('FRONTEND_BASE_URL') || 
-                             'https://pisport.app';
+    // Déterminer l'URL de base front-end : si les variables d'environnement pointent vers un domaine de preview
+    // (par ex. *.lovable.dev, *.vercel.app ou contenant « preview »), forcer l'utilisation du domaine de production pisport.app.
+    const frontendEnv = Deno.env.get('APP_BASE_URL') || Deno.env.get('FRONTEND_BASE_URL');
+    let frontendBaseUrl = 'https://pisport.app';
+    if (frontendEnv) {
+      if (
+        frontendEnv.includes('lovable.dev') ||
+        frontendEnv.includes('vercel.app') ||
+        frontendEnv.includes('preview')
+      ) {
+        // env vers preview → utiliser production
+        frontendBaseUrl = 'https://pisport.app';
+      } else {
+        frontendBaseUrl = frontendEnv;
+      }
+    }
     
     const returnUrl = `${frontendBaseUrl}/mes-reservations`;
     const cancelUrl = `${frontendBaseUrl}/mes-reservations`;
