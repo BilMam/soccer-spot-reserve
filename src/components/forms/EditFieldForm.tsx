@@ -16,6 +16,7 @@ import FieldPayoutAccountForm from './FieldPayoutAccountForm';
 import ErrorAlert from '@/components/ErrorAlert';
 import { useGeocodingService } from '@/hooks/useGeocodingService';
 import { toast } from 'sonner';
+import { calculatePublicPrice } from '@/utils/publicPricing';
 
 interface EditFieldFormProps {
   fieldId: string;
@@ -79,7 +80,15 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
         setError(null);
         const { data, error } = await supabase
           .from('fields')
-          .select('*')
+          .select(`
+            *,
+            net_price_1h,
+            net_price_1h30,
+            net_price_2h,
+            public_price_1h,
+            public_price_1h30,
+            public_price_2h
+          `)
           .eq('id', fieldId)
           .maybeSingle();
 
@@ -112,9 +121,9 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
           city: data.city,
           field_type: data.field_type,
           capacity: data.capacity.toString(),
-          price_per_hour: data.price_per_hour.toString(),
-          price_1h30: data.price_1h30?.toString() || '',
-          price_2h: data.price_2h?.toString() || '',
+          price_per_hour: (data.net_price_1h || data.price_per_hour).toString(),
+          price_1h30: (data.net_price_1h30 || data.price_1h30)?.toString() || '',
+          price_2h: (data.net_price_2h || data.price_2h)?.toString() || '',
           availability_start: data.availability_start || '08:00',
           availability_end: data.availability_end || '22:00',
           amenities: data.amenities || [],
@@ -247,6 +256,15 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
     console.log('Field owner ID:', fieldOwner);
     
     try {
+      // Calculer les prix nets et publics
+      const netPrice1h = parseFloat(formData.price_per_hour);
+      const netPrice1h30 = formData.price_1h30 ? parseFloat(formData.price_1h30) : null;
+      const netPrice2h = formData.price_2h ? parseFloat(formData.price_2h) : null;
+
+      const publicPrice1h = calculatePublicPrice(netPrice1h);
+      const publicPrice1h30 = netPrice1h30 ? calculatePublicPrice(netPrice1h30) : null;
+      const publicPrice2h = netPrice2h ? calculatePublicPrice(netPrice2h) : null;
+
       const updateData = {
         name: formData.name,
         description: formData.description,
@@ -255,9 +273,18 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
         city: formData.city,
         field_type: formData.field_type,
         capacity: parseInt(formData.capacity),
-        price_per_hour: parseFloat(formData.price_per_hour),
-        price_1h30: formData.price_1h30 ? parseFloat(formData.price_1h30) : null,
-        price_2h: formData.price_2h ? parseFloat(formData.price_2h) : null,
+        // Colonnes NET (ce que le propriétaire touche)
+        net_price_1h: netPrice1h,
+        net_price_1h30: netPrice1h30,
+        net_price_2h: netPrice2h,
+        // Colonnes PUBLIC (ce que le client paie)
+        public_price_1h: publicPrice1h,
+        public_price_1h30: publicPrice1h30,
+        public_price_2h: publicPrice2h,
+        // Colonnes legacy (pour rétrocompatibilité)
+        price_per_hour: netPrice1h,
+        price_1h30: netPrice1h30,
+        price_2h: netPrice2h,
         availability_start: formData.availability_start,
         availability_end: formData.availability_end,
         amenities: formData.amenities,
