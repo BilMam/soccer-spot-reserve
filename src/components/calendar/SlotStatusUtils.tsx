@@ -79,12 +79,13 @@ export class SlotStatusUtils {
     
     if (!slot) return false;
     
-    // Vérifier si le slot est en HOLD actif (cagnotte en cours)
-    if (slot.on_hold_until) {
+    // Vérifier si le slot est en HOLD actif (cagnotte confirmée uniquement)
+    // Un HOLD est actif seulement si on_hold_until > now() ET hold_cagnotte_id est non-null
+    if (slot.on_hold_until && slot.hold_cagnotte_id) {
       const holdUntil = new Date(slot.on_hold_until);
       const now = new Date();
       if (holdUntil > now) {
-        console.log('🔍 Slot en HOLD actif:', `${normalizedStart}-${normalizedEnd}`, 'expire:', slot.on_hold_until);
+        console.log('🔍 Slot en HOLD actif (cagnotte confirmée):', `${normalizedStart}-${normalizedEnd}`, 'expire:', slot.on_hold_until);
         return false;
       }
     }
@@ -111,12 +112,13 @@ export class SlotStatusUtils {
       return 'not_created';
     }
     
-    // 2. PRIORITÉ 1: Vérifier si le slot est en HOLD actif (cagnotte en cours)
-    if (slot.on_hold_until) {
+    // 2. PRIORITÉ 1: Vérifier si le slot est en HOLD actif (cagnotte confirmée uniquement)
+    // Un HOLD est actif seulement si on_hold_until > now() ET hold_cagnotte_id est non-null
+    if (slot.on_hold_until && slot.hold_cagnotte_id) {
       const holdUntil = new Date(slot.on_hold_until);
       const now = new Date();
       if (holdUntil > now) {
-        console.log('🔍 getSlotStatus: booked (HOLD actif) pour', `${normalizedStart}-${normalizedEnd}`);
+        console.log('🔍 getSlotStatus: booked (HOLD actif avec cagnotte) pour', `${normalizedStart}-${normalizedEnd}`);
         return 'booked';
       }
     }

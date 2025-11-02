@@ -11,7 +11,7 @@ export const useAvailableTimesForDate = (fieldId: string, selectedDate: string |
 
       const { data, error } = await supabase
         .from('field_availability')
-        .select('start_time, end_time, is_available, on_hold_until')
+        .select('start_time, end_time, is_available, on_hold_until, hold_cagnotte_id')
         .eq('field_id', fieldId)
         .eq('date', normalizedDate)
         .eq('is_available', true)
@@ -25,12 +25,13 @@ export const useAvailableTimesForDate = (fieldId: string, selectedDate: string |
       const rows = data || [];
       
       // Filtrer les slots en HOLD actif (masquer pour les autres utilisateurs)
+      // Un créneau est en HOLD seulement si on_hold_until > now() ET hold_cagnotte_id est non-null
       const now = new Date();
       const availableRows = rows.filter(slot => {
-        if (slot.on_hold_until) {
+        if (slot.on_hold_until && (slot as any).hold_cagnotte_id) {
           const holdUntil = new Date(slot.on_hold_until);
           if (holdUntil > now) {
-            return false; // Slot en HOLD, on ne l'affiche pas
+            return false; // Slot en HOLD actif avec cagnotte confirmée
           }
         }
         return true;

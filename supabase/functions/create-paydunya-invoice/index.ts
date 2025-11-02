@@ -111,34 +111,38 @@ serve(async (req) => {
       throw new Error('Accès non autorisé à cette réservation');
     }
 
-    // Vérifier conflit avec cagnotte HOLD/CONFIRMED (filet de sécurité backend)
-    const { data: conflict } = await supabaseClient
+    // Vérifier conflit avec TOUTES les cagnottes HOLD/CONFIRMED (filet de sécurité backend)
+    const { data: conflictingCagnottes } = await supabaseClient
       .from('cagnotte')
       .select('id,status,slot_start_time,slot_end_time')
       .eq('field_id', existingBooking.field_id)
       .eq('slot_date', existingBooking.booking_date)
-      .in('status', ['HOLD','CONFIRMED'])
-      .maybeSingle();
+      .in('status', ['HOLD','CONFIRMED']);
 
     const overlap = (aS:string, aE:string, bS:string, bE:string) => (aS < bE && aE > bS);
 
-    if (conflict && overlap(
-      existingBooking.start_time, 
-      existingBooking.end_time,
-      conflict.slot_start_time,  
-      conflict.slot_end_time
-    )) {
-      console.error(`[${timestamp}] Conflit avec cagnotte ${conflict.status}:`, conflict.id);
-      return new Response(
-        JSON.stringify({
-          code: "CAGNOTTE_BLOCKED",
-          error: "Ce créneau est temporairement réservé par une cagnotte d'équipe."
-        }),
-        { 
-          status: 409, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+    // Boucler sur chaque cagnotte et vérifier le chevauchement
+    if (conflictingCagnottes && conflictingCagnottes.length > 0) {
+      for (const cagnotte of conflictingCagnottes) {
+        if (overlap(
+          existingBooking.start_time, 
+          existingBooking.end_time,
+          cagnotte.slot_start_time,  
+          cagnotte.slot_end_time
+        )) {
+          console.error(`[${timestamp}] Conflit avec cagnotte ${cagnotte.status}:`, cagnotte.id);
+          return new Response(
+            JSON.stringify({
+              code: "CAGNOTTE_BLOCKED",
+              error: "Ce créneau est temporairement réservé par une cagnotte d'équipe."
+            }),
+            { 
+              status: 409, 
+              headers: { ...corsHeaders, "Content-Type": "application/json" } 
+            }
+          );
         }
-      );
+      }
     }
 
     // Le montant reçu est déjà le finalTotal (prix public + frais opérateurs 3%)
