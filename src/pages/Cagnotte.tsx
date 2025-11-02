@@ -41,7 +41,7 @@ export default function Cagnotte() {
   
   // Detection des query params de retour PSP
   const thanksParam = searchParams.get('thanks');
-  const cancelParam = searchParams.get('cancel');
+  const cancelParam = searchParams.get('cancel') || searchParams.get('canceled');
   const txParam = searchParams.get('tx');
   const amountParam = searchParams.get('amount');
   const [contributionConfirmed, setContributionConfirmed] = useState(false);
@@ -475,7 +475,7 @@ export default function Cagnotte() {
         <Alert className="mb-4 border-yellow-500 bg-yellow-50">
           <XCircle className="h-5 w-5 text-yellow-600" />
           <AlertDescription className="ml-2 text-yellow-800">
-            Paiement annulé. Vous pouvez réessayer.
+            Paiement abandonné. Vous pouvez réessayer.
           </AlertDescription>
         </Alert>
       )}

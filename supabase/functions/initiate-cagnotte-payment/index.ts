@@ -102,7 +102,7 @@ serve(async (req) => {
     const envUrl = Deno.env.get('APP_BASE_URL') || Deno.env.get('FRONTEND_BASE_URL');
     const frontendBaseUrl = envUrl || 'https://pisport.app';
     const returnUrl = `${frontendBaseUrl}/cagnotte/${cagnotte_id}?thanks=1&team=${team}&tx=${invoiceToken}`;
-    const cancelUrl = `${frontendBaseUrl}/cagnotte/${cagnotte_id}?canceled=1`;
+    const cancelUrl = `${frontendBaseUrl}/cagnotte/${cagnotte_id}?cancel=1`;
     
     console.log(`[initiate-cagnotte-payment] Montant demandé: ${requestedInt} XOF, Cap équipe: ${teamRemainingInt} XOF, Montant facture: ${amountInt} XOF`);
     
