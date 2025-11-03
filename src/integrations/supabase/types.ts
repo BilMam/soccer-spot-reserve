@@ -359,6 +359,7 @@ export type Database = {
           refund_initiated_at: string | null
           refund_last_attempt_at: string | null
           refund_last_error: string | null
+          refund_metadata: Json | null
           refund_reference: string | null
           refund_status: string | null
           refunded_at: string | null
@@ -386,6 +387,7 @@ export type Database = {
           refund_initiated_at?: string | null
           refund_last_attempt_at?: string | null
           refund_last_error?: string | null
+          refund_metadata?: Json | null
           refund_reference?: string | null
           refund_status?: string | null
           refunded_at?: string | null
@@ -413,6 +415,7 @@ export type Database = {
           refund_initiated_at?: string | null
           refund_last_attempt_at?: string | null
           refund_last_error?: string | null
+          refund_metadata?: Json | null
           refund_reference?: string | null
           refund_status?: string | null
           refunded_at?: string | null
