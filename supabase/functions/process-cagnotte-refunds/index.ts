@@ -20,16 +20,18 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const paydunyaToken = Deno.env.get('PAYDUNYA_TOKEN');
+    // Charger les 3 clés PayDunya distinctement
     const paydunyaMasterKey = Deno.env.get('PAYDUNYA_MASTER_KEY');
+    const paydunyaPrivateKey = Deno.env.get('PAYDUNYA_PRIVATE_KEY');
+    const paydunyaToken = Deno.env.get('PAYDUNYA_TOKEN');
 
-    if (!paydunyaToken || !paydunyaMasterKey) {
-      throw new Error('PAYDUNYA_TOKEN ou PAYDUNYA_MASTER_KEY manquant');
+    if (!paydunyaMasterKey || !paydunyaPrivateKey || !paydunyaToken) {
+      throw new Error('PAYDUNYA_MASTER_KEY, PAYDUNYA_PRIVATE_KEY ou PAYDUNYA_TOKEN manquant');
     }
 
     console.log('[process-cagnotte-refunds] 🔄 Démarrage du traitement des remboursements...');
 
-    // Récupérer les contributions à rembourser (PENDING ou FAILED avec moins de 5 tentatives)
+    // Récupérer les contributions à rembourser (PENDING, FAILED ou PROCESSING avec moins de 5 tentatives)
     const { data: contributions, error } = await supabase
       .from('cagnotte_contribution')
       .select(`
@@ -43,7 +45,7 @@ serve(async (req) => {
           cancellation_reason
         )
       `)
-      .in('refund_status', ['PENDING', 'FAILED'])
+      .in('refund_status', ['PENDING', 'FAILED', 'PROCESSING'])
       .lt('refund_attempt_count', MAX_REFUND_ATTEMPTS)
       .eq('status', 'SUCCEEDED'); // Seules les contributions réussies sont remboursables
 
@@ -72,7 +74,7 @@ serve(async (req) => {
 
         console.log(`[process-cagnotte-refunds] 💰 Traitement contribution ${contributionId} - ${amount} XOF`);
 
-        // Vérifier l'idempotence : si refund_reference existe déjà, ne pas créer un nouveau remboursement
+        // Vérifier l'idempotence : si refund_reference existe déjà, vérifier le statut
         if (contrib.refund_reference) {
           console.log(`[process-cagnotte-refunds] ℹ️ Contribution ${contributionId} a déjà une référence: ${contrib.refund_reference}`);
           
@@ -84,7 +86,7 @@ serve(async (req) => {
                 method: 'GET',
                 headers: {
                   'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
-                  'PAYDUNYA-PRIVATE-KEY': paydunyaToken,
+                  'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey,
                   'PAYDUNYA-TOKEN': paydunyaToken,
                   'Content-Type': 'application/json',
                 },
@@ -112,16 +114,26 @@ serve(async (req) => {
 
                 results.push({ id: contributionId, status: 'REFUNDED', reference: contrib.refund_reference });
               } else if (statusData.status === 'failed' || statusData.status === 'cancelled') {
+                // Réinitialiser pour réessayer avec une nouvelle tentative
+                console.log(`[process-cagnotte-refunds] 🔄 Remboursement échoué, réinitialisation pour réessai`);
+                
                 await supabase
                   .from('cagnotte_contribution')
                   .update({
-                    refund_status: 'FAILED',
+                    refund_status: 'PENDING',
+                    refund_reference: null,
+                    refund_attempt_count: contrib.refund_attempt_count + 1,
                     refund_last_error: `PayDunya status: ${statusData.status}`,
+                    refund_last_attempt_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
                   })
                   .eq('id', contributionId);
 
-                results.push({ id: contributionId, status: 'FAILED', error: statusData.status });
+                results.push({ id: contributionId, status: 'RETRY_SCHEDULED', error: statusData.status });
+              } else if (statusData.status === 'pending' || statusData.status === 'processing') {
+                // Toujours en cours, pas de changement
+                console.log(`[process-cagnotte-refunds] ⏳ Remboursement toujours en cours`);
+                results.push({ id: contributionId, status: 'PROCESSING', reference: contrib.refund_reference });
               }
             }
           } catch (statusError) {
@@ -134,13 +146,13 @@ serve(async (req) => {
         // Récupérer le numéro de téléphone du payeur via l'API PayDunya
         console.log(`[process-cagnotte-refunds] 📞 Récupération du numéro pour invoice: ${pspTxId}`);
         
-        const invoiceResponse = await fetch(
+            const invoiceResponse = await fetch(
           `${PAYDUNYA_API_BASE}/checkout-invoice/confirm/${pspTxId}`,
           {
             method: 'GET',
             headers: {
               'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
-              'PAYDUNYA-PRIVATE-KEY': paydunyaToken,
+              'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey,
               'PAYDUNYA-TOKEN': paydunyaToken,
               'Content-Type': 'application/json',
             },
@@ -188,7 +200,7 @@ serve(async (req) => {
             method: 'POST',
             headers: {
               'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
-              'PAYDUNYA-PRIVATE-KEY': paydunyaToken,
+              'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey,
               'PAYDUNYA-TOKEN': paydunyaToken,
               'Content-Type': 'application/json',
             },
