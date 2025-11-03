@@ -210,16 +210,25 @@ export default function Cagnotte() {
   const handleContribute = async (amountInput: number) => {
     setIsPaymentProcessing(true);
     
-    // Vérifier que teamInfo existe
-    if (!teamInfo) {
-      toast.error("Impossible de charger les informations d'équipe");
+    // Vérifier que la collecte est ouverte
+    const now = new Date();
+    const hasExpired = new Date(cagnotte.expires_at) <= now;
+    const isCollectionOpen =
+      ['IN_PROGRESS', 'HOLD'].includes(cagnotte.status) && !hasExpired;
+    
+    if (!isCollectionOpen) {
+      toast.error("La collecte est fermée", {
+        description: hasExpired 
+          ? "Le délai de collecte est écoulé" 
+          : "Cette cagnotte n'est plus active"
+      });
       setIsPaymentProcessing(false);
       return;
     }
-
-    // Vérifier que la cagnotte est active
-    if (cagnotte?.status === 'EXPIRED' || cagnotte?.status === 'CANCELLED' || cagnotte?.status === 'REFUNDING' || cagnotte?.status === 'REFUNDED') {
-      toast.error("Cette cagnotte n'est plus active");
+    
+    // Vérifier que teamInfo existe
+    if (!teamInfo) {
+      toast.error("Impossible de charger les informations d'équipe");
       setIsPaymentProcessing(false);
       return;
     }
@@ -414,6 +423,12 @@ export default function Cagnotte() {
 
   const progress = (cagnotte.collected_amount / cagnotte.total_amount) * 100;
   
+  // Calculer si la collecte est ouverte
+  const now = new Date();
+  const hasExpired = new Date(cagnotte.expires_at) <= now;
+  const isCollectionOpen =
+    ['IN_PROGRESS', 'HOLD'].includes(cagnotte.status) && !hasExpired;
+  
   // Team-specific calculations - exact amounts, capped to team remaining
   let suggestedPart = 0;
   let teamRemaining = 0;
@@ -513,7 +528,7 @@ export default function Cagnotte() {
           )}
           
           {/* Sélection d'équipe si pas spécifiée */}
-          {!team && (cagnotte.status === 'IN_PROGRESS' || cagnotte.status === 'HOLD') && (
+          {!team && isCollectionOpen && (
             <div className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
                 <h4 className="font-bold text-blue-900 mb-3 text-lg">
@@ -660,9 +675,38 @@ export default function Cagnotte() {
                   {(cagnotte as any).cancellation_reason}
                 </p>
               )}
-              <p className="text-sm text-red-600">
+              <p className="text-sm text-red-600 mb-4">
                 Les contributions seront remboursées automatiquement (1–5 jours ouvrés).
               </p>
+              <Button 
+                onClick={() => navigate('/')}
+                variant="outline"
+                className="mt-2"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Retour à l'accueil
+              </Button>
+            </div>
+          ) : !isCollectionOpen ? (
+            <div className="bg-red-50 border-2 border-red-500 rounded-lg p-6 text-center">
+              <div className="text-4xl mb-2">⏰</div>
+              <h3 className="text-xl font-bold text-red-800 mb-2">
+                Cagnotte échouée
+              </h3>
+              <p className="text-red-700 mb-2">
+                {(cagnotte as any).cancellation_reason || "Le délai de collecte est écoulé."}
+              </p>
+              <p className="text-sm text-red-600 mb-4">
+                Les contributions seront remboursées automatiquement (1–5 jours ouvrés selon l'opérateur).
+              </p>
+              <Button 
+                onClick={() => navigate('/')}
+                variant="outline"
+                className="mt-2"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Retour à l'accueil
+              </Button>
             </div>
           ) : (
             <>
@@ -715,7 +759,7 @@ export default function Cagnotte() {
               )}
 
               {/* CTA Payer */}
-              {team && teamInfo ? (
+              {team && teamInfo && isCollectionOpen ? (
                 <div className="space-y-4">
                   <div className="bg-muted rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
@@ -742,6 +786,7 @@ export default function Cagnotte() {
                       onChange={(e) => handleAmountChange(e.target.value)}
                       placeholder={String(Math.ceil(teamInfo.suggested_part))}
                       className="text-lg"
+                      disabled={!isCollectionOpen}
                     />
                     {amountHint && (
                       <p className="text-xs text-muted-foreground mt-1">{amountHint}</p>
@@ -763,6 +808,7 @@ export default function Cagnotte() {
                             variant="outline"
                             size="sm"
                             onClick={() => setCustomAmount(String(suggestedInt))}
+                            disabled={!isCollectionOpen}
                           >
                             1 part ({suggestedInt.toLocaleString()} XOF)
                           </Button>
@@ -770,7 +816,7 @@ export default function Cagnotte() {
                             variant="outline"
                             size="sm"
                             onClick={() => setCustomAmount(String(twoPartsInt))}
-                            disabled={twoPartsInt > remainingInt}
+                            disabled={!isCollectionOpen || twoPartsInt > remainingInt}
                           >
                             +2 parts ({twoPartsInt.toLocaleString()} XOF)
                           </Button>
@@ -779,6 +825,7 @@ export default function Cagnotte() {
                               variant="outline"
                               size="sm"
                               onClick={() => setCustomAmount(String(remainingInt))}
+                              disabled={!isCollectionOpen}
                             >
                               Tout le reliquat ({remainingInt.toLocaleString()} XOF)
                             </Button>
@@ -790,7 +837,7 @@ export default function Cagnotte() {
 
                   <Button
                     onClick={() => handleContribute(Number(customAmount))}
-                    disabled={isPaymentProcessing || !customAmount || Number(customAmount) <= 0}
+                    disabled={!isCollectionOpen || isPaymentProcessing || !customAmount || Number(customAmount) <= 0}
                     className="w-full"
                     size="lg"
                   >
@@ -804,7 +851,7 @@ export default function Cagnotte() {
                     })()}
                   </Button>
                 </div>
-              ) : !team && (
+              ) : !team && isCollectionOpen && (
                 <div className="text-center p-6 bg-muted rounded-lg">
                   <p className="text-muted-foreground mb-4">
                     Partage les liens ci-dessus avec tes équipes pour commencer la collecte !
