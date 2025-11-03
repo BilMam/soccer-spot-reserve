@@ -148,7 +148,7 @@ serve(async (req) => {
         // Récupérer le numéro de téléphone du payeur via l'API PayDunya
         console.log(`[process-cagnotte-refunds] 📞 Récupération du numéro pour invoice: ${pspTxId}`);
         
-            const invoiceResponse = await fetch(
+        const invoiceResponse = await fetch(
           `${PAYDUNYA_API_BASE}/checkout-invoice/confirm/${pspTxId}`,
           {
             method: 'GET',
@@ -162,19 +162,74 @@ serve(async (req) => {
           }
         );
 
-        if (!invoiceResponse.ok) {
-          const errorText = await invoiceResponse.text();
-          throw new Error(`Erreur récupération invoice: ${invoiceResponse.status} - ${errorText}`);
+        const invoiceData = await invoiceResponse.json();
+
+        // Vérifier le code retour AVANT d'extraire le numéro
+        if (invoiceData.response_code !== '00') {
+          console.error('[process-cagnotte-refunds] ❌ Invoice confirmation failed', {
+            contributionId,
+            responseCode: invoiceData.response_code,
+            responseText: invoiceData.response_text,
+          });
+
+          await supabase
+            .from('cagnotte_contribution')
+            .update({
+              refund_status: 'FAILED',
+              refund_last_attempt_at: new Date().toISOString(),
+              refund_last_error: `Invoice confirm failed: ${invoiceData.response_text ?? invoiceResponse.statusText}`,
+              refund_attempt_count: (contrib.refund_attempt_count ?? 0) + 1,
+              refund_metadata: invoiceData,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', contributionId);
+
+          results.push({
+            id: contributionId,
+            status: 'FAILED',
+            error: `Invoice confirm failed: ${invoiceData.response_text}`,
+          });
+
+          continue; // Passer à la contribution suivante
         }
 
-        const invoiceData = await invoiceResponse.json();
-        const msisdn = invoiceData.customer?.phone || invoiceData.customer?.msisdn;
+        // Extraire le numéro depuis invoice.customer
+        const customer = invoiceData.invoice?.customer ?? invoiceData.customer ?? null;
+        const msisdn = customer?.phone ?? customer?.msisdn ?? null;
 
         if (!msisdn) {
-          throw new Error('Numéro de téléphone introuvable dans les données de l\'invoice');
+          console.error('[process-cagnotte-refunds] ❌ No customer phone found', { contributionId, invoiceData });
+
+          await supabase
+            .from('cagnotte_contribution')
+            .update({
+              refund_status: 'FAILED',
+              refund_last_attempt_at: new Date().toISOString(),
+              refund_last_error: 'Missing customer phone for refund',
+              refund_attempt_count: (contrib.refund_attempt_count ?? 0) + 1,
+              refund_metadata: invoiceData,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', contributionId);
+
+          results.push({
+            id: contributionId,
+            status: 'FAILED',
+            error: 'Missing customer phone',
+          });
+
+          continue; // Passer à la contribution suivante
         }
 
         console.log(`[process-cagnotte-refunds] ✅ Numéro récupéré: ${msisdn}`);
+
+        // Conserver les métadonnées pour audit
+        await supabase
+          .from('cagnotte_contribution')
+          .update({
+            refund_metadata: invoiceData.invoice ?? invoiceData,
+          })
+          .eq('id', contributionId);
 
         // Incrémenter le compteur de tentatives
         await supabase
