@@ -24,12 +24,13 @@ serve(async (req) => {
     const paydunyaMasterKey = Deno.env.get('PAYDUNYA_MASTER_KEY');
     const paydunyaPrivateKey = Deno.env.get('PAYDUNYA_PRIVATE_KEY');
     const paydunyaToken = Deno.env.get('PAYDUNYA_TOKEN');
+    const paydunyaMode = Deno.env.get('PAYDUNYA_MODE') || 'live'; // 'test' ou 'live'
 
     if (!paydunyaMasterKey || !paydunyaPrivateKey || !paydunyaToken) {
       throw new Error('PAYDUNYA_MASTER_KEY, PAYDUNYA_PRIVATE_KEY ou PAYDUNYA_TOKEN manquant');
     }
 
-    console.log('[process-cagnotte-refunds] 🔄 Démarrage du traitement des remboursements...');
+    console.log(`[process-cagnotte-refunds] 🔄 Démarrage du traitement des remboursements... (mode: ${paydunyaMode})`);
 
     // Récupérer les contributions à rembourser (PENDING, FAILED ou PROCESSING avec moins de 5 tentatives)
     const { data: contributions, error } = await supabase
@@ -88,6 +89,7 @@ serve(async (req) => {
                   'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
                   'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey,
                   'PAYDUNYA-TOKEN': paydunyaToken,
+                  'PAYDUNYA-MODE': paydunyaMode,
                   'Content-Type': 'application/json',
                 },
               }
@@ -154,6 +156,7 @@ serve(async (req) => {
               'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
               'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey,
               'PAYDUNYA-TOKEN': paydunyaToken,
+              'PAYDUNYA-MODE': paydunyaMode,
               'Content-Type': 'application/json',
             },
           }
@@ -202,6 +205,7 @@ serve(async (req) => {
               'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
               'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey,
               'PAYDUNYA-TOKEN': paydunyaToken,
+              'PAYDUNYA-MODE': paydunyaMode,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(disbursementPayload),

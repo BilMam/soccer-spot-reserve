@@ -67,11 +67,18 @@ Le webhook PayDunya (`paydunya-ipn`) traite les notifications de remboursement :
 ## Variables d'environnement requises
 
 ```
-PAYDUNYA_TOKEN=<votre_token>
 PAYDUNYA_MASTER_KEY=<votre_master_key>
+PAYDUNYA_PRIVATE_KEY=<votre_private_key>
+PAYDUNYA_TOKEN=<votre_token>
+PAYDUNYA_MODE=live  # 'test' ou 'live' (défaut: 'live')
 SUPABASE_URL=<votre_url>
 SUPABASE_SERVICE_ROLE_KEY=<votre_service_role_key>
 ```
+
+**Note sur PAYDUNYA_MODE** :
+- `test` : Mode sandbox pour les tests (aucun débit réel)
+- `live` : Mode production (débits réels)
+- Si non défini, la valeur par défaut est `live`
 
 ## API PayDunya utilisée
 
