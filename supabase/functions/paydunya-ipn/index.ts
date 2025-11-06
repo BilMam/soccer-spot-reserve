@@ -165,12 +165,30 @@ serve(async (req) => {
     }
 
     const master = Deno.env.get("PAYDUNYA_MASTER_KEY") ?? "";
+    const privateKey = Deno.env.get("PAYDUNYA_PRIVATE_KEY") ?? "";
+    const paydunyaToken = Deno.env.get("PAYDUNYA_TOKEN") ?? "";
     const receivedHash = (payload['data[hash]'] || payload.hash || payload.signature || "").toString().toLowerCase();
     const expected = master ? (await sha512(master)).toLowerCase() : "";
     const hashVerified = Boolean(master) && Boolean(receivedHash) && receivedHash === expected;
 
-    // Normaliser le statut pour toutes les comparaisons (robustesse face aux variations de casse)
-    const normalizedStatus = (status || '').toLowerCase();
+    // Extraire et normaliser à la fois le statut racine et le statut de l'invoice
+    const rawStatus = (status ?? '').toString().trim();
+    const invoiceStatus = (
+      payload['data[invoice][status]'] ??
+      payload.data?.invoice?.status ??
+      ''
+    ).toString().trim();
+    let normalizedStatus = (invoiceStatus || rawStatus).toLowerCase();
+
+    // Listes étendues de statuts
+    const successStatuses = ['completed', 'success', 'succeeded', 'successful', 'accepted'];
+    const pendingStatuses = ['pending', 'processing', 'en attente', 'en_attente', 'waiting'];
+
+    console.log('[paydunya-ipn] Statuts reçus:', {
+      rawStatus,
+      invoiceStatus,
+      normalizedStatus
+    });
 
     // Extraire custom_data pour détecter les contributions cagnotte
     let customData: any = null;
@@ -241,13 +259,13 @@ serve(async (req) => {
       // Mettre à jour le statut selon la notification PayDunya
       let newRefundStatus = contribution.refund_status;
 
-      if (disbursementStatus === 'completed' || disbursementStatus === 'success') {
+      if (successStatuses.includes(disbursementStatus)) {
         newRefundStatus = 'REFUNDED';
         console.log(`[paydunya-ipn] ✅ Remboursement confirmé pour contribution ${contribution.id}`);
-      } else if (disbursementStatus === 'failed' || disbursementStatus === 'cancelled') {
+      } else if (['failed', 'cancelled', 'échec', 'echoue'].includes(disbursementStatus)) {
         newRefundStatus = 'FAILED';
         console.log(`[paydunya-ipn] ❌ Remboursement échoué pour contribution ${contribution.id}`);
-      } else if (disbursementStatus === 'pending' || disbursementStatus === 'processing') {
+      } else if (pendingStatuses.includes(disbursementStatus)) {
         newRefundStatus = 'PROCESSING';
         console.log(`[paydunya-ipn] ⏳ Remboursement en cours pour contribution ${contribution.id}`);
       }
@@ -297,7 +315,7 @@ serve(async (req) => {
       });
 
       // Vérifier que le paiement est réussi
-      if (!['completed', 'success'].includes(normalizedStatus)) {
+      if (!successStatuses.includes(normalizedStatus)) {
         console.log('[paydunya-ipn] Paiement cagnotte non réussi, status:', normalizedStatus);
         return new Response('OK', { headers: corsHeaders });
       }
@@ -380,14 +398,36 @@ serve(async (req) => {
     }
 
     // Sinon, c'est une réservation classique
+    // Vérifier avec PayDunya si le statut est pending
+    if (pendingStatuses.includes(normalizedStatus) && master && privateKey && paydunyaToken) {
+      try {
+        console.log('[paydunya-ipn] Vérification du statut auprès de PayDunya...');
+        const confirmRes = await fetch(`https://app.paydunya.com/api/v1/checkout-invoice/confirm/${paydunyaInvoiceToken}`, {
+          headers: {
+            'PAYDUNYA-MASTER-KEY': master,
+            'PAYDUNYA-PRIVATE-KEY': privateKey,
+            'PAYDUNYA-TOKEN': paydunyaToken
+          }
+        });
+        const confirmData = await confirmRes.json();
+        const confirmStatus = (confirmData?.invoice?.status || '').toLowerCase();
+        console.log('[paydunya-ipn] Fallback confirmation status:', confirmStatus);
+        if (successStatuses.includes(confirmStatus)) {
+          normalizedStatus = 'completed';
+        }
+      } catch (error) {
+        console.error('[paydunya-ipn] Erreur lors de la vérification PayDunya:', error);
+      }
+    }
+
     let bookingStatus = 'cancelled';
     let paymentStatus = 'failed';
 
-    if (normalizedStatus === 'completed' || normalizedStatus === 'success') {
+    if (successStatuses.includes(normalizedStatus)) {
       bookingStatus = 'confirmed';
       paymentStatus = 'paid';
       console.log('🔥 PAIEMENT PAYDUNYA CONFIRMÉ - Créneau bloqué définitivement');
-    } else if (normalizedStatus === 'pending' || normalizedStatus === 'processing') {
+    } else if (pendingStatuses.includes(normalizedStatus)) {
       bookingStatus = 'pending';
       paymentStatus = 'pending';
       console.log('⏳ PAIEMENT PAYDUNYA EN ATTENTE - Créneau en attente de confirmation');
