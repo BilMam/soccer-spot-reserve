@@ -191,9 +191,12 @@ serve(async (req) => {
       normalizedStatus
     });
 
-    // Extraire custom_data pour détecter les contributions cagnotte
+    // Extraire custom_data pour détecter les contributions cagnotte ET les réservations classiques
     let customData: any = null;
+    
+    // Format form-urlencoded : data[custom_data][xxx]
     if (payload['data[custom_data][cagnotte_id]']) {
+      // Contribution cagnotte
       customData = {
         cagnotte_id: payload['data[custom_data][cagnotte_id]'],
         contribution_amount: payload['data[custom_data][contribution_amount]'],
@@ -201,11 +204,20 @@ serve(async (req) => {
         invoice_token: payload['data[custom_data][invoice_token]'],
         user_id: payload['data[custom_data][user_id]'] || null
       };
+    } else if (payload['data[custom_data][booking_id]']) {
+      // Réservation classique - NOUVELLE BRANCHE AJOUTÉE !
+      customData = {
+        booking_id: payload['data[custom_data][booking_id]'],
+        user_id: payload['data[custom_data][user_id]'],
+        invoice_token: payload['data[custom_data][invoice_token]']
+      };
     } else if (payload.data?.custom_data) {
       customData = payload.data.custom_data;
     } else if (payload.custom_data) {
       customData = payload.custom_data;
     }
+
+    console.log('[paydunya-ipn] 📦 Custom data extracted:', customData);
 
     // Synchroniser internalInvoiceToken avec custom_data si disponible
     if (!internalInvoiceToken && customData?.invoice_token) {

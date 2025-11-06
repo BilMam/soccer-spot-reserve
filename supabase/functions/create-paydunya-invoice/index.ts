@@ -291,7 +291,18 @@ serve(async (req) => {
     }
 
     // Récupérer le vrai token PayDunya et synchroniser la réservation
-    const paydunyaInvoiceToken = paydunyaResult?.invoice?.token;
+    // PayDunya renvoie le token directement, pas dans invoice.token
+    const paydunyaInvoiceToken = 
+      paydunyaResult?.token ||              // Format standard PayDunya
+      paydunyaResult?.invoice?.token ||     // Fallback au cas où
+      paydunyaResult?.response_text?.match(/\/([^\/]+)$/)?.[1]; // Extraire du URL
+
+    console.log(`[${timestamp}] 🔍 Token extraction:`, {
+      direct: paydunyaResult?.token,
+      nested: paydunyaResult?.invoice?.token,
+      url: paydunyaResult?.response_text,
+      extracted: paydunyaInvoiceToken
+    });
     
     if (paydunyaInvoiceToken) {
       console.log(`[${timestamp}] Synchronisation token PayDunya: ${paydunyaInvoiceToken}`);
