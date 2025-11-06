@@ -354,14 +354,19 @@ serve(async (req) => {
     }
 
     // Sinon, c'est une réservation classique
+    // Normaliser le statut PayDunya
+    const normalizedStatus = (status || '').toLowerCase();
     let bookingStatus = 'cancelled';
     let paymentStatus = 'failed';
 
-    const paymentAccepted = status === 'completed';
-    if (paymentAccepted) {
+    if (normalizedStatus === 'completed' || normalizedStatus === 'success') {
       bookingStatus = 'confirmed';
       paymentStatus = 'paid';
       console.log('🔥 PAIEMENT PAYDUNYA CONFIRMÉ - Créneau bloqué définitivement');
+    } else if (normalizedStatus === 'pending' || normalizedStatus === 'processing') {
+      bookingStatus = 'pending';
+      paymentStatus = 'pending';
+      console.log('⏳ PAIEMENT PAYDUNYA EN ATTENTE - Créneau en attente de confirmation');
     } else {
       console.log('💥 PAIEMENT PAYDUNYA ÉCHOUÉ - Créneau immédiatement libre');
     }

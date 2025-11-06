@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, CreditCard, Smartphone, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, CreditCard, Smartphone, AlertCircle, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import Navbar from '@/components/Navbar';
@@ -59,7 +59,7 @@ const PaymentPage = () => {
             profiles!inner(full_name, email)
           `)
           .eq('id', bookingId)
-          .eq('status', 'pending')
+          .in('status', ['pending', 'provisional', 'confirmed'])
           .single();
 
         if (bookingError || !bookingData) {
@@ -165,6 +165,55 @@ const PaymentPage = () => {
                 </p>
                 <Button onClick={() => navigate('/')}>
                   Retour à l'accueil
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Afficher un message selon le statut de la réservation
+  if (booking.status === 'confirmed') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-md mx-auto">
+            <Card>
+              <CardContent className="py-8 text-center">
+                <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-600" />
+                <h2 className="text-xl font-semibold mb-2">Réservation confirmée !</h2>
+                <p className="text-gray-600 mb-4">
+                  Votre réservation est confirmée ! Vous la retrouverez dans "Mes réservations".
+                </p>
+                <Button onClick={() => navigate('/mes-reservations')}>
+                  Voir mes réservations
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (booking.status === 'provisional') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-md mx-auto">
+            <Card>
+              <CardContent className="py-8 text-center">
+                <Clock className="w-12 h-12 mx-auto mb-4 text-yellow-500" />
+                <h2 className="text-xl font-semibold mb-2">Paiement en cours...</h2>
+                <p className="text-gray-600 mb-4">
+                  Merci de patienter. Votre paiement est en cours de traitement.
+                </p>
+                <Button onClick={() => navigate('/mes-reservations')}>
+                  Voir mes réservations
                 </Button>
               </CardContent>
             </Card>
