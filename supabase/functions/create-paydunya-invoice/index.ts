@@ -290,10 +290,31 @@ serve(async (req) => {
       throw new Error(`PayDunya error: ${paydunyaResult.response_text || 'Erreur inconnue'}`);
     }
 
+    // Récupérer le vrai token PayDunya et synchroniser la réservation
+    const paydunyaInvoiceToken = paydunyaResult?.invoice?.token;
+    
+    if (paydunyaInvoiceToken) {
+      console.log(`[${timestamp}] Synchronisation token PayDunya: ${paydunyaInvoiceToken}`);
+      
+      const { error: tokenUpdateError } = await supabaseClient
+        .from('bookings')
+        .update({
+          payment_intent_id: paydunyaInvoiceToken,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id);
+      
+      if (tokenUpdateError) {
+        console.error(`[${timestamp}] Erreur synchronisation token PayDunya:`, tokenUpdateError);
+      } else {
+        console.log(`[${timestamp}] ✅ Token PayDunya synchronisé avec succès`);
+      }
+    }
+
     // Construct successful response data
     const responseData: PaymentResponse = {
       url: paydunyaResult.response_text,
-      invoice_token: invoiceToken,
+      invoice_token: paydunyaInvoiceToken || invoiceToken,
       amount_checkout: amountCheckout,
       field_price: publicPrice,
       platform_fee_user: operatorFee,

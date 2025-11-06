@@ -372,22 +372,49 @@ serve(async (req) => {
     }
 
     // Find booking by payment_intent_id (invoice_token)
-    const { data: bookingRow } = await supabaseClient
+    let { data: bookingRow } = await supabaseClient
       .from('bookings')
       .select('id, status, payment_status')
       .eq('payment_intent_id', invoice_token)
       .maybeSingle();
 
+    // Fallback: chercher par booking_id dans custom_data si pas trouvé
+    if (!bookingRow && customData?.booking_id) {
+      console.log('[paydunya-ipn] 🔍 Tentative de recherche par custom_data.booking_id:', customData.booking_id);
+      
+      const { data: fallbackBooking } = await supabaseClient
+        .from('bookings')
+        .select('id, status, payment_status')
+        .eq('id', customData.booking_id)
+        .maybeSingle();
+      
+      if (fallbackBooking) {
+        console.log('[paydunya-ipn] ✅ Réservation trouvée via booking_id, synchronisation du token');
+        
+        // Synchroniser payment_intent_id avec le token PayDunya
+        await supabaseClient
+          .from('bookings')
+          .update({ 
+            payment_intent_id: invoice_token,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', fallbackBooking.id);
+        
+        bookingRow = fallbackBooking;
+      }
+    }
+
     if (!bookingRow) {
       console.error('🚨 AUCUNE RÉSERVATION TROUVÉE POUR CE PAIEMENT PayDunya!');
       console.error('Invoice Token:', invoice_token);
+      console.error('Custom Data:', customData);
       
       // Log anomaly for monitoring
       await supabaseClient.from('payment_anomalies').insert({
         payment_intent_id: invoice_token,
         amount: parseInt(total_amount || '0'),
         error_type: 'no_booking_found_paydunya',
-        error_message: 'No booking found for this PayDunya invoice_token',
+        error_message: 'No booking found for this PayDunya invoice_token or custom_data.booking_id',
         webhook_data: payload
       });
       
