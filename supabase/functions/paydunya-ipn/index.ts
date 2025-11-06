@@ -169,6 +169,9 @@ serve(async (req) => {
     const expected = master ? (await sha512(master)).toLowerCase() : "";
     const hashVerified = Boolean(master) && Boolean(receivedHash) && receivedHash === expected;
 
+    // Normaliser le statut pour toutes les comparaisons (robustesse face aux variations de casse)
+    const normalizedStatus = (status || '').toLowerCase();
+
     // Extraire custom_data pour détecter les contributions cagnotte
     let customData: any = null;
     if (payload['data[custom_data][cagnotte_id]']) {
@@ -206,9 +209,10 @@ serve(async (req) => {
                               payload['data[reference]'] ||
                               payload.data?.reference;
       
-      const disbursementStatus = payload.status || 
-                                  payload['data[status]'] || 
-                                  payload.data?.status;
+      const disbursementStatusRaw = payload.status || 
+                                     payload['data[status]'] || 
+                                     payload.data?.status;
+      const disbursementStatus = (disbursementStatusRaw || '').toLowerCase();
 
       if (!disbursementRef) {
         console.error('[paydunya-ipn] ⚠️ Référence de remboursement manquante');
@@ -293,8 +297,8 @@ serve(async (req) => {
       });
 
       // Vérifier que le paiement est réussi
-      if (status !== 'completed' && status !== 'success') {
-        console.log('[paydunya-ipn] Paiement cagnotte non réussi, status:', status);
+      if (!['completed', 'success'].includes(normalizedStatus)) {
+        console.log('[paydunya-ipn] Paiement cagnotte non réussi, status:', normalizedStatus);
         return new Response('OK', { headers: corsHeaders });
       }
 
@@ -376,8 +380,6 @@ serve(async (req) => {
     }
 
     // Sinon, c'est une réservation classique
-    // Normaliser le statut PayDunya
-    const normalizedStatus = (status || '').toLowerCase();
     let bookingStatus = 'cancelled';
     let paymentStatus = 'failed';
 
