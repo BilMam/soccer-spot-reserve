@@ -11,7 +11,7 @@ interface AllBookingsSectionProps {
 const AllBookingsSection: React.FC<AllBookingsSectionProps> = ({ bookings, isOwnerView = false }) => {
   // Filtrer pour ne montrer que les réservations confirmées/terminées/annulées
   const activeBookings = bookings.filter(booking => 
-    ['confirmed', 'owner_confirmed', 'completed', 'cancelled'].includes(booking.status)
+    ['confirmed', 'completed', 'cancelled'].includes(booking.status)
   );
 
   return (

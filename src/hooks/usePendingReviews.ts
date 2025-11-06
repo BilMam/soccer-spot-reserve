@@ -64,7 +64,7 @@ export const usePendingReviews = () => {
         .from('bookings')
         .update({ status: 'completed' })
         .eq('user_id', user.id)
-        .in('status', ['confirmed', 'owner_confirmed'])
+        .in('status', ['confirmed'])
         .or(`booking_date.lt.${currentDate},and(booking_date.eq.${currentDate},end_time.lt.${currentTime})`)
         .select(`
           *,

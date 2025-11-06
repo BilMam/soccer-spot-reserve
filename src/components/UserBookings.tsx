@@ -66,7 +66,7 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
           )
         `)
         .eq('user_id', userId)
-        .in('status', ['pending', 'provisional', 'confirmed', 'completed', 'cancelled'])
+        .in('status', ['confirmed', 'completed', 'cancelled'])
         .order('booking_date', { ascending: false });
 
       if (error) throw error;
@@ -99,19 +99,10 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
     }
   });
 
-  const getStatusBadge = (status: string, windowType?: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending':
-        return { badge: <Badge className="bg-yellow-500 text-white">Paiement en cours</Badge>, icon: Clock4 };
-      case 'provisional':
-        return { badge: <Badge className="bg-yellow-500 text-white">Paiement en cours</Badge>, icon: Clock4 };
       case 'confirmed':
-        if (windowType === 'auto') {
-          return { badge: <Badge className="bg-green-600">Confirmée automatiquement</Badge>, icon: Zap };
-        }
-        return { badge: <Badge className="bg-green-600">Confirmée</Badge>, icon: CheckCircle };
-      case 'owner_confirmed':
-        return { badge: <Badge className="bg-green-600">Confirmée par le propriétaire</Badge>, icon: CheckCircle };
+        return { badge: <Badge className="bg-blue-600">Confirmée</Badge>, icon: CheckCircle };
       case 'completed':
         return { badge: <Badge variant="secondary" className="text-gray-600">Terminée</Badge>, icon: CheckCircle };
       case 'cancelled':
@@ -139,8 +130,8 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
     const now = new Date();
     const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
     
-    // Seules les réservations provisoires peuvent être annulées (pas les confirmées)
-    return booking.status === 'provisional' && hoursUntilBooking > 24;
+    // Les réservations confirmées ne peuvent plus être annulées
+    return false;
   };
 
   const canReview = (booking: Booking) => {
@@ -172,22 +163,10 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
     });
   };
 
-  const getStatusMessage = (status: string, windowType?: string, autoAction?: string) => {
+  const getStatusMessage = (status: string) => {
     switch (status) {
-      case 'pending':
-        return "Paiement en cours de validation. Le créneau sera bloqué dès la confirmation du paiement.";
-      case 'provisional':
-        return "Paiement en cours de validation. Le créneau sera bloqué dès la confirmation du paiement.";
       case 'confirmed':
-        if (windowType === 'auto') {
-          return "Votre réservation a été confirmée automatiquement car le créneau était proche. Amusez-vous bien !";
-        }
-        if (windowType === 'express' && autoAction === 'confirm') {
-          return "Le propriétaire a un délai court pour confirmer. Si pas de réponse, confirmation automatique.";
-        }
-        return "Votre réservation est confirmée. Le propriétaire doit maintenant la valider.";
-      case 'owner_confirmed':
-        return "Le propriétaire a confirmé votre réservation. Amusez-vous bien !";
+        return "Votre réservation est confirmée. Amusez-vous bien !";
       case 'completed':
         return "Cette réservation est terminée. Vous pouvez laisser un avis.";
       default:
@@ -237,7 +216,7 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
             ) : (
               <div className="space-y-4">
                 {bookings.map((booking) => {
-                  const statusInfo = getStatusBadge(booking.status, booking.confirmation_window_type);
+                  const statusInfo = getStatusBadge(booking.status);
                   return (
                     <div key={booking.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                       <div className="flex justify-between items-start mb-3">

@@ -106,7 +106,7 @@ export const useOwnerStats = (filter: TimeFilterConfig, fieldId?: string) => {
           fields!inner(id, name, owner_id)
         `)
         .eq('fields.owner_id', user.id)
-        .in('status', ['confirmed', 'owner_confirmed', 'completed'])
+        .in('status', ['confirmed', 'completed'])
         .eq('payment_status', 'paid');
 
       // Ajouter le filtrage temporel seulement si ce n'est pas "alltime"

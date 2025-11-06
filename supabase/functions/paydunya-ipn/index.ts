@@ -167,6 +167,7 @@ serve(async (req) => {
     const master = Deno.env.get("PAYDUNYA_MASTER_KEY") ?? "";
     const privateKey = Deno.env.get("PAYDUNYA_PRIVATE_KEY") ?? "";
     const paydunyaToken = Deno.env.get("PAYDUNYA_TOKEN") ?? "";
+    const paydunyaMode = Deno.env.get("PAYDUNYA_MODE") ?? 'live';
     const receivedHash = (payload['data[hash]'] || payload.hash || payload.signature || "").toString().toLowerCase();
     const expected = master ? (await sha512(master)).toLowerCase() : "";
     const hashVerified = Boolean(master) && Boolean(receivedHash) && receivedHash === expected;
@@ -406,32 +407,37 @@ serve(async (req) => {
           headers: {
             'PAYDUNYA-MASTER-KEY': master,
             'PAYDUNYA-PRIVATE-KEY': privateKey,
-            'PAYDUNYA-TOKEN': paydunyaToken
+            'PAYDUNYA-TOKEN': paydunyaToken,
+            'PAYDUNYA-MODE': paydunyaMode
           }
         });
         const confirmData = await confirmRes.json();
-        const confirmStatus = (confirmData?.invoice?.status || '').toLowerCase();
-        console.log('[paydunya-ipn] Fallback confirmation status:', confirmStatus);
-        if (successStatuses.includes(confirmStatus)) {
+        const confirmStatus = (confirmData?.invoice?.status ?? confirmData?.status ?? '').toLowerCase();
+        const confirmCode = confirmData?.response_code ?? confirmData?.['response_code'];
+        console.log('[paydunya-ipn] Fallback confirmation:', { confirmStatus, confirmCode });
+        
+        // Promouvoir à confirmed si response_code = '00' ou statut de succès
+        if (confirmCode === '00' || successStatuses.includes(confirmStatus)) {
           normalizedStatus = 'completed';
+          console.log('[paydunya-ipn] ✅ Statut promu à completed via API de confirmation');
         }
       } catch (error) {
         console.error('[paydunya-ipn] Erreur lors de la vérification PayDunya:', error);
       }
     }
 
-    let bookingStatus = 'cancelled';
-    let paymentStatus = 'failed';
+    // Ne conserver que deux états : succès (confirmed/paid) ou échec (cancelled/failed)
+    let bookingStatus: string;
+    let paymentStatus: string;
 
     if (successStatuses.includes(normalizedStatus)) {
       bookingStatus = 'confirmed';
       paymentStatus = 'paid';
       console.log('🔥 PAIEMENT PAYDUNYA CONFIRMÉ - Créneau bloqué définitivement');
-    } else if (pendingStatuses.includes(normalizedStatus)) {
-      bookingStatus = 'pending';
-      paymentStatus = 'pending';
-      console.log('⏳ PAIEMENT PAYDUNYA EN ATTENTE - Créneau en attente de confirmation');
     } else {
+      // Tout statut non-succès est considéré comme un échec
+      bookingStatus = 'cancelled';
+      paymentStatus = 'failed';
       console.log('💥 PAIEMENT PAYDUNYA ÉCHOUÉ - Créneau immédiatement libre');
     }
 
