@@ -104,7 +104,7 @@ const PaymentPage = () => {
         .from('bookings')
         .update({ 
           status: 'confirmed',
-          payment_status: 'completed'
+          payment_status: 'paid'
         })
         .eq('id', booking.id);
 
