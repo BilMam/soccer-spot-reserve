@@ -118,45 +118,56 @@ serve(async (req) => {
 
     // PayDunya envoie les données sous forme data[...] dans form-urlencoded
     // Il faut extraire les valeurs correctement
-    let status, invoice_token, total_amount, msisdn;
+    let status: string | undefined;
+    let paydunyaInvoiceToken: string | undefined;
+    let internalInvoiceToken: string | null = null;
+    let total_amount, msisdn;
     
     if (payload['data[status]']) {
       // Format form-urlencoded avec clés data[...]
       status = payload['data[status]'];
-      invoice_token = payload['data[custom_data][invoice_token]'] || payload['data[invoice][token]'];
+      paydunyaInvoiceToken = payload['data[invoice][token]']
+        || payload['data[token]']
+        || payload['token'];
+      internalInvoiceToken = payload['data[custom_data][invoice_token]'] || null;
       total_amount = payload['data[invoice][total_amount]'];
       msisdn = payload['data[customer][phone]'] || payload['data[customer][msisdn]'];
     } else if (payload.data) {
       // Format JSON avec objet data
       status = payload.data.status;
-      invoice_token = payload.data.custom_data?.invoice_token || payload.data.invoice?.token;
+      paydunyaInvoiceToken = payload.data.invoice?.token
+        || payload.data.token;
+      internalInvoiceToken = payload.data.custom_data?.invoice_token ?? null;
       total_amount = payload.data.invoice?.total_amount;
       msisdn = payload.data.customer?.phone || payload.data.customer?.msisdn;
     } else {
       // Format direct
       status = payload.status;
-      invoice_token = payload.invoice_token || payload.token;
+      paydunyaInvoiceToken = payload.invoice?.token
+        || payload.invoice_token
+        || payload.token;
+      internalInvoiceToken = payload.custom_data?.invoice_token ?? null;
       total_amount = payload.total_amount;
       msisdn = payload.customer_phone || payload.msisdn;
+    }
+
+    // Si aucun jeton PSP n'est trouvé, on passe en dernier recours le jeton interne
+    if (!paydunyaInvoiceToken && internalInvoiceToken) {
+      console.log('[paydunya-ipn] ⚠️ Utilisation du token custom_data en dernier recours');
+      paydunyaInvoiceToken = internalInvoiceToken;
+    }
+
+    console.log(`[paydunya-ipn] 🧾 Token sélectionné: ${paydunyaInvoiceToken} (interne: ${internalInvoiceToken ?? 'aucun'})`);
+
+    if (!paydunyaInvoiceToken) {
+      console.error('🚨 AUCUN TOKEN TROUVÉ DANS LE WEBHOOK PayDunya!');
+      return new Response("OK", { status: 200, headers: corsHeaders });
     }
 
     const master = Deno.env.get("PAYDUNYA_MASTER_KEY") ?? "";
     const receivedHash = (payload['data[hash]'] || payload.hash || payload.signature || "").toString().toLowerCase();
     const expected = master ? (await sha512(master)).toLowerCase() : "";
     const hashVerified = Boolean(master) && Boolean(receivedHash) && receivedHash === expected;
-
-    console.log("[paydunya-ipn] Parsed data:", {
-      hashVerified,
-      status,
-      invoice_token,
-      total_amount,
-      receivedHash: receivedHash ? 'present' : 'missing'
-    });
-
-    if (!invoice_token) {
-      console.error('🚨 AUCUN TOKEN TROUVÉ DANS LE WEBHOOK PayDunya!');
-      return new Response("OK", { status: 200, headers: corsHeaders });
-    }
 
     // Extraire custom_data pour détecter les contributions cagnotte
     let customData: any = null;
@@ -172,6 +183,11 @@ serve(async (req) => {
       customData = payload.data.custom_data;
     } else if (payload.custom_data) {
       customData = payload.custom_data;
+    }
+
+    // Synchroniser internalInvoiceToken avec custom_data si disponible
+    if (!internalInvoiceToken && customData?.invoice_token) {
+      internalInvoiceToken = customData.invoice_token;
     }
 
     // Détecter le type de webhook : disbursement (remboursement) ou invoice (paiement)
@@ -303,6 +319,12 @@ serve(async (req) => {
         metadata.payer_phone_masked = phoneData.masked;
       }
 
+      // Ajouter le token interne aux métadonnées si disponible
+      const contributionMetadata: any = { ...metadata };
+      if (internalInvoiceToken) {
+        contributionMetadata.internal_invoice_token = internalInvoiceToken;
+      }
+
       // Appeler contribute_to_cagnotte avec métadonnées et user_id
       const { data: contributeResult, error: contributeError } = await supabaseClient.rpc(
         'contribute_to_cagnotte',
@@ -310,9 +332,9 @@ serve(async (req) => {
           p_cagnotte_id: customData.cagnotte_id,
           p_amount: parseFloat(customData.contribution_amount),
           p_team: customData.team || null,
-          p_psp_tx_id: invoice_token,
+          p_psp_tx_id: paydunyaInvoiceToken,
           p_method: 'PAYDUNYA',
-          p_metadata: metadata,
+          p_metadata: contributionMetadata,
           p_user_id: customData.user_id || null  // Passer l'utilisateur connecté
         }
       );
@@ -321,7 +343,7 @@ serve(async (req) => {
         console.error('[paydunya-ipn] ❌ Erreur contribute_to_cagnotte:', contributeError);
         
         await supabaseClient.from('payment_anomalies').insert({
-          payment_intent_id: invoice_token,
+          payment_intent_id: paydunyaInvoiceToken,
           amount: parseInt(total_amount || '0'),
           error_type: 'cagnotte_contribution_failed',
           error_message: contributeError.message,
@@ -371,11 +393,11 @@ serve(async (req) => {
       console.log('💥 PAIEMENT PAYDUNYA ÉCHOUÉ - Créneau immédiatement libre');
     }
 
-    // Find booking by payment_intent_id (invoice_token)
+    // Find booking by payment_intent_id (paydunyaInvoiceToken)
     let { data: bookingRow } = await supabaseClient
       .from('bookings')
-      .select('id, status, payment_status')
-      .eq('payment_intent_id', invoice_token)
+      .select('id, status, payment_status, payment_intent_id')
+      .eq('payment_intent_id', paydunyaInvoiceToken)
       .maybeSingle();
 
     // Fallback: chercher par booking_id dans custom_data si pas trouvé
@@ -384,21 +406,25 @@ serve(async (req) => {
       
       const { data: fallbackBooking } = await supabaseClient
         .from('bookings')
-        .select('id, status, payment_status')
+        .select('id, status, payment_status, payment_intent_id')
         .eq('id', customData.booking_id)
         .maybeSingle();
       
       if (fallbackBooking) {
-        console.log('[paydunya-ipn] ✅ Réservation trouvée via booking_id, synchronisation du token');
-        
-        // Synchroniser payment_intent_id avec le token PayDunya
-        await supabaseClient
-          .from('bookings')
-          .update({ 
-            payment_intent_id: invoice_token,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', fallbackBooking.id);
+        // Ne synchroniser que si payment_intent_id est vide ou égal au token interne
+        if (!fallbackBooking.payment_intent_id || fallbackBooking.payment_intent_id === internalInvoiceToken) {
+          console.log('[paydunya-ipn] ✅ Réservation trouvée via booking_id, synchronisation du token réel');
+          
+          await supabaseClient
+            .from('bookings')
+            .update({ 
+              payment_intent_id: paydunyaInvoiceToken,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', fallbackBooking.id);
+        } else {
+          console.log('[paydunya-ipn] ℹ️ Token existant conservé car déjà renseigné avec un token PSP');
+        }
         
         bookingRow = fallbackBooking;
       }
@@ -406,12 +432,12 @@ serve(async (req) => {
 
     if (!bookingRow) {
       console.error('🚨 AUCUNE RÉSERVATION TROUVÉE POUR CE PAIEMENT PayDunya!');
-      console.error('Invoice Token:', invoice_token);
+      console.error('Invoice Token:', paydunyaInvoiceToken);
       console.error('Custom Data:', customData);
       
       // Log anomaly for monitoring
       await supabaseClient.from('payment_anomalies').insert({
-        payment_intent_id: invoice_token,
+        payment_intent_id: paydunyaInvoiceToken,
         amount: parseInt(total_amount || '0'),
         error_type: 'no_booking_found_paydunya',
         error_message: 'No booking found for this PayDunya invoice_token or custom_data.booking_id',
