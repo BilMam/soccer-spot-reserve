@@ -187,69 +187,26 @@ serve(async (req) => {
           continue; // Passer à la contribution suivante
         }
 
-        // Récupérer le numéro de téléphone du payeur via l'API PayDunya
-        console.log(`[process-cagnotte-refunds] 📞 Récupération du numéro pour invoice: ${pspTxId}`);
+        // Récupérer le numéro de téléphone depuis les métadonnées stockées
+        console.log(`[process-cagnotte-refunds] 📞 Extraction du numéro depuis metadata`);
         
-        const invoiceResponse = await fetch(
-          `${PAYDUNYA_API_BASE}/checkout-invoice/confirm/${pspTxId}`,
-          {
-            method: 'GET',
-            headers: {
-              'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
-              'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey,
-              'PAYDUNYA-TOKEN': paydunyaToken,
-              'PAYDUNYA-MODE': paydunyaMode,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
-        const invoiceData = await invoiceResponse.json();
-
-        // Vérifier le code retour AVANT d'extraire le numéro
-        if (invoiceData.response_code !== '00') {
-          console.error('[process-cagnotte-refunds] ❌ Invoice confirmation failed', {
-            contributionId,
-            responseCode: invoiceData.response_code,
-            responseText: invoiceData.response_text,
-          });
-
-          await supabase
-            .from('cagnotte_contribution')
-            .update({
-              refund_status: 'FAILED',
-              refund_last_attempt_at: new Date().toISOString(),
-              refund_last_error: `Invoice confirm failed: ${invoiceData.response_text ?? invoiceResponse.statusText}`,
-              refund_attempt_count: (contrib.refund_attempt_count ?? 0) + 1,
-              refund_metadata: invoiceData,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', contributionId);
-
-          results.push({
-            id: contributionId,
-            status: 'FAILED',
-            error: `Invoice confirm failed: ${invoiceData.response_text}`,
-          });
-
-          continue; // Passer à la contribution suivante
-        }
-
-        // Extraire le numéro depuis invoice.customer
-        const customer = invoiceData.invoice?.customer ?? invoiceData.customer ?? null;
-        const msisdn = customer?.phone ?? customer?.msisdn ?? null;
+        let msisdn = contrib.metadata?.payer_phone_e164;
 
         if (!msisdn) {
-          console.error('[process-cagnotte-refunds] ❌ No customer phone found', { contributionId, invoiceData });
+          console.error('[process-cagnotte-refunds] ❌ Numéro non disponible dans metadata', {
+            contributionId,
+            metadata: contrib.metadata,
+            payer_phone_masked: contrib.payer_phone_masked
+          });
 
           await supabase
             .from('cagnotte_contribution')
             .update({
               refund_status: 'FAILED',
               refund_last_attempt_at: new Date().toISOString(),
-              refund_last_error: 'Missing customer phone for refund',
+              refund_last_error: 'Numéro de téléphone non disponible dans les métadonnées. Contribution effectuée avant la mise à jour.',
               refund_attempt_count: (contrib.refund_attempt_count ?? 0) + 1,
-              refund_metadata: invoiceData,
+              refund_metadata: contrib.metadata,
               updated_at: new Date().toISOString(),
             })
             .eq('id', contributionId);
@@ -257,21 +214,16 @@ serve(async (req) => {
           results.push({
             id: contributionId,
             status: 'FAILED',
-            error: 'Missing customer phone',
+            error: 'Numéro de téléphone non disponible - Contribution antérieure',
           });
 
           continue; // Passer à la contribution suivante
         }
+        
+        // Nettoyer le numéro (retirer +225 si présent pour avoir le format local)
+        msisdn = msisdn.replace(/^\+225/, '').replace(/\s/g, '');
 
         console.log(`[process-cagnotte-refunds] ✅ Numéro récupéré: ${msisdn}`);
-
-        // Conserver les métadonnées pour audit
-        await supabase
-          .from('cagnotte_contribution')
-          .update({
-            refund_metadata: invoiceData.invoice ?? invoiceData,
-          })
-          .eq('id', contributionId);
 
         // Incrémenter le compteur de tentatives
         await supabase

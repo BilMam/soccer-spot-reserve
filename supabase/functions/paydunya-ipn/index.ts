@@ -351,6 +351,7 @@ serve(async (req) => {
       if (phoneData) {
         metadata.payer_phone_hash = phoneData.hash;
         metadata.payer_phone_masked = phoneData.masked;
+        metadata.payer_phone_e164 = phoneData.e164; // Stocker le numéro complet pour les remboursements
       }
 
       // Ajouter le token interne aux métadonnées si disponible
