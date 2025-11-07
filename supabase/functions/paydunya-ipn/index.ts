@@ -288,7 +288,6 @@ serve(async (req) => {
         .from('cagnotte_contribution')
         .update({
           refund_status: newRefundStatus,
-          updated_at: new Date().toISOString(),
         })
         .eq('id', contribution.id);
 
