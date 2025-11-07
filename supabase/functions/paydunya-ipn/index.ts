@@ -84,9 +84,10 @@ serve(async (req) => {
         // OK, already E.164
       }
       // Si commence par un chiffre sans +, essayer de détecter le pays
-      // Pour CI: si commence par 0, remplacer par +225
-      else if (clean.startsWith('0') && clean.length <= 10) {
-        clean = '+225' + clean.substring(1);
+      // Pour CI: si commence par 0, garder le 0 (il fait partie du numéro)
+      else if (clean.startsWith('0') && /^0[789]\d{7}$/.test(clean)) {
+        clean = '+225' + clean; // GARDER le 0 initial !
+        console.log('[paydunya-ipn] 📞 Numéro CI normalisé:', clean);
       }
       // 🔧 CORRECTION : Si commence par 7, 8 ou 9 sans préfixe, ajouter +2250
       else if (/^[789]\d{7}$/.test(clean)) {
