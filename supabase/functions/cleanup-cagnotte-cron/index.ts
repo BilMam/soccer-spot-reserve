@@ -29,6 +29,19 @@ serve(async (req) => {
 
     console.log('[cleanup-cagnotte-cron] Cleanup completed successfully');
 
+    // Vérifier la cohérence des cagnottes HOLD
+    try {
+      const { data: consistencyData, error: consistencyError } = await supabase.functions.invoke('check-cagnotte-hold-consistency');
+      
+      if (consistencyError) {
+        console.error('[cleanup-cagnotte-cron] Consistency check error:', consistencyError);
+      } else {
+        console.log('[cleanup-cagnotte-cron] Consistency check:', consistencyData);
+      }
+    } catch (consistencyErr) {
+      console.error('[cleanup-cagnotte-cron] Error invoking consistency function:', consistencyErr);
+    }
+
     // Appeler la fonction de traitement des remboursements
     try {
       const { data: refundData, error: refundError } = await supabase.functions.invoke('process-cagnotte-refunds');
@@ -45,7 +58,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: 'Cleanup and refund processing completed'
+        message: 'Cleanup, consistency check and refund processing completed'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

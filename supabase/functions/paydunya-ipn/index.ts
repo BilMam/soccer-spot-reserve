@@ -396,7 +396,14 @@ serve(async (req) => {
         );
       }
 
-      console.log('[paydunya-ipn] ✅ Contribution enregistrée avec succès:', contributeResult);
+      console.log('[paydunya-ipn] ✅ Contribution enregistrée avec succès:', {
+        contribution_id: contributeResult.contribution_id,
+        cagnotte_status: contributeResult.cagnotte_status,
+        collected_amount: contributeResult.collected_amount,
+        progress_pct: contributeResult.progress_pct,
+        hold_expires_at: contributeResult.hold_expires_at,
+        cagnotte_id: customData.cagnotte_id
+      });
 
       return new Response(
         JSON.stringify({
