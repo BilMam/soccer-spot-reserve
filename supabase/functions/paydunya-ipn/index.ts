@@ -85,12 +85,13 @@ serve(async (req) => {
       }
       // Si commence par un chiffre sans +, essayer de détecter le pays
       // Pour CI: si commence par 0, garder le 0 (il fait partie du numéro)
-      else if (clean.startsWith('0') && /^0[789]\d{7}$/.test(clean)) {
+      // Format CI: 0X XX XX XX XX (10 chiffres)
+      else if (clean.startsWith('0') && /^0[789]\d{8}$/.test(clean)) {
         clean = '+225' + clean; // GARDER le 0 initial !
         console.log('[paydunya-ipn] 📞 Numéro CI normalisé:', clean);
       }
       // 🔧 CORRECTION : Si commence par 7, 8 ou 9 sans préfixe, ajouter +2250
-      else if (/^[789]\d{7}$/.test(clean)) {
+      else if (/^[789]\d{8}$/.test(clean)) {
         clean = '+2250' + clean;
         console.log('[paydunya-ipn] 🔧 Ajout du préfixe +2250 pour numéro ivoirien:', clean);
       }

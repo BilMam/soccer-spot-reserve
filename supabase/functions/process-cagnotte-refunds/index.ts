@@ -225,13 +225,13 @@ serve(async (req) => {
 
         // 🔧 CORRECTION CRITIQUE : Normaliser le format ivoirien
         // Ajouter le 0 initial si manquant pour les numéros ivoiriens (7, 8, 9)
-        if (/^[789]\d{7}$/.test(msisdn)) {
+        if (/^[789]\d{8}$/.test(msisdn)) {
           msisdn = '0' + msisdn;
           console.log(`[process-cagnotte-refunds] 🔧 Ajout du 0 initial: ${msisdn}`);
         }
 
-        // Validation finale du format
-        if (!/^0[789]\d{7}$/.test(msisdn)) {
+        // Validation finale du format (10 chiffres : 0 + 9 chiffres)
+        if (!/^0[789]\d{8}$/.test(msisdn)) {
           console.error(`[process-cagnotte-refunds] ❌ Format invalide: ${msisdn}`);
           
           await supabase
