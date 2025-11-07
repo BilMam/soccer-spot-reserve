@@ -317,14 +317,14 @@ serve(async (req) => {
           throw new Error(`Erreur création invoice: ${getInvoiceResponse.status} - ${errorText}`);
         }
 
-        const invoiceData = await getInvoiceResponse.json();
-        console.log(`[process-cagnotte-refunds] 📄 Réponse invoice:`, invoiceData);
+          const disburseInvoiceData = await getInvoiceResponse.json();
+          console.log(`[process-cagnotte-refunds] 📄 Réponse invoice:`, disburseInvoiceData);
 
-        if (invoiceData.response_code !== '00') {
-          throw new Error(`Erreur invoice: ${invoiceData.response_text || 'Code: ' + invoiceData.response_code}`);
-        }
+          if (disburseInvoiceData.response_code !== '00') {
+            throw new Error(`Erreur invoice: ${disburseInvoiceData.response_text || 'Code: ' + disburseInvoiceData.response_code}`);
+          }
 
-        const disburseToken = invoiceData.disburse_token;
+          const disburseToken = disburseInvoiceData.disburse_token;
         if (!disburseToken) {
           throw new Error('disburse_token manquant dans la réponse PayDunya');
         }
