@@ -88,6 +88,11 @@ serve(async (req) => {
       else if (clean.startsWith('0') && clean.length <= 10) {
         clean = '+225' + clean.substring(1);
       }
+      // 🔧 CORRECTION : Si commence par 7, 8 ou 9 sans préfixe, ajouter +2250
+      else if (/^[789]\d{7}$/.test(clean)) {
+        clean = '+2250' + clean;
+        console.log('[paydunya-ipn] 🔧 Ajout du préfixe +2250 pour numéro ivoirien:', clean);
+      }
       // Si pas de +, assumer CI par défaut pour retro-compatibilité
       else if (!clean.startsWith('+')) {
         clean = '+225' + clean;

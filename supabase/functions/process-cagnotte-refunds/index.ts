@@ -223,7 +223,38 @@ serve(async (req) => {
         // Nettoyer le numéro (retirer +225 si présent pour avoir le format local)
         msisdn = msisdn.replace(/^\+225/, '').replace(/\s/g, '');
 
-        console.log(`[process-cagnotte-refunds] ✅ Numéro récupéré: ${msisdn}`);
+        // 🔧 CORRECTION CRITIQUE : Normaliser le format ivoirien
+        // Ajouter le 0 initial si manquant pour les numéros ivoiriens (7, 8, 9)
+        if (/^[789]\d{7}$/.test(msisdn)) {
+          msisdn = '0' + msisdn;
+          console.log(`[process-cagnotte-refunds] 🔧 Ajout du 0 initial: ${msisdn}`);
+        }
+
+        // Validation finale du format
+        if (!/^0[789]\d{7}$/.test(msisdn)) {
+          console.error(`[process-cagnotte-refunds] ❌ Format invalide: ${msisdn}`);
+          
+          await supabase
+            .from('cagnotte_contribution')
+            .update({
+              refund_status: 'FAILED',
+              refund_last_error: `Format de téléphone invalide: ${msisdn}`,
+              refund_attempt_count: contrib.refund_attempt_count + 1,
+              refund_last_attempt_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', contributionId);
+          
+          results.push({
+            id: contributionId,
+            status: 'FAILED',
+            error: `Format de téléphone invalide: ${msisdn}`,
+          });
+          
+          continue; // Passer à la contribution suivante
+        }
+
+        console.log(`[process-cagnotte-refunds] ✅ Numéro validé: ${msisdn}`);
 
         // Incrémenter le compteur de tentatives
         await supabase
