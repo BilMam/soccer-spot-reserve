@@ -6,8 +6,50 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const PAYDUNYA_API_BASE = 'https://app.paydunya.com/api/v1';
+const PAYDUNYA_API_BASE = 'https://app.paydunya.com/api/v2';
 const MAX_REFUND_ATTEMPTS = 5; // Nombre maximum de tentatives de remboursement
+
+/**
+ * Détecte le provider mobile money basé sur le préfixe du numéro de téléphone (Côte d'Ivoire)
+ * @param phoneNumber - Numéro de téléphone (peut contenir +225 ou non)
+ * @returns Le code du provider pour PayDunya API
+ */
+function detectWithdrawMode(phoneNumber: string): string {
+  // Nettoyer le numéro (enlever espaces, tirets, parenthèses)
+  const cleaned = phoneNumber.replace(/[\s\-\(\)]/g, '');
+  
+  // Extraire les 2 premiers chiffres après l'indicatif
+  let prefix = '';
+  
+  if (cleaned.startsWith('+225')) {
+    prefix = cleaned.substring(4, 6);
+  } else if (cleaned.startsWith('225')) {
+    prefix = cleaned.substring(3, 5);
+  } else if (cleaned.startsWith('00225')) {
+    prefix = cleaned.substring(5, 7);
+  } else {
+    // Numéro local sans indicatif
+    prefix = cleaned.substring(0, 2);
+  }
+  
+  console.log(`[detectWithdrawMode] Numéro: ${phoneNumber}, Préfixe: ${prefix}`);
+  
+  // Préfixes Côte d'Ivoire
+  if (prefix === '07' || prefix === '08' || prefix === '09' || prefix === '17' || prefix === '47' || prefix === '57' || prefix === '67' || prefix === '77' || prefix === '87' || prefix === '97') {
+    return 'orange-money-ci';
+  } else if (prefix === '05' || prefix === '06' || prefix === '15' || prefix === '25' || prefix === '45' || prefix === '55' || prefix === '65' || prefix === '75' || prefix === '85' || prefix === '95') {
+    return 'mtn-ci';
+  } else if (prefix === '01' || prefix === '02' || prefix === '03') {
+    return 'moov-ci';
+  } else if (prefix === '70') {
+    // Wave utilise généralement 70 en Côte d'Ivoire
+    return 'wave-ci';
+  }
+  
+  // Par défaut, Orange Money (le plus répandu)
+  console.warn(`[detectWithdrawMode] ⚠️ Préfixe inconnu: ${prefix}, utilisation de Orange Money par défaut`);
+  return 'orange-money-ci';
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -242,54 +284,103 @@ serve(async (req) => {
           })
           .eq('id', contributionId);
 
-        // Envoyer le déboursement via PayDunya
-        console.log(`[process-cagnotte-refunds] 💸 Envoi déboursement: ${amount} XOF vers ${msisdn}`);
+        // Détecter automatiquement le provider mobile money
+        const withdrawMode = detectWithdrawMode(msisdn);
+        console.log(`[process-cagnotte-refunds] 📱 Provider détecté: ${withdrawMode}`);
+
+        // ÉTAPE 1 : Créer l'invoice de déboursement via PayDunya v2
+        console.log(`[process-cagnotte-refunds] 💸 Création invoice déboursement: ${amount} XOF vers ${msisdn}`);
         
-        const disbursementPayload = {
+        const getInvoicePayload = {
           account_alias: msisdn,
           amount: amount,
-          withdraw_mode: 'mobile_money', // ou 'bank' selon le contexte
-          description: `Remboursement cagnotte - Raison: ${contrib.cagnotte?.cancellation_reason || 'Annulation'}`,
+          withdraw_mode: withdrawMode,
+          callback_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/paydunya-ipn`
         };
 
-        const disbursementResponse = await fetch(
-          `${PAYDUNYA_API_BASE}/disbursements`,
+        const getInvoiceResponse = await fetch(
+          `${PAYDUNYA_API_BASE}/disburse/get-invoice`,
           {
             method: 'POST',
             headers: {
               'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
               'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey,
               'PAYDUNYA-TOKEN': paydunyaToken,
-              'PAYDUNYA-MODE': paydunyaMode,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(disbursementPayload),
+            body: JSON.stringify(getInvoicePayload),
           }
         );
 
-        if (!disbursementResponse.ok) {
-          const errorText = await disbursementResponse.text();
-          throw new Error(`Erreur déboursement: ${disbursementResponse.status} - ${errorText}`);
+        if (!getInvoiceResponse.ok) {
+          const errorText = await getInvoiceResponse.text();
+          throw new Error(`Erreur création invoice: ${getInvoiceResponse.status} - ${errorText}`);
         }
 
-        const disbursementData = await disbursementResponse.json();
-        console.log(`[process-cagnotte-refunds] ✅ Déboursement créé:`, disbursementData);
+        const invoiceData = await getInvoiceResponse.json();
+        console.log(`[process-cagnotte-refunds] 📄 Réponse invoice:`, invoiceData);
 
-        const refundReference = disbursementData.transaction_id || disbursementData.reference || disbursementData.id;
+        if (invoiceData.response_code !== '00') {
+          throw new Error(`Erreur invoice: ${invoiceData.response_text || 'Code: ' + invoiceData.response_code}`);
+        }
+
+        const disburseToken = invoiceData.disburse_token;
+        if (!disburseToken) {
+          throw new Error('disburse_token manquant dans la réponse PayDunya');
+        }
+
+        console.log(`[process-cagnotte-refunds] ✅ Invoice créée: ${disburseToken}`);
+
+        // ÉTAPE 2 : Soumettre l'invoice pour exécution
+        console.log(`[process-cagnotte-refunds] 📤 Soumission déboursement...`);
+        
+        const submitPayload = {
+          disburse_invoice: disburseToken,
+          disburse_id: contributionId // Notre référence interne
+        };
+
+        const submitResponse = await fetch(
+          `${PAYDUNYA_API_BASE}/disburse/submit-invoice`,
+          {
+            method: 'POST',
+            headers: {
+              'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
+              'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey,
+              'PAYDUNYA-TOKEN': paydunyaToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(submitPayload),
+          }
+        );
+
+        if (!submitResponse.ok) {
+          const errorText = await submitResponse.text();
+          throw new Error(`Erreur soumission: ${submitResponse.status} - ${errorText}`);
+        }
+
+        const disbursementData = await submitResponse.json();
+        console.log(`[process-cagnotte-refunds] ✅ Déboursement soumis:`, disbursementData);
+
+        if (disbursementData.response_code !== '00') {
+          throw new Error(`Erreur déboursement: ${disbursementData.response_text || 'Code: ' + disbursementData.response_code}`);
+        }
+
+        const refundReference = disbursementData.transaction_id || disbursementData.disburse_invoice || disburseToken;
 
         if (!refundReference) {
           throw new Error('Référence de remboursement introuvable dans la réponse PayDunya');
         }
 
-        // Mettre à jour la contribution avec la référence et le statut
-        const disbursementStatus = disbursementData.status || disbursementData.transaction_status;
+        // Analyser le statut retourné par PayDunya
+        const disbursementStatus = disbursementData.status || 'pending';
         let refundStatus = 'PROCESSING';
 
-        // Si le statut est immédiatement confirmé
-        if (disbursementStatus === 'completed' || disbursementStatus === 'success') {
+        if (disbursementStatus === 'success' || disbursementStatus === 'completed') {
           refundStatus = 'REFUNDED';
         } else if (disbursementStatus === 'failed' || disbursementStatus === 'cancelled') {
           refundStatus = 'FAILED';
+        } else if (disbursementStatus === 'pending' || disbursementStatus === 'processing') {
+          refundStatus = 'PROCESSING';
         }
 
         await supabase
