@@ -54,6 +54,7 @@ const Checkout = () => {
   const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const checkoutData = location.state as CheckoutState;
 
@@ -178,7 +179,7 @@ const Checkout = () => {
       // Rediriger vers PayDunya
       setTimeout(() => {
         window.location.href = paymentData.url;
-      }, 1500);
+      }, 500);
 
       return { booking, paymentUrl: paymentData.url };
     },
@@ -199,8 +200,18 @@ const Checkout = () => {
     }
   });
 
-  const handlePayment = () => {
-    createBookingMutation.mutate();
+  const handlePayment = async () => {
+    if (isProcessing) return; // Bloquer si déjà en cours
+    
+    setIsProcessing(true); // Blocage immédiat
+    
+    try {
+      await createBookingMutation.mutateAsync();
+    } catch (error) {
+      // L'erreur est déjà gérée par onError de la mutation
+      setIsProcessing(false); // Débloquer en cas d'erreur
+    }
+    // Ne pas débloquer en cas de succès car on redirige vers PayDunya
   };
 
   const formatDate = (date: Date) => {
@@ -370,13 +381,15 @@ const Checkout = () => {
                 {/* Bouton paiement */}
                 <Button
                   onClick={handlePayment}
-                  disabled={createBookingMutation.isPending}
+                  disabled={createBookingMutation.isPending || isProcessing}
                   className="w-full bg-green-600 hover:bg-green-700 h-12 text-base font-medium"
                 >
-                  {createBookingMutation.isPending ? (
+                  {(createBookingMutation.isPending || isProcessing) ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Traitement en cours...
+                      {isProcessing && !createBookingMutation.isPending
+                        ? 'Préparation du paiement...'
+                        : 'Redirection vers PayDunya...'}
                     </>
                   ) : (
                     `Payer ${formatXOF(checkoutData.totalPrice)}`
