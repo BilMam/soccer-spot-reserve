@@ -35,15 +35,15 @@ function detectWithdrawMode(phoneNumber: string): string {
   console.log(`[detectWithdrawMode] Numéro: ${phoneNumber}, Préfixe: ${prefix}`);
   
   // Préfixes Côte d'Ivoire
-  if (prefix === '07' || prefix === '08' || prefix === '09' || prefix === '17' || prefix === '47' || prefix === '57' || prefix === '67' || prefix === '77' || prefix === '87' || prefix === '97') {
+  if (prefix === '07' || prefix === '70') {
+    // Wave CI utilise 07 et 70
+    return 'wave-ci';
+  } else if (prefix === '08' || prefix === '09' || prefix === '17' || prefix === '47' || prefix === '57' || prefix === '67' || prefix === '77' || prefix === '87' || prefix === '97') {
     return 'orange-money-ci';
   } else if (prefix === '05' || prefix === '06' || prefix === '15' || prefix === '25' || prefix === '45' || prefix === '55' || prefix === '65' || prefix === '75' || prefix === '85' || prefix === '95') {
     return 'mtn-ci';
   } else if (prefix === '01' || prefix === '02' || prefix === '03') {
     return 'moov-ci';
-  } else if (prefix === '70') {
-    // Wave utilise généralement 70 en Côte d'Ivoire
-    return 'wave-ci';
   }
   
   // Par défaut, Orange Money (le plus répandu)
@@ -286,9 +286,12 @@ serve(async (req) => {
         // ÉTAPE 2 : Soumettre l'invoice pour exécution
         console.log(`[process-cagnotte-refunds] 📤 Soumission déboursement...`);
         
+        // Générer un disburse_id unique pour chaque tentative (évite "disburse_id already used")
+        const disburseId = `${contributionId}_${Date.now()}`;
+        
         const submitPayload = {
           disburse_invoice: disburseToken,
-          disburse_id: contributionId // Notre référence interne
+          disburse_id: disburseId // Notre référence interne unique
         };
 
         const submitResponse = await fetch(

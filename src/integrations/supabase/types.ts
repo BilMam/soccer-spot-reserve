@@ -1765,6 +1765,10 @@ export type Database = {
         Args: { p_cagnotte_id: string }
         Returns: undefined
       }
+      update_contribution_metadata_for_refund: {
+        Args: { p_contribution_ids: string[]; p_phone_e164: string }
+        Returns: number
+      }
       update_owner_stats_for_field: {
         Args: { field_uuid: string }
         Returns: undefined
