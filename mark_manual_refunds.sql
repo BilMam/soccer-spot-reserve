@@ -23,8 +23,7 @@
 -- L'utilisateur a mentionné : 262 F, 393 F, 785 F, etc. (11 paiements)
 -- Ces montants peuvent différer légèrement des montants stockés (frais PSP)
 
--- 🎯 ÉTAPE 2 : Marquer les contributions déjà remboursées
--- Remplacez cette liste par les IDs correspondant aux montants reçus
+-- 🎯 ÉTAPE 2 : Marquer les 12 contributions déjà remboursées manuellement
 UPDATE cagnotte_contribution
 SET 
   refund_status = 'REFUNDED',
@@ -34,16 +33,19 @@ SET
   refunded_at = NOW(),
   updated_at = NOW()
 WHERE id IN (
-  -- ⚠️ REMPLACEZ CES IDs PAR CEUX DES CONTRIBUTIONS EFFECTIVEMENT REMBOURSÉES
-  -- Exemple (à adapter selon votre historique PayDunya) :
-  -- '97eedeca-17c2-42fe-8af3-4bff36129add', -- 258 XOF → reçu 262 F
-  -- '47ade69c-fe15-4375-bbd8-50dc63751fb7', -- 258 XOF → reçu 262 F
-  -- 'fbcd88a0-c582-45d5-98ab-feb5a2a1eff3', -- 773 XOF → reçu 785 F
-  -- 'd4ef95d2-0de9-43b2-9168-a473bf12af4f', -- 387 XOF → reçu 393 F
-  -- ... continuez avec les 11 IDs correspondant aux paiements reçus
-  '00000000-0000-0000-0000-000000000000' -- Placeholder, à remplacer !
-)
-AND refund_status = 'PENDING'; -- Sécurité : ne marquer que les PENDING
+  '97eedeca-17c2-42fe-8af3-4bff36129add',  -- 258 XOF
+  '47ade69c-fe15-4375-bbd8-50dc63751fb7',  -- 258 XOF
+  'c2f4f4bf-269e-4f0e-9c02-bb5d070e8990',  -- 258 XOF
+  '199e6d46-d804-4807-b79f-1b4fbe92b401',  -- 258 XOF
+  '69391924-f585-4f47-95b3-d4f61d6dc7d8',  -- 258 XOF
+  'f05145e4-b53a-46cf-84e8-c70a59443294',  -- 258 XOF
+  'fbcd88a0-c582-45d5-98ab-feb5a2a1eff3',  -- 773 XOF
+  '6998f75f-5c12-4584-a4c8-fd37346884fd',  -- 773 XOF
+  'b8a87669-d7e9-43b8-909b-315b5638ec11',  -- 773 XOF
+  'd4ef95d2-0de9-43b2-9168-a473bf12af4f',  -- 387 XOF
+  'e8664564-6ea0-4708-9676-ddd12e6f3395',  -- 387 XOF
+  '45cf9509-c4ad-4761-9500-68fcb16939d5'   -- 200 XOF
+);
 
 -- 🎯 ÉTAPE 3 : Vérifier le résultat
 SELECT 
