@@ -65,6 +65,13 @@ export type Database = {
             referencedRelation: "fields"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "availability_period_templates_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields_without_payout"
+            referencedColumns: ["field_id"]
+          },
         ]
       }
       booking_cron_stats: {
@@ -232,6 +239,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bookings_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields_without_payout"
+            referencedColumns: ["field_id"]
+          },
+          {
             foreignKeyName: "bookings_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -335,6 +349,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "fields"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cagnotte_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields_without_payout"
+            referencedColumns: ["field_id"]
           },
         ]
       }
@@ -498,6 +519,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "fields"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "field_availability_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields_without_payout"
+            referencedColumns: ["field_id"]
           },
           {
             foreignKeyName: "field_availability_hold_cagnotte_id_fkey"
@@ -741,6 +769,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "owner_stats_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields_without_payout"
+            referencedColumns: ["field_id"]
+          },
+          {
             foreignKeyName: "owner_stats_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
@@ -922,8 +957,22 @@ export type Database = {
             foreignKeyName: "fk_pa_owner"
             columns: ["owner_id"]
             isOneToOne: false
+            referencedRelation: "fields_without_payout"
+            referencedColumns: ["owner_id"]
+          },
+          {
+            foreignKeyName: "fk_pa_owner"
+            columns: ["owner_id"]
+            isOneToOne: false
             referencedRelation: "owners"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_accounts_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "fields_without_payout"
+            referencedColumns: ["owner_id"]
           },
           {
             foreignKeyName: "payout_accounts_owner_id_fkey"
@@ -1085,6 +1134,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "fields"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_slots_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields_without_payout"
+            referencedColumns: ["field_id"]
           },
         ]
       }
@@ -1271,6 +1327,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "reviews_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields_without_payout"
+            referencedColumns: ["field_id"]
+          },
+          {
             foreignKeyName: "reviews_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -1428,6 +1491,13 @@ export type Database = {
             referencedRelation: "fields"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_favorites_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields_without_payout"
+            referencedColumns: ["field_id"]
+          },
         ]
       }
       user_notification_preferences: {
@@ -1510,7 +1580,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      fields_without_payout: {
+        Row: {
+          field_id: string | null
+          field_name: string | null
+          owner_id: string | null
+          owner_mobile_money: string | null
+          owner_phone: string | null
+          owner_user_id: string | null
+          payout_accounts_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fields_owner_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_fields_owner"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
     }
     Functions: {
       approve_field: {
