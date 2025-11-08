@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, CreditCard } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Plus, CreditCard, AlertTriangle } from "lucide-react"
 import { PhoneInputCI } from "@/components/ui/PhoneInputCI"
 import { PayoutAccountCard } from "./PayoutAccountCard"
-import { OtpDialog } from "./OtpDialog"
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -29,8 +29,6 @@ export function PayoutAccountsManager() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [isOtpDialogOpen, setIsOtpDialogOpen] = useState(false)
-  const [verificationId, setVerificationId] = useState<string>('')
   const [formData, setFormData] = useState({
     label: '',
     phone: ''
@@ -102,29 +100,6 @@ export function PayoutAccountsManager() {
 
   const handleSubmitForm = async () => {
     try {
-      // Request OTP for phone validation
-      const { data } = await supabase.functions.invoke('request-owner-otp', {
-        body: { phone_payout: formData.phone }
-      })
-
-      if (data.success) {
-        setVerificationId(data.verification_id)
-        setIsOtpDialogOpen(true)
-        setIsAddDialogOpen(false)
-      } else {
-        throw new Error(data.message || 'Erreur lors de l\'envoi de l\'OTP')
-      }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: error.message || "Impossible d'envoyer l'OTP"
-      })
-    }
-  }
-
-  const handleOtpVerified = async () => {
-    try {
       // Get owner ID first
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Non authentifié')
@@ -137,8 +112,25 @@ export function PayoutAccountsManager() {
 
       if (!ownerData) throw new Error('Compte propriétaire non trouvé')
 
-      // Create payout account
-      const { data, error } = await supabase
+      // Check if phone already exists for this owner
+      const { data: existingAccount } = await supabase
+        .from('payout_accounts')
+        .select('id')
+        .eq('owner_id', ownerData.id)
+        .eq('phone', formData.phone)
+        .maybeSingle()
+
+      if (existingAccount) {
+        toast({
+          variant: "destructive",
+          title: "Numéro déjà enregistré",
+          description: "Ce numéro est déjà associé à un de vos comptes"
+        })
+        return
+      }
+
+      // Create payout account directly
+      const { error } = await supabase
         .from('payout_accounts')
         .insert({
           owner_id: ownerData.id,
@@ -146,19 +138,17 @@ export function PayoutAccountsManager() {
           phone: formData.phone,
           is_active: true
         })
-        .select()
-        .single()
 
       if (error) throw error
 
       toast({
-        title: "Compte ajouté",
-        description: "Votre nouveau compte de paiement a été ajouté avec succès"
+        title: "Compte ajouté avec succès",
+        description: "Vous pouvez maintenant l'associer à vos terrains"
       })
 
-      // Reset form
+      // Reset form and close dialog
       setFormData({ label: '', phone: '' })
-      setIsOtpDialogOpen(false)
+      setIsAddDialogOpen(false)
       
       // Refresh data
       queryClient.invalidateQueries({ queryKey: ['payout-accounts'] })
@@ -236,6 +226,15 @@ export function PayoutAccountsManager() {
                   <DialogTitle>Ajouter un compte de paiement</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Attention :</strong> Assurez-vous que c'est le bon numéro Mobile Money 
+                      (Wave, Orange Money, MTN Money, Moov Money). Ce numéro sera utilisé pour 
+                      recevoir tous vos paiements. Vérifiez bien avant d'ajouter.
+                    </AlertDescription>
+                  </Alert>
+                  
                   <div>
                     <Label htmlFor="label">Nom du compte</Label>
                     <Input
@@ -256,7 +255,7 @@ export function PayoutAccountsManager() {
                     className="w-full"
                     disabled={!formData.label || !formData.phone}
                   >
-                    Vérifier par SMS
+                    Ajouter le compte
                   </Button>
                 </div>
               </DialogContent>
@@ -267,24 +266,16 @@ export function PayoutAccountsManager() {
           {accounts && accounts.length > 0 ? (
             <div className="grid gap-4">
               {accounts.map((account) => (
-                <div key={account.id} className="relative">
-                  <PayoutAccountCard
-                    account={account}
-                    isDefault={account.id === owner?.default_payout_account_id}
-                    onUpdate={refreshAccounts}
-                  />
-                  {account.id !== owner?.default_payout_account_id && account.is_active && (
-                    <div className="absolute top-4 right-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSetDefault(account.id)}
-                      >
-                        Définir par défaut
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                <PayoutAccountCard
+                  key={account.id}
+                  account={account}
+                  isDefault={account.id === owner?.default_payout_account_id}
+                  onUpdate={refreshAccounts}
+                  onSetDefault={account.id !== owner?.default_payout_account_id && account.is_active 
+                    ? () => handleSetDefault(account.id) 
+                    : undefined
+                  }
+                />
               ))}
             </div>
           ) : (
@@ -298,13 +289,6 @@ export function PayoutAccountsManager() {
           )}
         </CardContent>
       </Card>
-
-      <OtpDialog
-        open={isOtpDialogOpen}
-        onOpenChange={setIsOtpDialogOpen}
-        onVerified={handleOtpVerified}
-        phone={formData.phone}
-      />
     </div>
   )
 }

@@ -19,10 +19,11 @@ interface PayoutAccountCardProps {
   account: PayoutAccount
   isDefault?: boolean
   onUpdate: () => void
+  onSetDefault?: () => void
 }
 
 
-export function PayoutAccountCard({ account, isDefault, onUpdate }: PayoutAccountCardProps) {
+export function PayoutAccountCard({ account, isDefault, onUpdate, onSetDefault }: PayoutAccountCardProps) {
   const { toast } = useToast()
 
   const handleToggleActive = async (active: boolean) => {
@@ -86,11 +87,11 @@ export function PayoutAccountCard({ account, isDefault, onUpdate }: PayoutAccoun
 
 
   return (
-    <Card className="relative">
+    <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
               {account.label}
               {isDefault && (
                 <Badge variant="default" className="text-xs">
@@ -103,11 +104,10 @@ export function PayoutAccountCard({ account, isDefault, onUpdate }: PayoutAccoun
               {formatCI(account.phone)}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Switch
               checked={account.is_active}
               onCheckedChange={handleToggleActive}
-              disabled={isDefault}
             />
             {!isDefault && (
               <Button
@@ -123,14 +123,25 @@ export function PayoutAccountCard({ account, isDefault, onUpdate }: PayoutAccoun
         </div>
       </CardHeader>
       
-      <CardContent>        
-        {account.payment_contact_id && (
-          <div className="mt-2">
-            <Badge variant="outline" className="text-xs">
-              Paiement configuré
-            </Badge>
+      <CardContent>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            {account.payment_contact_id && (
+              <Badge variant="outline" className="text-xs">
+                Paiement configuré
+              </Badge>
+            )}
           </div>
-        )}
+          {onSetDefault && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onSetDefault}
+            >
+              Définir par défaut
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   )
