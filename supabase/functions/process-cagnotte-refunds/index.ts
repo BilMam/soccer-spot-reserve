@@ -74,7 +74,10 @@ serve(async (req) => {
 
     console.log(`[process-cagnotte-refunds] 🔄 Démarrage du traitement des remboursements... (mode: ${paydunyaMode})`);
 
-    // Récupérer les contributions à rembourser (PENDING, FAILED ou PROCESSING avec moins de 5 tentatives)
+    // Récupérer les contributions à rembourser
+    // PENDING, FAILED ou PROCESSING bloqués depuis plus de 3 minutes (timeout)
+    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    
     const { data: contributions, error } = await supabase
       .from('cagnotte_contribution')
       .select(`
@@ -88,7 +91,7 @@ serve(async (req) => {
           cancellation_reason
         )
       `)
-      .in('refund_status', ['PENDING', 'FAILED', 'PROCESSING'])
+      .or(`refund_status.eq.PENDING,refund_status.eq.FAILED,and(refund_status.eq.PROCESSING,refund_last_attempt_at.lt.${threeMinutesAgo})`)
       .lt('refund_attempt_count', MAX_REFUND_ATTEMPTS)
       .eq('status', 'SUCCEEDED'); // Seules les contributions réussies sont remboursables
 
@@ -141,12 +144,23 @@ serve(async (req) => {
               const statusData = await statusResponse.json();
               console.log(`[process-cagnotte-refunds] Statut remboursement existant:`, statusData);
 
+              // ✅ CORRECTION : Étendre la reconnaissance des statuts
+              const payStatus = (
+                statusData.status || 
+                statusData.state || 
+                statusData.disbursement_status || 
+                ''
+              ).toLowerCase();
+              
+              const respCode = statusData.response_code || statusData['response_code'];
+
               // Mettre à jour selon le statut PayDunya
-              if (statusData.status === 'completed' || statusData.status === 'success') {
+              if (respCode === '00' || ['completed', 'success', 'succeeded', 'successful', 'paid'].includes(payStatus)) {
                 await supabase
                   .from('cagnotte_contribution')
                   .update({
                     refund_status: 'REFUNDED',
+                    refunded_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
                   })
                   .eq('id', contributionId);
@@ -157,26 +171,26 @@ serve(async (req) => {
                 });
 
                 results.push({ id: contributionId, status: 'REFUNDED', reference: contrib.refund_reference });
-              } else if (statusData.status === 'failed' || statusData.status === 'cancelled') {
-                // Réinitialiser pour réessayer avec une nouvelle tentative
-                console.log(`[process-cagnotte-refunds] 🔄 Remboursement échoué, réinitialisation pour réessai`);
+              } else if (['failed', 'cancelled', 'échec', 'echoue'].includes(payStatus)) {
+                // ✅ CORRECTION : Ne pas réinitialiser refund_reference, juste marquer FAILED
+                console.log(`[process-cagnotte-refunds] 🔄 Remboursement échoué: ${payStatus}`);
                 
                 await supabase
                   .from('cagnotte_contribution')
                   .update({
-                    refund_status: 'PENDING',
-                    refund_reference: null,
+                    refund_status: 'FAILED',
                     refund_attempt_count: contrib.refund_attempt_count + 1,
-                    refund_last_error: `PayDunya status: ${statusData.status}`,
+                    refund_last_error: `PayDunya status: ${payStatus}`,
                     refund_last_attempt_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
+                    // ❌ Ne PAS réinitialiser refund_reference
                   })
                   .eq('id', contributionId);
 
-                results.push({ id: contributionId, status: 'RETRY_SCHEDULED', error: statusData.status });
-              } else if (statusData.status === 'pending' || statusData.status === 'processing') {
+                results.push({ id: contributionId, status: 'FAILED', error: payStatus, reference: contrib.refund_reference });
+              } else if (['pending', 'processing', 'in_progress'].includes(payStatus)) {
                 // Toujours en cours, pas de changement
-                console.log(`[process-cagnotte-refunds] ⏳ Remboursement toujours en cours`);
+                console.log(`[process-cagnotte-refunds] ⏳ Remboursement toujours en cours: ${payStatus}`);
                 results.push({ id: contributionId, status: 'PROCESSING', reference: contrib.refund_reference });
               }
             }
@@ -363,21 +377,29 @@ serve(async (req) => {
           throw new Error(`Erreur déboursement: ${disbursementData.response_text || 'Code: ' + disbursementData.response_code}`);
         }
 
-        const refundReference = disbursementData.transaction_id || disbursementData.disburse_invoice || disburseToken;
+        // ✅ CORRECTION : Utiliser UNIQUEMENT transaction_id comme référence
+        const refundReference = disbursementData.transaction_id;
 
         if (!refundReference) {
-          throw new Error('Référence de remboursement introuvable dans la réponse PayDunya');
+          throw new Error('transaction_id manquant dans la réponse PayDunya - impossible de tracker le remboursement');
         }
 
-        // Analyser le statut retourné par PayDunya
-        const disbursementStatus = disbursementData.status || 'pending';
+        // ✅ CORRECTION : Étendre la reconnaissance des statuts PayDunya
+        const payStatus = (
+          disbursementData.status || 
+          disbursementData.state || 
+          disbursementData.disbursement_status || 
+          ''
+        ).toLowerCase();
+        
+        const respCode = disbursementData.response_code || disbursementData['response_code'];
         let refundStatus = 'PROCESSING';
 
-        if (disbursementStatus === 'success' || disbursementStatus === 'completed') {
+        if (respCode === '00' || ['completed', 'success', 'succeeded', 'successful', 'paid'].includes(payStatus)) {
           refundStatus = 'REFUNDED';
-        } else if (disbursementStatus === 'failed' || disbursementStatus === 'cancelled') {
+        } else if (['failed', 'cancelled', 'échec'].includes(payStatus)) {
           refundStatus = 'FAILED';
-        } else if (disbursementStatus === 'pending' || disbursementStatus === 'processing') {
+        } else if (['pending', 'processing', 'in_progress'].includes(payStatus)) {
           refundStatus = 'PROCESSING';
         }
 
@@ -391,7 +413,7 @@ serve(async (req) => {
           })
           .eq('id', contributionId);
 
-        // 📝 JOURNALISATION : Enregistrer le remboursement
+        // 📝 JOURNALISATION : Enregistrer le remboursement (avec metadata étendues)
         await supabase
           .from('refund_logs')
           .insert({
@@ -401,13 +423,16 @@ serve(async (req) => {
             phone_number: msisdn,
             provider: withdrawMode,
             refund_reference: refundReference,
-            paydunya_status: disbursementStatus,
+            paydunya_status: payStatus,
             refund_status: refundStatus,
             attempt_number: contrib.refund_attempt_count + 1,
             metadata: {
               psp_tx_id: pspTxId,
               disburse_token: disburseToken,
-              response: disbursementData,
+              disburse_id: disburseId, // ⭐ Ajout référence interne unique
+              paydunya_mode: paydunyaMode, // ⭐ Mode (test/live)
+              response_code: respCode,
+              full_response: disbursementData,
             },
           });
 

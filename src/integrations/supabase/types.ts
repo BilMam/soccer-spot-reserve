@@ -365,6 +365,7 @@ export type Database = {
           refunded_at: string | null
           status: string
           team: string | null
+          updated_at: string | null
           user_id: string | null
         }
         Insert: {
@@ -393,6 +394,7 @@ export type Database = {
           refunded_at?: string | null
           status: string
           team?: string | null
+          updated_at?: string | null
           user_id?: string | null
         }
         Update: {
@@ -421,6 +423,7 @@ export type Database = {
           refunded_at?: string | null
           status?: string
           team?: string | null
+          updated_at?: string | null
           user_id?: string | null
         }
         Relationships: [
