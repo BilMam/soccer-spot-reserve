@@ -576,7 +576,6 @@ const OwnerStats = ({
                             >
                               {booking.status === 'confirmed' ? 'Confirmé' :
                                booking.status === 'completed' ? 'Terminé' :
-                               booking.status === 'owner_confirmed' ? 'Confirmé' :
                                booking.status}
                             </Badge>
                           </td>
