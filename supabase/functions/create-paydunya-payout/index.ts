@@ -6,6 +6,41 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const PAYDUNYA_API_BASE = 'https://app.paydunya.com/api/v2';
+
+/**
+ * Détecte le provider mobile money basé sur le préfixe du numéro de téléphone (Côte d'Ivoire)
+ */
+function detectWithdrawMode(phoneNumber: string): string {
+  const cleaned = phoneNumber.replace(/[\s\-\(\)]/g, '');
+  
+  let prefix = '';
+  if (cleaned.startsWith('+225')) {
+    prefix = cleaned.substring(4, 6);
+  } else if (cleaned.startsWith('225')) {
+    prefix = cleaned.substring(3, 5);
+  } else if (cleaned.startsWith('00225')) {
+    prefix = cleaned.substring(5, 7);
+  } else {
+    prefix = cleaned.substring(0, 2);
+  }
+  
+  console.log(`[detectWithdrawMode] Numéro: ${phoneNumber}, Préfixe: ${prefix}`);
+  
+  if (prefix === '07' || prefix === '70') {
+    return 'wave-ci';
+  } else if (prefix === '08' || prefix === '09' || prefix === '17' || prefix === '47' || prefix === '57' || prefix === '67' || prefix === '77' || prefix === '87' || prefix === '97') {
+    return 'orange-money-ci';
+  } else if (prefix === '05' || prefix === '06' || prefix === '15' || prefix === '25' || prefix === '45' || prefix === '55' || prefix === '65' || prefix === '75' || prefix === '85' || prefix === '95') {
+    return 'mtn-ci';
+  } else if (prefix === '01' || prefix === '02' || prefix === '03') {
+    return 'moov-ci';
+  }
+  
+  console.warn(`[detectWithdrawMode] ⚠️ Préfixe inconnu: ${prefix}, utilisation de Orange Money par défaut`);
+  return 'orange-money-ci';
+}
+
 interface PayoutRequest {
   booking_id: string;
 }
@@ -69,7 +104,7 @@ serve(async (req) => {
     const { booking_id }: PayoutRequest = await req.json();
     console.log(`[${timestamp}] Processing PayDunya payout for booking: ${booking_id}`);
 
-    // Step 1: Get booking with owner info
+    // Step 1: Get booking with payout account info
     const { data: bookingData, error: bookingError } = await supabase
       .from('bookings')
       .select(`
@@ -80,11 +115,12 @@ serve(async (req) => {
         fields!inner (
           id,
           name,
-          owner_id,
-          owners!inner (
+          payout_account_id,
+          payout_accounts!inner (
             id,
             phone,
-            mobile_money
+            is_active,
+            owner_id
           )
         )
       `)
@@ -96,8 +132,18 @@ serve(async (req) => {
       throw new Error(`Booking not found or not paid: ${bookingError?.message}`);
     }
 
-    const owner = bookingData.fields.owners;
-    console.log(`[${timestamp}] Found owner: ${owner.id}, phone: ${owner.phone}`);
+    const payoutAccount = bookingData.fields.payout_accounts;
+    const ownerPhone = payoutAccount?.phone;
+
+    if (!ownerPhone) {
+      throw new Error('Aucun compte de paiement configuré pour ce terrain. Le propriétaire doit configurer son numéro Mobile Money.');
+    }
+
+    if (!payoutAccount.is_active) {
+      throw new Error('Le compte de paiement est inactif. Le propriétaire doit activer son compte.');
+    }
+
+    console.log(`[${timestamp}] Payout account found - Phone: ${ownerPhone}, Owner: ${payoutAccount.owner_id}`);
 
     // Step 2: Check for existing payout (idempotency)
     const { data: existingPayout } = await supabase
@@ -130,7 +176,7 @@ serve(async (req) => {
         .from('payouts')
         .insert({
           booking_id: booking_id,
-          owner_id: owner.id,
+          owner_id: payoutAccount.owner_id,
           amount: bookingData.owner_amount,
           amount_net: bookingData.owner_amount,
           status: 'pending'
@@ -146,7 +192,7 @@ serve(async (req) => {
       console.log(`[${timestamp}] Payout created: ${payoutId}`);
     }
 
-    // Step 4: Execute transfer via PayDunya Direct Pay
+    // Step 4: Execute transfer via PayDunya Direct Pay v2 (same API as refunds)
     let transferResult;
     let transferId;
 
@@ -163,33 +209,131 @@ serve(async (req) => {
       
       console.log(`[${timestamp}] ⚠️ TEST MODE: Simulated PayDunya transfer of ${bookingData.owner_amount} XOF`);
     } else {
-      // Real PayDunya Direct Pay transfer
+      // Real PayDunya Direct Pay v2 transfer
       try {
-        const transferData = {
-          account_alias: owner.phone,
+        // Normaliser le numéro (enlever +225, 225, 00225 et espaces)
+        let normalizedPhone = ownerPhone.replace(/^\+225|^225|^00225/, '').replace(/\s/g, '');
+        
+        // Ajouter le 0 initial si manquant (numéro à 9 chiffres)
+        if (/^\d{9}$/.test(normalizedPhone)) {
+          normalizedPhone = '0' + normalizedPhone;
+          console.log(`[${timestamp}] 🔧 Ajout du 0 initial: ${normalizedPhone}`);
+        }
+
+        // Valider le format (10 chiffres commençant par 0)
+        if (!/^0\d{9}$/.test(normalizedPhone)) {
+          throw new Error(`Format de téléphone invalide: ${ownerPhone}. Le numéro doit être au format ivoirien (ex: 0708090001)`);
+        }
+
+        // Détecter automatiquement le provider mobile money
+        const withdrawMode = detectWithdrawMode(normalizedPhone);
+        console.log(`[${timestamp}] 📱 Provider détecté: ${withdrawMode}`);
+
+        // ÉTAPE 1 : Créer l'invoice de déboursement
+        console.log(`[${timestamp}] 💸 Création invoice déboursement: ${bookingData.owner_amount} XOF vers ${normalizedPhone}`);
+        
+        const getInvoicePayload = {
+          account_alias: normalizedPhone,
           amount: Math.round(bookingData.owner_amount),
-          withdraw_mode: 'momo', // Mobile Money
-          description: `MySport payout - ${bookingData.fields.name}`,
-          client_reference: payoutId,
-          callback_url: `${supabaseUrl}/functions/v1/paydunya-transfer-webhook`
+          withdraw_mode: withdrawMode,
+          callback_url: `${supabaseUrl}/functions/v1/paydunya-ipn`
         };
 
-        const transferResponse = await fetchWithTimeout('https://app.paydunya.com/sandbox-api/v1/direct-pay/credit-account', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
-            'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey,
-            'PAYDUNYA-TOKEN': paydunyaToken,
-            'PAYDUNYA-MODE': paydunyaMode
-          },
-          body: JSON.stringify(transferData)
-        });
+        const getInvoiceResponse = await fetchWithTimeout(
+          `${PAYDUNYA_API_BASE}/disburse/get-invoice`,
+          {
+            method: 'POST',
+            headers: {
+              'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
+              'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey,
+              'PAYDUNYA-TOKEN': paydunyaToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(getInvoicePayload),
+          }
+        );
 
-        transferResult = await transferResponse.json();
-        transferId = transferResult.transaction_id;
+        if (!getInvoiceResponse.ok) {
+          const errorText = await getInvoiceResponse.text();
+          throw new Error(`Erreur création invoice: ${getInvoiceResponse.status} - ${errorText}`);
+        }
+
+        const disburseInvoiceData = await getInvoiceResponse.json();
+        console.log(`[${timestamp}] 📄 Réponse invoice:`, disburseInvoiceData);
+
+        if (disburseInvoiceData.response_code !== '00') {
+          throw new Error(`Erreur invoice: ${disburseInvoiceData.response_text || 'Code: ' + disburseInvoiceData.response_code}`);
+        }
+
+        const disburseToken = disburseInvoiceData.disburse_token;
+        if (!disburseToken) {
+          throw new Error('disburse_token manquant dans la réponse PayDunya');
+        }
+
+        console.log(`[${timestamp}] ✅ Invoice créée: ${disburseToken}`);
+
+        // ÉTAPE 2 : Soumettre l'invoice pour exécution
+        console.log(`[${timestamp}] 📤 Soumission déboursement...`);
         
-        console.log(`[${timestamp}] PayDunya transfer response:`, transferResult);
+        const disburseId = `payout_${payoutId}_${Date.now()}`;
+        
+        const submitPayload = {
+          disburse_invoice: disburseToken,
+          disburse_id: disburseId
+        };
+
+        const submitResponse = await fetchWithTimeout(
+          `${PAYDUNYA_API_BASE}/disburse/submit-invoice`,
+          {
+            method: 'POST',
+            headers: {
+              'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
+              'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey,
+              'PAYDUNYA-TOKEN': paydunyaToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(submitPayload),
+          }
+        );
+
+        if (!submitResponse.ok) {
+          const errorText = await submitResponse.text();
+          throw new Error(`Erreur soumission: ${submitResponse.status} - ${errorText}`);
+        }
+
+        const disbursementData = await submitResponse.json();
+        console.log(`[${timestamp}] ✅ Déboursement soumis:`, disbursementData);
+
+        if (disbursementData.response_code !== '00') {
+          throw new Error(`Erreur déboursement: ${disbursementData.response_text || 'Code: ' + disbursementData.response_code}`);
+        }
+
+        transferId = disbursementData.transaction_id;
+        
+        if (!transferId) {
+          throw new Error('transaction_id manquant dans la réponse PayDunya');
+        }
+
+        // Vérifier le statut
+        const payStatus = (
+          disbursementData.status || 
+          disbursementData.state || 
+          disbursementData.disbursement_status || 
+          ''
+        ).toLowerCase();
+        
+        const respCode = disbursementData.response_code || disbursementData['response_code'];
+
+        transferResult = {
+          success: respCode === '00' || ['completed', 'success', 'succeeded', 'successful', 'paid'].includes(payStatus),
+          response_code: respCode,
+          response_text: disbursementData.response_text || `Payout ${payStatus}`,
+          transaction_id: transferId,
+          status: payStatus,
+          amount: bookingData.owner_amount
+        };
+
+        console.log(`[${timestamp}] PayDunya Direct Pay v2 response:`, transferResult);
       } catch (error) {
         console.error(`[${timestamp}] PayDunya transfer failed:`, error);
         transferResult = {
