@@ -441,12 +441,10 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
             onAmenityChange={handleAmenityChange} 
           />
 
-          {/* Compte de paiement masqué temporairement
           <FieldPayoutAccountForm 
             payoutAccountId={formData.payout_account_id}
             onPayoutAccountChange={handlePayoutAccountChange}
           />
-          */}
 
           <div className="space-y-4">
             <Label>Photos du terrain</Label>

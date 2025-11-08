@@ -82,7 +82,7 @@ const OwnerDashboard = () => {
             <TabsTrigger value="fields">Mes terrains</TabsTrigger>
             <TabsTrigger value="availability">Gestion créneaux</TabsTrigger>
             <TabsTrigger value="bookings">Réservations</TabsTrigger>
-            {/* <TabsTrigger value="payments">Paiements</TabsTrigger> */}
+            <TabsTrigger value="payments">Paiements</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -164,7 +164,7 @@ const OwnerDashboard = () => {
             <OwnerBookings ownerId={user.id} />
           </TabsContent>
 
-          {/* <TabsContent value="payments">
+          <TabsContent value="payments">
             <div className="space-y-6">
               <PayoutAccountsManager />
               
@@ -194,7 +194,7 @@ const OwnerDashboard = () => {
                 </div>
               </div>
             </div>
-          </TabsContent> */}
+          </TabsContent>
         </Tabs>
       </div>
     </div>
