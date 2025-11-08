@@ -6,13 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface CinetPayContact {
-  prefix: string;
-  phone: string;
-  name: string;
-  surname: string;
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -79,7 +72,10 @@ serve(async (req) => {
       const { data: owner, error: ownerError } = await supabaseAdmin
         .from('owners')
         .insert({
-          user_id: application.user_id
+          user_id: application.user_id,
+          phone: application.phone,
+          mobile_money: application.phone_payout || application.phone,
+          status: 'approved'
         })
         .select()
         .single()
@@ -88,38 +84,15 @@ serve(async (req) => {
         throw new Error('Erreur lors de la création du compte propriétaire')
       }
 
-      // 2. Create CinetPay contact
-      const contactData: CinetPayContact = {
-        prefix: '225',
-        phone: application.phone_payout.replace('225', ''),
-        name: application.full_name.split(' ')[0] || 'Proprietaire',
-        surname: application.full_name.split(' ').slice(1).join(' ') || 'Terrain'
-      }
-
-      const cinetpayResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/create-owner-contact`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
-        },
-        body: JSON.stringify(contactData)
-      })
-
-      const cinetpayResult = await cinetpayResponse.json()
-      
-      if (!cinetpayResult.success) {
-        throw new Error('Erreur lors de la création du contact CinetPay')
-      }
-
-      // 3. Create payout account
+      // 2. Create payout account with PayDunya
       const { data: payoutAccount, error: payoutError } = await supabaseAdmin
         .from('payout_accounts')
         .insert({
           owner_id: owner.id,
           label: 'Compte principal',
-          phone: application.phone_payout,
-          cinetpay_contact_id: cinetpayResult.contact_id,
-          is_active: true
+          phone: application.phone_payout || application.phone,
+          is_active: true,
+          payment_provider: 'paydunya'
         })
         .select()
         .single()
@@ -128,7 +101,7 @@ serve(async (req) => {
         throw new Error('Erreur lors de la création du compte de paiement')
       }
 
-      // 4. Set as default payout account
+      // 3. Set as default payout account
       const { error: updateOwnerError } = await supabaseAdmin
         .from('owners')
         .update({
@@ -141,7 +114,7 @@ serve(async (req) => {
         throw new Error('Erreur lors de la configuration du compte par défaut')
       }
 
-      // 5. Update application status
+      // 4. Update application status
       const { error: updateAppError } = await supabaseAdmin
         .from('owner_applications')
         .update({
@@ -157,7 +130,7 @@ serve(async (req) => {
         throw new Error('Erreur lors de la mise à jour de la demande')
       }
 
-      // 6. Grant owner role to user
+      // 5. Grant owner role to user
       const { error: roleError } = await supabaseAdmin
         .from('user_roles')
         .insert({

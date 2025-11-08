@@ -137,7 +137,6 @@ export type Database = {
           booking_date: string
           cancellation_reason: string | null
           cancelled_at: string | null
-          cinetpay_transfer_id: string | null
           confirmation_code: string | null
           confirmation_email_sent: boolean | null
           created_at: string | null
@@ -148,6 +147,7 @@ export type Database = {
           id: string
           owner_amount: number | null
           paid_at: string | null
+          paydunya_transfer_id: string | null
           payment_intent_id: string | null
           payment_provider: string | null
           payment_status: string | null
@@ -167,7 +167,6 @@ export type Database = {
           booking_date: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
-          cinetpay_transfer_id?: string | null
           confirmation_code?: string | null
           confirmation_email_sent?: boolean | null
           created_at?: string | null
@@ -178,6 +177,7 @@ export type Database = {
           id?: string
           owner_amount?: number | null
           paid_at?: string | null
+          paydunya_transfer_id?: string | null
           payment_intent_id?: string | null
           payment_provider?: string | null
           payment_status?: string | null
@@ -197,7 +197,6 @@ export type Database = {
           booking_date?: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
-          cinetpay_transfer_id?: string | null
           confirmation_code?: string | null
           confirmation_email_sent?: boolean | null
           created_at?: string | null
@@ -208,6 +207,7 @@ export type Database = {
           id?: string
           owner_amount?: number | null
           paid_at?: string | null
+          paydunya_transfer_id?: string | null
           payment_intent_id?: string | null
           payment_provider?: string | null
           payment_status?: string | null
@@ -753,7 +753,6 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
-          cinetpay_contact_id: string | null
           created_at: string
           default_payout_account_id: string | null
           id: string
@@ -767,7 +766,6 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
-          cinetpay_contact_id?: string | null
           created_at?: string
           default_payout_account_id?: string | null
           id?: string
@@ -781,7 +779,6 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
-          cinetpay_contact_id?: string | null
           created_at?: string
           default_payout_account_id?: string | null
           id?: string
@@ -894,7 +891,6 @@ export type Database = {
       }
       payout_accounts: {
         Row: {
-          cinetpay_contact_id: string | null
           created_at: string
           id: string
           is_active: boolean
@@ -904,7 +900,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          cinetpay_contact_id?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -914,7 +909,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          cinetpay_contact_id?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -945,11 +939,11 @@ export type Database = {
           amount: number
           amount_net: number | null
           booking_id: string
-          cinetpay_transfer_id: string | null
           created_at: string
           error_message: string | null
           id: string
           owner_id: string
+          paydunya_transfer_id: string | null
           payout_attempted_at: string | null
           platform_fee_owner: number
           sent_at: string | null
@@ -961,11 +955,11 @@ export type Database = {
           amount: number
           amount_net?: number | null
           booking_id: string
-          cinetpay_transfer_id?: string | null
           created_at?: string
           error_message?: string | null
           id?: string
           owner_id: string
+          paydunya_transfer_id?: string | null
           payout_attempted_at?: string | null
           platform_fee_owner: number
           sent_at?: string | null
@@ -977,11 +971,11 @@ export type Database = {
           amount?: number
           amount_net?: number | null
           booking_id?: string
-          cinetpay_transfer_id?: string | null
           created_at?: string
           error_message?: string | null
           id?: string
           owner_id?: string
+          paydunya_transfer_id?: string | null
           payout_attempted_at?: string | null
           platform_fee_owner?: number
           sent_at?: string | null
