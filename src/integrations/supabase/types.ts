@@ -1091,6 +1091,69 @@ export type Database = {
           },
         ]
       }
+      refund_logs: {
+        Row: {
+          amount: number
+          attempt_number: number | null
+          cagnotte_id: string
+          contribution_id: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          paydunya_status: string | null
+          phone_number: string
+          provider: string
+          refund_reference: string | null
+          refund_status: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          attempt_number?: number | null
+          cagnotte_id: string
+          contribution_id: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          paydunya_status?: string | null
+          phone_number: string
+          provider: string
+          refund_reference?: string | null
+          refund_status: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          attempt_number?: number | null
+          cagnotte_id?: string
+          contribution_id?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          paydunya_status?: string | null
+          phone_number?: string
+          provider?: string
+          refund_reference?: string | null
+          refund_status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_logs_cagnotte_id_fkey"
+            columns: ["cagnotte_id"]
+            isOneToOne: false
+            referencedRelation: "cagnotte"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_logs_contribution_id_fkey"
+            columns: ["contribution_id"]
+            isOneToOne: false
+            referencedRelation: "cagnotte_contribution"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       review_categories: {
         Row: {
           category: string

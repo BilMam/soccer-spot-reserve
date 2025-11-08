@@ -220,18 +220,19 @@ serve(async (req) => {
           continue; // Passer à la contribution suivante
         }
         
-        // Nettoyer le numéro (retirer +225 si présent pour avoir le format local)
-        msisdn = msisdn.replace(/^\+225/, '').replace(/\s/g, '');
+        // Nettoyer le numéro (retirer +225, 225, 00225 et espaces)
+        msisdn = msisdn.replace(/^\+225|^225|^00225/, '').replace(/\s/g, '');
 
-        // 🔧 CORRECTION CRITIQUE : Normaliser le format ivoirien
-        // Ajouter le 0 initial si manquant pour les numéros ivoiriens (7, 8, 9)
-        if (/^[789]\d{8}$/.test(msisdn)) {
+        // 🔧 CORRECTION : Normaliser le format ivoirien
+        // Ajouter le 0 initial si manquant (numéro à 9 chiffres)
+        if (/^\d{9}$/.test(msisdn)) {
           msisdn = '0' + msisdn;
           console.log(`[process-cagnotte-refunds] 🔧 Ajout du 0 initial: ${msisdn}`);
         }
 
-        // Validation finale du format (10 chiffres : 0 + 9 chiffres)
-        if (!/^0[789]\d{8}$/.test(msisdn)) {
+        // ✅ Validation finale du format (10 chiffres commençant par 0)
+        // Accepte TOUS les préfixes ivoiriens: 01, 02, 03, 05, 07, 08, 09, etc.
+        if (!/^0\d{9}$/.test(msisdn)) {
           console.error(`[process-cagnotte-refunds] ❌ Format invalide: ${msisdn}`);
           
           await supabase
@@ -256,8 +257,9 @@ serve(async (req) => {
 
         console.log(`[process-cagnotte-refunds] ✅ Numéro validé: ${msisdn}`);
 
-        // Incrémenter le compteur de tentatives
-        await supabase
+        // 🔒 VERROU LOGIQUE : Atomiquement marquer comme PROCESSING
+        // Si count === 0, un autre processus traite déjà cette contribution → skip
+        const { count, error: lockError } = await supabase
           .from('cagnotte_contribution')
           .update({
             refund_attempt_count: contrib.refund_attempt_count + 1,
@@ -265,7 +267,17 @@ serve(async (req) => {
             refund_status: 'PROCESSING',
             updated_at: new Date().toISOString(),
           })
-          .eq('id', contributionId);
+          .eq('id', contributionId)
+          .eq('refund_status', contrib.refund_status) // Vérification atomique
+          .select('id', { count: 'exact', head: true });
+
+        if (lockError || count === 0) {
+          console.log(`[process-cagnotte-refunds] ⏭️ Contribution ${contributionId} déjà en traitement par un autre processus, skip`);
+          results.push({ id: contributionId, status: 'SKIPPED', reason: 'Already being processed' });
+          continue;
+        }
+
+        console.log(`[process-cagnotte-refunds] 🔒 Verrou acquis pour contribution ${contributionId}`);
 
         // Détecter automatiquement le provider mobile money
         const withdrawMode = detectWithdrawMode(msisdn);
@@ -378,6 +390,26 @@ serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq('id', contributionId);
+
+        // 📝 JOURNALISATION : Enregistrer le remboursement
+        await supabase
+          .from('refund_logs')
+          .insert({
+            contribution_id: contributionId,
+            cagnotte_id: contrib.cagnotte_id,
+            amount: amount,
+            phone_number: msisdn,
+            provider: withdrawMode,
+            refund_reference: refundReference,
+            paydunya_status: disbursementStatus,
+            refund_status: refundStatus,
+            attempt_number: contrib.refund_attempt_count + 1,
+            metadata: {
+              psp_tx_id: pspTxId,
+              disburse_token: disburseToken,
+              response: disbursementData,
+            },
+          });
 
         // Si le remboursement est déjà confirmé, vérifier si la cagnotte peut être marquée comme REFUNDED
         if (refundStatus === 'REFUNDED') {

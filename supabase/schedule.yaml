@@ -15,8 +15,10 @@ schedules:
     function: cleanup-cagnotte-cron
     timezone: "UTC"
 
-  - name: process-cagnotte-refunds
-    description: "Traitement des remboursements de cagnottes (manuel via PSP)"
-    cron: "*/2 * * * *"  # Toutes les 2 minutes
-    function: process-cagnotte-refunds
-    timezone: "UTC"
+  # ❌ DÉSACTIVÉ : process-cagnotte-refunds est appelé par cleanup-cagnotte-cron
+  # Pour éviter les appels en double et les traitements parallèles
+  # - name: process-cagnotte-refunds
+  #   description: "Traitement des remboursements de cagnottes (manuel via PSP)"
+  #   cron: "*/2 * * * *"
+  #   function: process-cagnotte-refunds
+  #   timezone: "UTC"
