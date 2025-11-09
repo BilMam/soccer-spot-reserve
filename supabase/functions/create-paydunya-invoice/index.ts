@@ -40,6 +40,7 @@ serve(async (req) => {
     // Environment variables avec des noms plus clairs
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
     
     // Vérifier plusieurs variantes possibles des clés PayDunya
     const paydunyaMasterKey = Deno.env.get('PAYDUNYA_MASTER_KEY') || 
@@ -69,7 +70,7 @@ serve(async (req) => {
       tokenLength: paydunyaToken?.length
     });
 
-    if (!supabaseUrl || !supabaseServiceKey) {
+    if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
       throw new Error('Configuration Supabase manquante');
     }
 
@@ -82,14 +83,32 @@ serve(async (req) => {
       throw new Error('Configuration PayDunya manquante - Vérifiez vos clés API dans les secrets Supabase');
     }
 
-    // Authentication
-    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+    // Authentication avec ANON_KEY (comme dans initiate-cagnotte-payment)
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) throw new Error('Authorization header manquant');
+    let currentUserId: string | null = null;
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError || !userData.user) throw new Error('Authentification échouée');
+    if (authHeader) {
+      const supabaseAuth = createClient(
+        supabaseUrl,
+        supabaseAnonKey,
+        {
+          global: {
+            headers: { Authorization: authHeader }
+          }
+        }
+      );
+      
+      const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+      if (userError || !user) {
+        throw new Error('Authentification échouée: ' + (userError?.message || 'Utilisateur non trouvé'));
+      }
+      currentUserId = user.id;
+    } else {
+      throw new Error('Authorization header manquant');
+    }
+
+    // Créer un client avec service role pour les opérations DB
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse request data
     const paymentData: PaymentData = await req.json();
@@ -109,7 +128,7 @@ serve(async (req) => {
     }
 
     // Verify user owns this booking
-    if (existingBooking.user_id !== userData.user.id) {
+    if (existingBooking.user_id !== currentUserId) {
       throw new Error('Accès non autorisé à cette réservation');
     }
 
@@ -261,7 +280,7 @@ serve(async (req) => {
       },
       custom_data: {
         booking_id: booking.id,
-        user_id: userData.user.id,
+        user_id: currentUserId,
         invoice_token: invoiceToken
       }
     };
