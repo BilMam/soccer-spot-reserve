@@ -248,96 +248,54 @@ const Auth = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-2 mb-4">
-                  <Button
-                    type="button"
-                    variant={authMethod === 'email' ? 'default' : 'outline'}
-                    onClick={() => setAuthMethod('email')}
-                    className="flex-1"
-                  >
-                    <Mail className="h-4 w-4 mr-2" />
-                    Email
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={authMethod === 'phone' ? 'default' : 'outline'}
-                    onClick={() => setAuthMethod('phone')}
-                    className="flex-1"
-                  >
-                    <Phone className="h-4 w-4 mr-2" />
-                    Téléphone
-                  </Button>
-                </div>
-
-                {authMethod === 'email' ? (
-                  <form onSubmit={handleSignIn} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                <form onSubmit={handleSignIn} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      placeholder="votre@email.com"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Mot de passe</Label>
+                    <div className="relative">
                       <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="votre@email.com"
-                        value={formData.email}
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={formData.password}
                         onChange={handleInputChange}
                         required
                       />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Mot de passe</Label>
-                      <div className="relative">
-                        <Input
-                          id="password"
-                          name="password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="••••••••"
-                          value={formData.password}
-                          onChange={handleInputChange}
-                          required
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                          onClick={() => setShowPassword(!showPassword)}
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-green-600 hover:bg-green-700"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? "Connexion..." : "Se connecter"}
-                    </Button>
-                  </form>
-                ) : (
-                  <form onSubmit={(e) => handlePhoneAuth(e, 'signin')} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone-signin">Numéro de téléphone</Label>
-                      <PhoneField
-                        valueE164={formData.phoneE164}
-                        onChangeE164={(value) => setFormData({ ...formData, phoneE164: value })}
-                        defaultCountry="CI"
-                        placeholder="Entrez votre numéro"
-                      />
-                    </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-green-600 hover:bg-green-700"
-                      disabled={isLoading || !formData.phoneE164 || !isValidPhoneNumber(formData.phoneE164)}
-                    >
-                      {isLoading ? "Envoi..." : "Recevoir le code"}
-                    </Button>
-                  </form>
-                )}
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Connexion..." : "Se connecter"}
+                  </Button>
+                </form>
               </CardContent>
             </TabsContent>
 
@@ -349,105 +307,63 @@ const Auth = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-2 mb-4">
-                  <Button
-                    type="button"
-                    variant={authMethod === 'email' ? 'default' : 'outline'}
-                    onClick={() => setAuthMethod('email')}
-                    className="flex-1"
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Nom complet</Label>
+                    <Input
+                      id="fullName"
+                      name="fullName"
+                      type="text"
+                      placeholder="Jean Dupont"
+                      value={formData.fullName}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email-signup">Email</Label>
+                    <Input
+                      id="email-signup"
+                      name="email"
+                      type="email"
+                      placeholder="votre@email.com"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password-signup">Mot de passe</Label>
+                    <Input
+                      id="password-signup"
+                      name="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+                    <Input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    disabled={isLoading}
                   >
-                    <Mail className="h-4 w-4 mr-2" />
-                    Email
+                    {isLoading ? "Inscription..." : "S'inscrire"}
                   </Button>
-                  <Button
-                    type="button"
-                    variant={authMethod === 'phone' ? 'default' : 'outline'}
-                    onClick={() => setAuthMethod('phone')}
-                    className="flex-1"
-                  >
-                    <Phone className="h-4 w-4 mr-2" />
-                    Téléphone
-                  </Button>
-                </div>
-
-                {authMethod === 'email' ? (
-                  <form onSubmit={handleSignUp} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">Nom complet</Label>
-                      <Input
-                        id="fullName"
-                        name="fullName"
-                        type="text"
-                        placeholder="Jean Dupont"
-                        value={formData.fullName}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email-signup">Email</Label>
-                      <Input
-                        id="email-signup"
-                        name="email"
-                        type="email"
-                        placeholder="votre@email.com"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password-signup">Mot de passe</Label>
-                      <Input
-                        id="password-signup"
-                        name="password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
-                      <Input
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        type="password"
-                        placeholder="••••••••"
-                        value={formData.confirmPassword}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-green-600 hover:bg-green-700"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? "Inscription..." : "S'inscrire"}
-                    </Button>
-                  </form>
-                ) : (
-                  <form onSubmit={(e) => handlePhoneAuth(e, 'signup')} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone-signup">Numéro de téléphone</Label>
-                      <PhoneField
-                        valueE164={formData.phoneE164}
-                        onChangeE164={(value) => setFormData({ ...formData, phoneE164: value })}
-                        defaultCountry="CI"
-                        placeholder="Entrez votre numéro"
-                      />
-                    </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-green-600 hover:bg-green-700"
-                      disabled={isLoading || !formData.phoneE164 || !isValidPhoneNumber(formData.phoneE164)}
-                    >
-                      {isLoading ? "Envoi..." : "Recevoir le code"}
-                    </Button>
-                  </form>
-                )}
+                </form>
               </CardContent>
             </TabsContent>
           </Tabs>
