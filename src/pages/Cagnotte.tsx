@@ -1,4 +1,5 @@
 import { getBaseUrl } from '@/lib/config';
+import { buildUrl } from '@/lib/urls';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -173,6 +174,10 @@ export default function Cagnotte() {
         headers['Authorization'] = `Bearer ${session.access_token}`;
       }
       
+      // Construire les URLs de retour
+      const returnUrl = buildUrl(`/cagnotte/${id}`, { thanks: '1', team });
+      const cancelUrl = buildUrl(`/cagnotte/${id}`, { cancel: '1' });
+
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke(
         'initiate-cagnotte-payment',
         {
@@ -180,7 +185,9 @@ export default function Cagnotte() {
           body: {
             cagnotte_id: id,
             amount,
-            team
+            team,
+            return_url: returnUrl,
+            cancel_url: cancelUrl
           }
         }
       );

@@ -13,6 +13,8 @@ interface PaymentData {
   field_name: string;
   date: string;
   time: string;
+  return_url?: string;
+  cancel_url?: string;
 }
 
 interface PaymentResponse {
@@ -91,7 +93,7 @@ serve(async (req) => {
 
     // Parse request data
     const paymentData: PaymentData = await req.json();
-    const { booking_id, amount, field_name, date, time } = paymentData;
+    const { booking_id, amount, field_name, date, time, return_url, cancel_url } = paymentData;
 
     console.log(`[${timestamp}] [create-paydunya-invoice] Payment data:`, paymentData);
 
@@ -214,13 +216,25 @@ serve(async (req) => {
 
     console.log(`[${timestamp}] Payment intent linked successfully: ${invoiceToken}`);
     
-    // Respecter les variables d'environnement sans forcer pisport.app pour preview
-    const frontendEnv = Deno.env.get('APP_BASE_URL') || Deno.env.get('FRONTEND_BASE_URL');
-    const frontendBaseUrl = frontendEnv || 'https://pisport.app';
+    // Helper pour déterminer l'URL de base
+    const getAppBaseUrl = (): string => {
+      const env = Deno.env.get('APP_BASE_URL');
+      if (env?.startsWith('http')) return env;
+      
+      const origin = req.headers.get('origin');
+      if (origin) return origin;
+      
+      const host = req.headers.get('host');
+      if (host) return host.startsWith('http') ? host : `https://${host}`;
+      
+      return 'https://pisport.app';
+    };
     
-    const returnUrl = `${frontendBaseUrl}/mes-reservations`;
-    const cancelUrl = `${frontendBaseUrl}/mes-reservations`;
+    const baseUrl = getAppBaseUrl();
+    const returnUrl = return_url || `${baseUrl}/mes-reservations`;
+    const cancelUrl = cancel_url || `${baseUrl}/mes-reservations`;
     const callbackUrl = `${supabaseUrl}/functions/v1/paydunya-ipn`;
+    const frontendBaseUrl = baseUrl;
 
     // PayDunya Invoice API call - Utiliser l'API de production
     const paydunyaApiUrl = paydunyaMode === 'test' ? 

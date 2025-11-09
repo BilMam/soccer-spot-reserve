@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { getDefaultSportImage } from '@/utils/defaultImages';
 import { getFieldTypeLabel } from '@/utils/fieldUtils';
+import { buildUrl } from '@/lib/urls';
 
 interface Field {
   id: string;
@@ -137,6 +138,10 @@ const FieldDetail = () => {
         throw new Error(bookingError?.message || 'Erreur lors de la création de la réservation');
       }
 
+      // Construire les URLs de retour
+      const returnUrl = buildUrl('/mes-reservations');
+      const cancelUrl = buildUrl('/mes-reservations');
+
       // Appeler l'edge function PayDunya
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-paydunya-invoice', {
         body: {
@@ -144,7 +149,9 @@ const FieldDetail = () => {
           amount: total,
           field_name: field?.name || 'Terrain',
           date: format(date, 'dd/MM/yyyy'),
-          time: `${startTime} - ${endTime}`
+          time: `${startTime} - ${endTime}`,
+          return_url: returnUrl,
+          cancel_url: cancelUrl
         }
       });
 

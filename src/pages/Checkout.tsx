@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { formatXOF } from '@/utils/publicPricing';
 import { getDefaultSportImage } from '@/utils/defaultImages';
+import { buildUrl } from '@/lib/urls';
 
 interface CheckoutState {
   selectedDate: Date;
@@ -156,13 +157,19 @@ const Checkout = () => {
         throw new Error(`Impossible de créer la réservation: ${bookingError.message}`);
       }
 
+      // Construire les URLs de retour
+      const returnUrl = buildUrl('/mes-reservations');
+      const cancelUrl = buildUrl('/mes-reservations');
+
       // Créer le paiement PayDunya avec le montant TOTAL (incluant frais opérateurs)
       const paymentRequestData = {
         booking_id: booking.id,
         amount: finalTotalWithOperatorFees,  // Montant final avec frais opérateurs
         field_name: field.name,
         date: checkoutData.selectedDate.toLocaleDateString('fr-FR'),
-        time: `${checkoutData.selectedStartTime} - ${checkoutData.selectedEndTime}`
+        time: `${checkoutData.selectedStartTime} - ${checkoutData.selectedEndTime}`,
+        return_url: returnUrl,
+        cancel_url: cancelUrl
       };
 
       console.log('🔍 Debug paymentRequestData PayDunya:', paymentRequestData);

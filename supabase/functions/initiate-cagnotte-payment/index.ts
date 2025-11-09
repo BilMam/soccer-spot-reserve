@@ -39,7 +39,7 @@ serve(async (req) => {
       }
     }
 
-    const { cagnotte_id, amount, team } = await req.json();
+    const { cagnotte_id, amount, team, return_url, cancel_url } = await req.json();
 
     // Validate team
     if (!team || !['A', 'B'].includes(team)) {
@@ -95,14 +95,27 @@ serve(async (req) => {
       throw new Error(`Montant invalide (${requestedInt} XOF demandé, ${teamRemainingInt} XOF restant pour l'équipe ${team})`);
     }
 
+    // Helper pour déterminer l'URL de base
+    const getAppBaseUrl = (): string => {
+      const env = Deno.env.get('APP_BASE_URL');
+      if (env?.startsWith('http')) return env;
+      
+      const origin = req.headers.get('origin');
+      if (origin) return origin;
+      
+      const host = req.headers.get('host');
+      if (host) return host.startsWith('http') ? host : `https://${host}`;
+      
+      return 'https://pisport.app';
+    };
+
     // Créer l'invoice PayDunya avec URLs de retour appropriées
     const invoiceToken = `cagnotte_${cagnotte_id}_${Date.now()}`;
+    const baseUrl = getAppBaseUrl();
     
-    // Respecter les variables d'environnement sans forcer pisport.app pour preview
-    const envUrl = Deno.env.get('APP_BASE_URL') || Deno.env.get('FRONTEND_BASE_URL');
-    const frontendBaseUrl = envUrl || 'https://pisport.app';
-    const returnUrl = `${frontendBaseUrl}/cagnotte/${cagnotte_id}?thanks=1&team=${team}&tx=${invoiceToken}`;
-    const cancelUrl = `${frontendBaseUrl}/cagnotte/${cagnotte_id}?cancel=1`;
+    const returnUrl = return_url || `${baseUrl}/cagnotte/${cagnotte_id}?thanks=1&team=${team}&tx=${invoiceToken}`;
+    const cancelUrl = cancel_url || `${baseUrl}/cagnotte/${cagnotte_id}?cancel=1`;
+    const frontendBaseUrl = baseUrl;
     
     console.log(`[initiate-cagnotte-payment] Montant demandé: ${requestedInt} XOF, Cap équipe: ${teamRemainingInt} XOF, Montant facture: ${amountInt} XOF`);
     
