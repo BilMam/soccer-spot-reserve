@@ -53,6 +53,7 @@ const FieldDetail = () => {
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
   const [selectedEndTime, setSelectedEndTime] = useState<string>('');
   const [totalPrice, setTotalPrice] = useState<number>(0);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const { data: field, isLoading } = useQuery({
     queryKey: ['field', id],
@@ -90,6 +91,8 @@ const FieldDetail = () => {
   };
 
   const handleTimeSlotSelect = async (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => {
+    if (isProcessingPayment) return; // Protection anti-double-clic
+    
     console.log('🎯 Sélection créneau dans FieldDetail:', {
       date: date.toISOString(),
       startTime,
@@ -108,6 +111,8 @@ const FieldDetail = () => {
       navigate('/auth');
       return;
     }
+    
+    setIsProcessingPayment(true);
     
     try {
       // Créer la réservation en statut pending
@@ -148,11 +153,21 @@ const FieldDetail = () => {
         throw new Error(errorMessage);
       }
 
-      // Rediriger directement vers PayDunya
-      window.location.href = paymentData.url;
+      // Message avant redirection
+      toast({
+        title: "🔄 Redirection en cours",
+        description: "Vous allez être redirigé vers PayDunya pour finaliser le paiement. Veuillez patienter et ne pas fermer cette page.",
+        duration: 3000
+      });
+
+      // Délai pour que l'utilisateur voie le message
+      setTimeout(() => {
+        window.location.href = paymentData.url;
+      }, 1500);
       
     } catch (error: any) {
       console.error('Erreur lors de la réservation:', error);
+      setIsProcessingPayment(false); // Débloquer en cas d'erreur
       toast({
         title: "Erreur",
         description: error.message || "Une erreur est survenue lors de la réservation.",

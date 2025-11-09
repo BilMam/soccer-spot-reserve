@@ -179,15 +179,15 @@ const Checkout = () => {
       // Rediriger vers PayDunya
       setTimeout(() => {
         window.location.href = paymentData.url;
-      }, 500);
+      }, 1500);
 
       return { booking, paymentUrl: paymentData.url };
     },
     onSuccess: () => {
       toast({
-        title: "Redirection vers le paiement",
-        description: `Vous allez être redirigé vers PayDunya pour payer ${formatXOF(checkoutData?.totalPrice || 0)}`,
-        duration: 2000
+        title: "🔄 Redirection en cours",
+        description: "Vous allez être redirigé vers PayDunya pour finaliser le paiement. Veuillez patienter et ne pas fermer cette page.",
+        duration: 3000
       });
     },
     onError: (error: any) => {
@@ -369,7 +369,7 @@ const Checkout = () => {
                      <span>{formatXOF(checkoutData.subtotal)}</span>
                    </div>
                    <div className="flex justify-between text-sm text-muted-foreground">
-                     <span>Frais opérateurs – paiement sécurisé</span>
+                     <span>Frais opérateurs (3%) – paiement sécurisé</span>
                      <span>{formatXOF(checkoutData.serviceFee)}</span>
                    </div>
                    <div className="flex justify-between text-lg font-bold pt-2 border-t">

@@ -1,11 +1,12 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { SlotValidationLogic } from './SlotValidationLogic';
 import { SlotPriceCalculator } from './SlotPriceCalculator';
 import { format } from 'date-fns';
 import type { FieldPricing } from '@/types/pricing';
+import { Loader2 } from 'lucide-react';
 
 interface AvailabilitySlot {
   id: string;
@@ -49,6 +50,7 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
   onTimeSlotSelect
 }) => {
   const { toast } = useToast();
+  const [isBooking, setIsBooking] = useState(false);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const validator = new SlotValidationLogic(availableSlots, bookedSlots, bookings, recurringSlots, dateStr);
@@ -66,6 +68,8 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
   const priceCalculator = new SlotPriceCalculator(pricing);
 
   const handleConfirmBooking = () => {
+    if (isBooking) return; // Protection anti-double-clic
+    
     if (!selectedDate || !selectedStartTime || !selectedEndTime) {
       toast({
         title: "Erreur",
@@ -84,6 +88,8 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
       });
       return;
     }
+    
+    setIsBooking(true);
     
     // Calculer le prix PUBLIC (déjà avec commission 3%)
     const publicPrice = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
@@ -108,11 +114,18 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
   return (
     <Button
       onClick={handleConfirmBooking}
-      disabled={!selectedStartTime || !selectedEndTime || !rangeIsAvailable}
+      disabled={!selectedStartTime || !selectedEndTime || !rangeIsAvailable || isBooking}
       className="w-full bg-green-600 hover:bg-green-700"
       size="lg"
     >
-      Réserver {selectedStartTime && selectedEndTime && `(${finalTotal.toLocaleString()} XOF)`}
+      {isBooking ? (
+        <>
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          Préparation du paiement...
+        </>
+      ) : (
+        <>Réserver {selectedStartTime && selectedEndTime && `(${finalTotal.toLocaleString()} XOF)`}</>
+      )}
     </Button>
   );
 };
