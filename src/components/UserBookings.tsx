@@ -173,7 +173,7 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
     <>
       <Card>
           <CardHeader>
-            <CardTitle>Mes Réservations ({bookings?.length || 0})</CardTitle>
+            <CardTitle>Mes Réservations</CardTitle>
           </CardHeader>
           <CardContent>
             {!bookings || bookings.length === 0 ? (
