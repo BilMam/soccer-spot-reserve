@@ -5,9 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
-import { usePendingReviews } from '@/hooks/usePendingReviews';
 import AdminNavigation from '@/components/AdminNavigation';
-import NotificationBadge from '@/components/NotificationBadge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +18,6 @@ const Navbar = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { hasAdminPermissions } = useAdminPermissions();
-  const { pendingCount, refreshPendingReviews } = usePendingReviews();
   const { isOwner } = usePermissions();
 
   const handleSignOut = async () => {
@@ -44,12 +41,9 @@ const Navbar = () => {
               Découvrir
             </a>
             {user && (
-              <div className="relative">
-                <a href="/profile" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
-                  Mes réservations
-                </a>
-                <NotificationBadge count={pendingCount} />
-              </div>
+              <a href="/profile" className="text-gray-700 hover:text-green-600 font-medium transition-colors">
+                Mes réservations
+              </a>
             )}
             {/* Hide "Become owner" link if user is already an owner OR has admin permissions */}
             {!isOwner && !hasAdminPermissions && (
@@ -77,9 +71,8 @@ const Navbar = () => {
                     <User className="w-4 h-4 mr-2" />
                     Mon profil
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/profile')} className="relative">
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
                     Mes réservations
-                    <NotificationBadge count={pendingCount} className="ml-2 relative top-0 right-0" />
                   </DropdownMenuItem>
                   {/* Show "Mes terrains" only for owners */}
                   {isOwner && (
