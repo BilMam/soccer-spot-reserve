@@ -6,9 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, MapPin, Clock, Users, Star, X, Clock4, CheckCircle, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { usePendingReviews } from '@/hooks/usePendingReviews';
 import EnhancedReviewDialog from '@/components/EnhancedReviewDialog';
-import PendingReviewsSection from '@/components/PendingReviewsSection';
 import SmartConfirmationInfo from './SmartConfirmationInfo';
 
 interface Booking {
@@ -41,12 +39,6 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
   const queryClient = useQueryClient();
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const { pendingReviews, checkCompletedBookings, sendReviewReminder, refreshPendingReviews } = usePendingReviews();
-
-  // Vérifier automatiquement les réservations terminées au chargement
-  useEffect(() => {
-    checkCompletedBookings();
-  }, []);
 
   const { data: bookings, isLoading } = useQuery({
     queryKey: ['user-bookings', userId],
@@ -144,23 +136,9 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
   };
 
   const handleReviewSubmitted = () => {
-    // Invalidation immédiate et complète
     queryClient.invalidateQueries({ queryKey: ['user-bookings', userId] });
-    queryClient.invalidateQueries({ queryKey: ['pending-reviews', userId] });
-    queryClient.invalidateQueries({ queryKey: ['pending-reviews'] }); // Sans userId pour couvrir tous les cas
+    queryClient.invalidateQueries({ queryKey: ['user-reviews', userId] });
     setReviewDialogOpen(false);
-    
-    // Force un re-fetch immédiat des avis en attente
-    checkCompletedBookings();
-    refreshPendingReviews();
-  };
-
-  const handleSendReminder = (bookingId: string, fieldName: string) => {
-    sendReviewReminder(bookingId, fieldName);
-    toast({
-      title: "Rappel envoyé",
-      description: "Un rappel SMS a été envoyé si vous avez activé les notifications SMS.",
-    });
   };
 
   const getStatusMessage = (status: string) => {
@@ -193,16 +171,7 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
 
   return (
     <>
-      <div className="space-y-6">
-        {/* Section Avis en attente */}
-        <PendingReviewsSection 
-          pendingReviews={pendingReviews}
-          onReviewSubmitted={handleReviewSubmitted}
-          onSendReminder={handleSendReminder}
-        />
-
-        {/* Section Réservations principale */}
-        <Card>
+      <Card>
           <CardHeader>
             <CardTitle>Mes Réservations ({bookings?.length || 0})</CardTitle>
           </CardHeader>
@@ -299,7 +268,6 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
             )}
           </CardContent>
         </Card>
-      </div>
 
       <EnhancedReviewDialog
         open={reviewDialogOpen}

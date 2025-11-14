@@ -5,13 +5,12 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, History, Star, Settings, Heart, Trophy, Bell } from 'lucide-react';
+import { User, History, Star, Settings, Heart, Trophy } from 'lucide-react';
 import UserBookings from '@/components/UserBookings';
 import UserReviews from '@/components/UserReviews';
 import UserFavorites from '@/components/UserFavorites';
 import ProfileSettings from '@/components/ProfileSettings';
 import UserBadges from '@/components/UserBadges';
-import NotificationPreferences from '@/components/NotificationPreferences';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -57,7 +56,7 @@ const Profile = () => {
 
         {/* Onglets */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-5">
             <TabsTrigger value="bookings" className="flex items-center space-x-2">
               <History className="w-4 h-4" />
               <span className="hidden sm:inline">Réservations</span>
@@ -73,10 +72,6 @@ const Profile = () => {
             <TabsTrigger value="badges" className="flex items-center space-x-2">
               <Trophy className="w-4 h-4" />
               <span className="hidden sm:inline">Badges</span>
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center space-x-2">
-              <Bell className="w-4 h-4" />
-              <span className="hidden sm:inline">Notifications</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center space-x-2">
               <Settings className="w-4 h-4" />
@@ -98,10 +93,6 @@ const Profile = () => {
 
           <TabsContent value="badges" className="space-y-6">
             <UserBadges />
-          </TabsContent>
-
-          <TabsContent value="notifications" className="space-y-6">
-            <NotificationPreferences />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">
