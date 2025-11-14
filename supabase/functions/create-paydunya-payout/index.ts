@@ -145,27 +145,35 @@ serve(async (req) => {
 
     console.log(`[${timestamp}] Payout account found - Phone: ${ownerPhone}, Owner: ${payoutAccount.owner_id}`);
 
-    // Step 2: Check for existing payout (idempotency)
+    // Step 2: Check for existing payout (idempotency robuste)
     const { data: existingPayout } = await supabase
       .from('payouts')
-      .select('id, status, amount_net')
+      .select('id, status, amount_net, paydunya_transfer_id')
       .eq('booking_id', booking_id)
       .maybeSingle();
 
     if (existingPayout) {
-      if (existingPayout.status === 'completed') {
+      // ✅ Vérifier TOUS les cas où le payout est déjà traité
+      if (existingPayout.status === 'completed' || 
+          existingPayout.status === 'processing' ||
+          existingPayout.paydunya_transfer_id !== null) {
+        
+        console.log(`[${timestamp}] 🛑 Payout already processed - Status: ${existingPayout.status}, Transfer: ${existingPayout.paydunya_transfer_id}`);
+        
         return new Response(
           JSON.stringify({
             success: true,
-            message: 'Payout already completed',
+            message: `Payout already ${existingPayout.status}`,
             payout_id: existingPayout.id,
-            amount: existingPayout.amount_net
+            amount: existingPayout.amount_net,
+            paydunya_transfer_id: existingPayout.paydunya_transfer_id
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
-      console.log(`[${timestamp}] Retrying existing payout: ${existingPayout.id}`);
+      // ✅ Seulement si status = 'pending' ET pas de transfer_id, on continue
+      console.log(`[${timestamp}] Retrying pending payout: ${existingPayout.id}`);
     }
 
     // Step 3: Create or update payout record
