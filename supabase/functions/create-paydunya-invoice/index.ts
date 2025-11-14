@@ -166,6 +166,23 @@ serve(async (req) => {
       }
     }
 
+    // Get field info including net prices
+    const { data: field } = await supabaseClient
+      .from('fields')
+      .select('name, net_price_1h, net_price_1h30, net_price_2h')
+      .eq('id', existingBooking.field_id)
+      .maybeSingle();
+
+    if (!field) {
+      console.error(`[${timestamp}] [create-paydunya-invoice] Field not found:`, existingBooking.field_id);
+      throw new Error('Terrain introuvable');
+    }
+
+    if (!field.net_price_1h) {
+      console.error(`[${timestamp}] [create-paydunya-invoice] Missing net prices for field:`, field.name);
+      throw new Error('Prix net propriétaire non configuré pour ce terrain');
+    }
+
     // Le montant reçu est déjà le finalTotal (prix public + frais opérateurs 3%)
     const amountCheckout = amount;
     
@@ -313,23 +330,6 @@ serve(async (req) => {
     if (bookingError || !booking) {
       console.error(`[${timestamp}] [create-paydunya-invoice] Booking update failed:`, bookingError);
       throw new Error('Mise à jour réservation échouée');
-    }
-
-    // Get field info including net prices
-    const { data: field } = await supabaseClient
-      .from('fields')
-      .select('name, net_price_1h, net_price_1h30, net_price_2h')
-      .eq('id', existingBooking.field_id)
-      .maybeSingle();
-
-    if (!field) {
-      console.error(`[${timestamp}] [create-paydunya-invoice] Field not found:`, existingBooking.field_id);
-      throw new Error('Terrain introuvable');
-    }
-
-    if (!field.net_price_1h) {
-      console.error(`[${timestamp}] [create-paydunya-invoice] Missing net prices for field:`, field.name);
-      throw new Error('Prix net propriétaire non configuré pour ce terrain');
     }
 
     // PayDunya Invoice creation
