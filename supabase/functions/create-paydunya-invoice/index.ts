@@ -175,17 +175,124 @@ serve(async (req) => {
     const publicPrice = Math.round(amountCheckout / 1.03);
     const operatorFee = amountCheckout - publicPrice;
     
-    // Calculer le montant net pour le propriétaire (prix public - commission 3%)
-    const platformFeeOwner = Math.ceil(publicPrice * 0.03);
-    const ownerAmount = publicPrice - platformFeeOwner;
+    // ========== CALCUL DU PRIX NET PROPRIÉTAIRE ==========
+    // Calculer la durée de réservation en minutes
+    const startTime = new Date(`1970-01-01T${existingBooking.start_time}`);
+    const endTime = new Date(`1970-01-01T${existingBooking.end_time}`);
+    const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+    const durationHours = durationMinutes / 60;
 
-    console.log(`[${timestamp}] [create-paydunya-invoice] Fee calculation:`, {
-      amount_checkout: amountCheckout,
-      public_price: publicPrice,
-      operator_fee: operatorFee,
-      platform_fee_owner: platformFeeOwner,
-      owner_amount: ownerAmount
+    // Déterminer le prix NET original selon la durée configurée par le propriétaire
+    let netPriceOwner: number;
+    if (durationMinutes === 60) {
+      // Réservation de 1 heure
+      netPriceOwner = field.net_price_1h;
+    } else if (durationMinutes === 90) {
+      // Réservation de 1h30
+      netPriceOwner = field.net_price_1h30 || field.net_price_1h;
+    } else if (durationMinutes === 120) {
+      // Réservation de 2 heures
+      netPriceOwner = field.net_price_2h || field.net_price_1h;
+    } else {
+      // Fallback : durées personnalisées (proportionnel au prix 1h)
+      netPriceOwner = Math.floor(field.net_price_1h * durationHours);
+    }
+
+    if (!netPriceOwner || netPriceOwner <= 0) {
+      console.error(`[${timestamp}] [create-paydunya-invoice] Invalid net price:`, {
+        duration_minutes: durationMinutes,
+        field_name: field.name,
+        net_price_1h: field.net_price_1h
+      });
+      throw new Error('Prix net propriétaire invalide pour cette durée');
+    }
+
+    console.log(`[${timestamp}] [create-paydunya-invoice] Duration & Net Price:`, {
+      duration_minutes: durationMinutes,
+      duration_hours: durationHours,
+      net_price_owner: netPriceOwner,
+      field_name: field.name
     });
+    
+    // Le propriétaire touche EXACTEMENT ce qu'il a configuré (arrondi plancher)
+    const ownerAmount = Math.floor(netPriceOwner);
+
+    // La plateforme garde TOUTE la différence (pas de calcul de %)
+    // Avec l'arrondi commercial, cette différence peut être > 3%
+    const platformFeeOwner = publicPrice - ownerAmount;
+
+    // Validation : la plateforme ne doit jamais perdre d'argent
+    if (platformFeeOwner < 0) {
+      console.error(`[${timestamp}] [create-paydunya-invoice] Negative platform fee:`, {
+        public_price: publicPrice,
+        owner_amount: ownerAmount,
+        platform_fee_owner: platformFeeOwner
+      });
+      throw new Error(
+        `Erreur de calcul: Le prix public (${publicPrice} XOF) est inférieur au prix net propriétaire (${ownerAmount} XOF). ` +
+        `Cela peut être dû à une promotion trop importante ou une configuration de prix incorrecte.`
+      );
+    }
+
+    console.log(`[${timestamp}] [create-paydunya-invoice] Fee calculation (CORRECTED):`, {
+      // Ce que le client paie
+      amount_checkout: amountCheckout,
+      
+      // Prix public du terrain (avant frais opérateurs)
+      public_price: publicPrice,
+      
+      // Frais opérateurs PayDunya (3%)
+      operator_fee: operatorFee,
+      operator_fee_pct: ((operatorFee / publicPrice) * 100).toFixed(2) + '%',
+      
+      // Prix NET original configuré par le propriétaire
+      net_price_owner_original: netPriceOwner,
+      
+      // Montant reversé au propriétaire (= prix NET)
+      owner_amount: ownerAmount,
+      owner_receives_exact_net: ownerAmount === Math.floor(netPriceOwner),
+      
+      // Commission plateforme (TOUTE la différence)
+      platform_fee_owner: platformFeeOwner,
+      platform_commission_effective: ((platformFeeOwner / publicPrice) * 100).toFixed(2) + '%',
+      
+      // Comparaison avec l'ancien système (3% du prix public)
+      old_system_platform_fee: Math.ceil(publicPrice * 0.03),
+      gain_vs_old_system: platformFeeOwner - Math.ceil(publicPrice * 0.03),
+      
+      // Vérifications
+      total_check: publicPrice === (ownerAmount + platformFeeOwner),
+      platform_gain_ok: platformFeeOwner >= 0
+    });
+
+    // ========== VALIDATION DU PRIX PLANCHER ==========
+    // Le prix public doit couvrir au minimum : net propriétaire + frais opérateurs
+    // Sinon, les promotions/coupons font perdre de l'argent à la plateforme
+    const minimumPublicPrice = ownerAmount + operatorFee;
+
+    if (publicPrice < ownerAmount) {
+      console.error(`[${timestamp}] [create-paydunya-invoice] Public price below owner net price:`, {
+        public_price: publicPrice,
+        owner_amount: ownerAmount,
+        difference: publicPrice - ownerAmount
+      });
+      
+      throw new Error(
+        `Prix plancher atteint. Le prix public (${publicPrice} XOF) ne peut pas être inférieur ` +
+        `au prix net propriétaire (${ownerAmount} XOF). ` +
+        `Veuillez réduire la promotion ou le coupon appliqué.`
+      );
+    }
+
+    // Warning si la commission plateforme devient trop faible (< 100 XOF)
+    if (platformFeeOwner < 100 && platformFeeOwner > 0) {
+      console.warn(`[${timestamp}] [create-paydunya-invoice] ⚠️ Low platform commission:`, {
+        platform_fee_owner: platformFeeOwner,
+        public_price: publicPrice,
+        owner_amount: ownerAmount,
+        warning: 'Commission plateforme très faible, vérifier les promotions appliquées'
+      });
+    }
 
     // Update existing booking with payment info
     const { data: booking, error: bookingError } = await supabaseClient
@@ -208,12 +315,22 @@ serve(async (req) => {
       throw new Error('Mise à jour réservation échouée');
     }
 
-    // Get field info
+    // Get field info including net prices
     const { data: field } = await supabaseClient
       .from('fields')
-      .select('name')
+      .select('name, net_price_1h, net_price_1h30, net_price_2h')
       .eq('id', existingBooking.field_id)
       .maybeSingle();
+
+    if (!field) {
+      console.error(`[${timestamp}] [create-paydunya-invoice] Field not found:`, existingBooking.field_id);
+      throw new Error('Terrain introuvable');
+    }
+
+    if (!field.net_price_1h) {
+      console.error(`[${timestamp}] [create-paydunya-invoice] Missing net prices for field:`, field.name);
+      throw new Error('Prix net propriétaire non configuré pour ce terrain');
+    }
 
     // PayDunya Invoice creation
     const invoiceToken = `invoice_${booking.id}_${Date.now()}`;
