@@ -1768,6 +1768,10 @@ export type Database = {
             }
             Returns: Json
           }
+      deactivate_field: {
+        Args: { field_id: string; reason?: string }
+        Returns: undefined
+      }
       generate_proof_code: { Args: never; Returns: string }
       generate_proof_token: { Args: never; Returns: string }
       generate_unique_confirmation_code: { Args: never; Returns: string }

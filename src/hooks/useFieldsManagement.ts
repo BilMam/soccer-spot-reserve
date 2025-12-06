@@ -71,15 +71,10 @@ export const useFieldsManagement = (hasAdminPermissions: boolean) => {
 
   const rejectFieldMutation = useMutation({
     mutationFn: async ({ fieldId, reason }: { fieldId: string; reason: string }) => {
-      // Update field to mark as rejected with reason
-      const { error } = await supabase
-        .from('fields')
-        .update({ 
-          is_active: false,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', fieldId);
-      
+      const { error } = await supabase.rpc('deactivate_field', {
+        field_id: fieldId,
+        reason: reason
+      });
       if (error) throw error;
     },
     onSuccess: () => {
