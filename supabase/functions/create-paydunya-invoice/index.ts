@@ -383,12 +383,12 @@ serve(async (req) => {
         description: `Réservation ${field?.name || field_name} - ${date} ${time}`,
       },
       store: {
-        name: "MySport",
-        tagline: "Réservation de terrains de sport",
+        name: "PISport",
+        tagline: "Réservez vos terrains de sport en ligne",
         postal_address: "Abidjan, Côte d'Ivoire",
         phone_number: "+225 0707070707",
         website_url: frontendBaseUrl,
-        logo_url: `${frontendBaseUrl}/logo.png`
+        logo_url: `${frontendBaseUrl}/pisport-logo.png`
       },
       actions: {
         cancel_url: cancelUrl,
