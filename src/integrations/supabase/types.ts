@@ -1697,6 +1697,16 @@ export type Database = {
             Args: {
               p_amount: number
               p_cagnotte_id: string
+              p_method?: string
+              p_psp_tx_id?: string
+              p_team?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_amount: number
+              p_cagnotte_id: string
               p_metadata?: Json
               p_method?: string
               p_psp_tx_id?: string
@@ -1713,16 +1723,6 @@ export type Database = {
               p_psp_tx_id?: string
               p_team?: string
               p_user_id?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_amount: number
-              p_cagnotte_id: string
-              p_method?: string
-              p_psp_tx_id?: string
-              p_team?: string
             }
             Returns: Json
           }
@@ -1768,7 +1768,9 @@ export type Database = {
               p_slot_date: string
               p_slot_end_time: string
               p_slot_start_time: string
+              p_teama_name?: string
               p_teama_size?: number
+              p_teamb_name?: string
               p_teamb_size?: number
               p_total_amount: number
             }
@@ -1780,9 +1782,7 @@ export type Database = {
               p_slot_date: string
               p_slot_end_time: string
               p_slot_start_time: string
-              p_teama_name?: string
               p_teama_size?: number
-              p_teamb_name?: string
               p_teamb_size?: number
               p_total_amount: number
             }
