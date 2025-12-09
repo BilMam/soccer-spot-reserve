@@ -541,20 +541,25 @@ export default function Cagnotte() {
                 <h4 className="font-bold text-blue-900 mb-3 text-lg">
                   Choisis ton équipe pour contribuer
                 </h4>
+                <div className="flex items-center justify-center gap-2 bg-gradient-to-r from-green-50 via-white to-blue-50 rounded-xl p-4 border mb-4">
+                  <span className="font-bold text-green-700">{(cagnotte as any).teama_name || 'Équipe A'}</span>
+                  <span className="text-lg font-bold text-muted-foreground">⚽ VS ⚽</span>
+                  <span className="font-bold text-blue-700">{(cagnotte as any).teamb_name || 'Équipe B'}</span>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <Button
                     onClick={() => navigate(`/cagnotte/${id}?team=A`)}
-                    className="h-20 text-lg"
+                    className="h-20 text-lg bg-green-600 hover:bg-green-700"
                     variant="default"
                   >
-                    Je suis Équipe A
+                    Je suis {(cagnotte as any).teama_name || 'Équipe A'}
                   </Button>
                   <Button
                     onClick={() => navigate(`/cagnotte/${id}?team=B`)}
-                    className="h-20 text-lg"
+                    className="h-20 text-lg bg-blue-600 hover:bg-blue-700"
                     variant="default"
                   >
-                    Je suis Équipe B
+                    Je suis {(cagnotte as any).teamb_name || 'Équipe B'}
                   </Button>
                 </div>
               </div>
@@ -565,18 +570,18 @@ export default function Cagnotte() {
                   <Button
                     variant="outline"
                     onClick={() => handleCopyLink('A')}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 border-green-300 hover:bg-green-50"
                   >
                     {copiedTeam === 'A' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    Lien Équipe A
+                    Lien {(cagnotte as any).teama_name || 'Équipe A'}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => handleCopyLink('B')}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 border-blue-300 hover:bg-blue-50"
                   >
                     {copiedTeam === 'B' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    Lien Équipe B
+                    Lien {(cagnotte as any).teamb_name || 'Équipe B'}
                   </Button>
                 </div>
               </div>
@@ -770,8 +775,8 @@ export default function Cagnotte() {
                 <div className="space-y-4">
                   <div className="bg-muted rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <Badge variant="outline" className="text-lg">
-                        Équipe {team}
+                      <Badge variant="outline" className={`text-lg ${team === 'A' ? 'border-green-300 bg-green-50' : 'border-blue-300 bg-blue-50'}`}>
+                        {team === 'A' ? ((cagnotte as any).teama_name || 'Équipe A') : ((cagnotte as any).teamb_name || 'Équipe B')}
                       </Badge>
                       <span className="text-sm text-muted-foreground">
                         {teamInfo.team_size} joueurs
@@ -889,7 +894,7 @@ export default function Cagnotte() {
                 <div className="space-y-4">
                   <div>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium">Équipe A</span>
+                      <span className="text-sm font-medium text-green-700">{(cagnotte as any).teama_name || 'Équipe A'}</span>
                       <span className="text-sm font-bold">
                         {progressA.toFixed(0)}%
                       </span>
@@ -903,7 +908,7 @@ export default function Cagnotte() {
 
                   <div>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium">Équipe B</span>
+                      <span className="text-sm font-medium text-blue-700">{(cagnotte as any).teamb_name || 'Équipe B'}</span>
                       <span className="text-sm font-bold">
                         {progressB.toFixed(0)}%
                       </span>
@@ -959,8 +964,8 @@ export default function Cagnotte() {
                                 </span>
                               )}
                               {contrib.team && (
-                                <Badge variant="outline" className="text-xs">
-                                  Équipe {contrib.team}
+                                <Badge variant="outline" className={`text-xs ${contrib.team === 'A' ? 'border-green-300 bg-green-50' : 'border-blue-300 bg-blue-50'}`}>
+                                  {contrib.team === 'A' ? ((cagnotte as any).teama_name || 'Équipe A') : ((cagnotte as any).teamb_name || 'Équipe B')}
                                 </Badge>
                               )}
                             </div>

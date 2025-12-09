@@ -253,7 +253,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               onOpenChange={setShowCagnotteConfig}
               totalAmount={finalTotal}
               isCreating={isCreatingCagnotte}
-              onConfirm={async (teamASize, teamBSize) => {
+              onConfirm={async (teamASize, teamBSize, teamAName, teamBName) => {
                 if (isCreatingCagnotte) return;
                 
                 // Vérifier que l'utilisateur est connecté (vérification immédiate et synchrone)
@@ -283,7 +283,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                     return;
                   }
 
-                  // Préparer le payload RPC avec les tailles d'équipes
+                  // Préparer le payload RPC avec les tailles et noms d'équipes
                   const payload = {
                     p_field_id: fieldId,
                     p_slot_date: format(selectedDate, 'yyyy-MM-dd'),
@@ -292,6 +292,8 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                     p_total_amount: total,
                     p_teama_size: teamASize,
                     p_teamb_size: teamBSize,
+                    p_teama_name: teamAName || 'Équipe A',
+                    p_teamb_name: teamBName || 'Équipe B',
                   };
 
                   console.log('📝 Creating cagnotte with payload:', payload);
