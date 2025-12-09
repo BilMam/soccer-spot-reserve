@@ -552,14 +552,14 @@ export default function Cagnotte() {
                     className="h-20 text-lg bg-green-600 hover:bg-green-700"
                     variant="default"
                   >
-                    Je suis {(cagnotte as any).teama_name || 'Équipe A'}
+                    {(cagnotte as any).teama_name || 'Équipe A'}
                   </Button>
                   <Button
                     onClick={() => navigate(`/cagnotte/${id}?team=B`)}
                     className="h-20 text-lg bg-blue-600 hover:bg-blue-700"
                     variant="default"
                   >
-                    Je suis {(cagnotte as any).teamb_name || 'Équipe B'}
+                    {(cagnotte as any).teamb_name || 'Équipe B'}
                   </Button>
                 </div>
               </div>
