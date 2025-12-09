@@ -549,15 +549,15 @@ export default function Cagnotte() {
                 <div className="grid grid-cols-2 gap-4">
                   <Button
                     onClick={() => navigate(`/cagnotte/${id}?team=A`)}
-                    className="h-20 text-lg bg-green-600 hover:bg-green-700"
-                    variant="default"
+                    className="h-20 text-lg"
+                    variant="outline"
                   >
                     {(cagnotte as any).teama_name || 'Équipe A'}
                   </Button>
                   <Button
                     onClick={() => navigate(`/cagnotte/${id}?team=B`)}
-                    className="h-20 text-lg bg-blue-600 hover:bg-blue-700"
-                    variant="default"
+                    className="h-20 text-lg"
+                    variant="outline"
                   >
                     {(cagnotte as any).teamb_name || 'Équipe B'}
                   </Button>
