@@ -328,6 +328,18 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                     return;
                   }
 
+                  // Vérifier si la fonction a retourné success: false
+                  if (data?.success === false) {
+                    console.error('❌ create_cagnotte returned error:', data);
+                    setIsCreatingCagnotte(false);
+                    toast({
+                      title: data.error || "Erreur",
+                      description: data.message || "Impossible de créer la cagnotte",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+
                   const cagnotteId = data?.cagnotte_id;
                   if (!cagnotteId) {
                     console.error('❌ No cagnotte_id in response:', data);
