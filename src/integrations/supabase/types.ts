@@ -276,8 +276,10 @@ export type Database = {
           split_pct_teama: number | null
           split_pct_teamb: number | null
           status: string
+          teama_name: string | null
           teama_size: number
           teama_target: number | null
+          teamb_name: string | null
           teamb_size: number
           teamb_target: number | null
           total_amount: number
@@ -305,8 +307,10 @@ export type Database = {
           split_pct_teama?: number | null
           split_pct_teamb?: number | null
           status: string
+          teama_name?: string | null
           teama_size?: number
           teama_target?: number | null
+          teamb_name?: string | null
           teamb_size?: number
           teamb_target?: number | null
           total_amount: number
@@ -334,8 +338,10 @@ export type Database = {
           split_pct_teama?: number | null
           split_pct_teamb?: number | null
           status?: string
+          teama_name?: string | null
           teama_size?: number
           teama_target?: number | null
+          teamb_name?: string | null
           teamb_size?: number
           teamb_target?: number | null
           total_amount?: number
@@ -1763,6 +1769,20 @@ export type Database = {
               p_slot_end_time: string
               p_slot_start_time: string
               p_teama_size?: number
+              p_teamb_size?: number
+              p_total_amount: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_field_id: string
+              p_slot_date: string
+              p_slot_end_time: string
+              p_slot_start_time: string
+              p_teama_name?: string
+              p_teama_size?: number
+              p_teamb_name?: string
               p_teamb_size?: number
               p_total_amount: number
             }
