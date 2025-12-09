@@ -1,5 +1,6 @@
--- Correction du bug: le statut 'collecting' n'existe pas dans la contrainte CHECK
--- Le bon statut est 'IN_PROGRESS' (et 'HOLD' en majuscules)
+-- Correction des bugs dans create_cagnotte :
+-- 1. Statut 'collecting' → 'IN_PROGRESS'
+-- 2. hold_threshold_pct calculé selon preset_mode (pas dans calculate_cagnotte_timers)
 
 CREATE OR REPLACE FUNCTION public.create_cagnotte(
   p_field_id UUID,
@@ -15,19 +16,19 @@ CREATE OR REPLACE FUNCTION public.create_cagnotte(
 DECLARE
   v_cagnotte_id UUID;
   v_field_preset TEXT;
+  v_hold_threshold_pct NUMERIC;
   v_collect_window INTEGER;
   v_hold_duration INTEGER;
-  v_hold_threshold NUMERIC;
   v_expires_at TIMESTAMPTZ;
   v_slot_datetime TIMESTAMPTZ;
-  v_timers JSON;
+  v_timers JSONB;
   v_total_players INTEGER;
   v_teama_target NUMERIC;
   v_teamb_target NUMERIC;
   v_split_teama NUMERIC;
   v_split_teamb NUMERIC;
 BEGIN
-  -- Vérifier que le créneau n'est pas déjà réservé (sans cast ::text)
+  -- Vérifier que le créneau n'est pas déjà réservé
   IF public.check_slot_booking_status(p_field_id, p_slot_date, p_slot_start_time, p_slot_end_time) THEN
     RETURN json_build_object(
       'success', false,
@@ -37,7 +38,6 @@ BEGIN
   END IF;
 
   -- Vérifier qu'il n'y a pas déjà une cagnotte active pour ce créneau
-  -- Utiliser les bons statuts: IN_PROGRESS et HOLD (majuscules)
   IF EXISTS (
     SELECT 1 FROM public.cagnotte
     WHERE field_id = p_field_id
@@ -66,14 +66,21 @@ BEGIN
     );
   END IF;
 
-  -- Calculer les timers basés sur le preset et la date/heure du créneau
-  v_slot_datetime := (p_slot_date || ' ' || p_slot_start_time)::TIMESTAMPTZ;
-  v_timers := public.calculate_cagnotte_timers(v_slot_datetime::TEXT);
+  -- Calculer hold_threshold_pct selon le preset (FIX: pas dans calculate_cagnotte_timers)
+  v_hold_threshold_pct := CASE v_field_preset
+    WHEN 'EXPRESS' THEN 60.00
+    WHEN 'PROTECTEUR' THEN 40.00
+    WHEN 'CONSERVATEUR' THEN 100.00
+    ELSE 50.00  -- EQUILIBRE / AUTO
+  END;
+
+  -- Calculer les timers basés sur la date/heure du créneau
+  v_slot_datetime := (p_slot_date + p_slot_start_time)::TIMESTAMPTZ;
+  v_timers := public.calculate_cagnotte_timers(v_slot_datetime);
 
   v_collect_window := (v_timers->>'collect_window_sec')::INTEGER;
   v_hold_duration := (v_timers->>'hold_duration_sec')::INTEGER;
-  v_hold_threshold := (v_timers->>'hold_threshold_pct')::NUMERIC;
-  v_expires_at := NOW() + (v_collect_window || ' seconds')::INTERVAL;
+  v_expires_at := NOW() + (v_collect_window * INTERVAL '1 second');
 
   -- Calculer les parts des équipes basées sur le nombre de joueurs
   v_total_players := p_teama_size + p_teamb_size;
@@ -82,7 +89,7 @@ BEGIN
   v_teama_target := ROUND(p_total_amount * (v_split_teama / 100), 0);
   v_teamb_target := ROUND(p_total_amount * (v_split_teamb / 100), 0);
 
-  -- Créer la cagnotte avec le bon statut IN_PROGRESS
+  -- Créer la cagnotte
   INSERT INTO public.cagnotte (
     field_id,
     slot_date,
@@ -112,11 +119,11 @@ BEGIN
     p_slot_end_time,
     p_total_amount,
     0,
-    'IN_PROGRESS',  -- Correction: était 'collecting' qui n'existe pas
+    'IN_PROGRESS',
     v_field_preset,
     v_collect_window,
     v_hold_duration,
-    v_hold_threshold,
+    v_hold_threshold_pct,
     v_expires_at,
     p_teama_size,
     p_teamb_size,
@@ -136,7 +143,7 @@ BEGIN
     'expires_at', v_expires_at,
     'collect_window_sec', v_collect_window,
     'hold_duration_sec', v_hold_duration,
-    'hold_threshold_pct', v_hold_threshold,
+    'hold_threshold_pct', v_hold_threshold_pct,
     'teama_target', v_teama_target,
     'teamb_target', v_teamb_target,
     'split_teama', v_split_teama,
