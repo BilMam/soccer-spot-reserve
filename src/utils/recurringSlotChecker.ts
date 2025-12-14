@@ -10,7 +10,9 @@ export const checkRecurringSlotOverlap = async (
   endTime: string
 ): Promise<boolean> => {
   try {
-    const dateObj = new Date(date);
+    // FIX: Éviter les problèmes de timezone en créant la date localement
+    const [year, month, day] = date.split('-').map(Number);
+    const dateObj = new Date(year, month - 1, day);
     const dayOfWeek = dateObj.getDay(); // 0 = dimanche, 6 = samedi
 
     // Récupérer tous les créneaux récurrents actifs pour ce jour
@@ -90,10 +92,19 @@ export const isSlotInRecurringRange = (
   slotStartTime: string,
   slotEndTime: string
 ): { isRecurring: boolean; recurringLabel?: string } => {
-  const dateObj = new Date(date);
+  // FIX: Éviter les problèmes de timezone en créant la date localement
+  // new Date("2025-12-15") crée une date UTC, mais getDay() retourne le jour local
+  // ce qui peut causer un décalage d'un jour selon le fuseau horaire
+  const [year, month, day] = date.split('-').map(Number);
+  const dateObj = new Date(year, month - 1, day); // Date locale sans timezone
   const dayOfWeek = dateObj.getDay();
 
   for (const slot of recurringSlots) {
+    // FIX: Ignorer les créneaux récurrents désactivés
+    if (slot.is_active === false) {
+      continue;
+    }
+
     // Vérifier si ce slot s'applique à ce jour de la semaine
     if (slot.day_of_week !== dayOfWeek) {
       continue;
@@ -128,11 +139,18 @@ export const generateBlockedSlotsForDate = (
   recurringSlots: any[],
   date: string
 ): Array<{ start_time: string; end_time: string; reason: string }> => {
-  const dateObj = new Date(date);
+  // FIX: Éviter les problèmes de timezone en créant la date localement
+  const [year, month, day] = date.split('-').map(Number);
+  const dateObj = new Date(year, month - 1, day);
   const dayOfWeek = dateObj.getDay();
   const blockedSlots: Array<{ start_time: string; end_time: string; reason: string }> = [];
 
   recurringSlots.forEach(slot => {
+    // FIX: Ignorer les créneaux récurrents désactivés
+    if (slot.is_active === false) {
+      return;
+    }
+
     // Vérifier si ce slot s'applique à ce jour de la semaine
     if (slot.day_of_week !== dayOfWeek) {
       return;
