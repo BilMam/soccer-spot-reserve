@@ -34,7 +34,13 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
   startDate,
   endDate
 }) => {
-  const { useFieldAvailabilityForPeriod, setSlotsUnavailable, setSlotsAvailable } = useAvailabilityManagement(fieldId);
+  const { 
+    useFieldAvailabilityForPeriod, 
+    setSlotsUnavailable, 
+    setSlotsAvailable,
+    reserveSlotManually,
+    unreserveSlotManually
+  } = useAvailabilityManagement(fieldId);
   const { recurringSlots } = useRecurringSlots(fieldId);
 
   const startDateStr = format(startDate, 'yyyy-MM-dd');
@@ -78,6 +84,30 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
     }
   };
 
+  const handleReserveManually = async (slot: AvailabilitySlot) => {
+    try {
+      await reserveSlotManually.mutateAsync({
+        date: slot.date,
+        startTime: slot.start_time,
+        endTime: slot.end_time,
+        notes: 'Réservation hors plateforme'
+      });
+    } catch (error) {
+      console.error('Erreur lors de la réservation manuelle:', error);
+    }
+  };
+
+  const handleUnreserveManually = async (slot: AvailabilitySlot) => {
+    try {
+      await unreserveSlotManually.mutateAsync({
+        date: slot.date,
+        startTime: slot.start_time
+      });
+    } catch (error) {
+      console.error('Erreur lors de l\'annulation de la réservation manuelle:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -97,6 +127,11 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
 
   const calendarGrid = generateCalendarGrid(startDate, endDate, slotsByDate, recurringSlots || []);
 
+  const isUpdating = setSlotsUnavailable.isPending || 
+                      setSlotsAvailable.isPending || 
+                      reserveSlotManually.isPending || 
+                      unreserveSlotManually.isPending;
+
   return (
     <div className="space-y-4">
       <Card>
@@ -109,7 +144,9 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
               bookedSlotsByDate={bookedSlotsByDate}
               bookingsByDate={bookingsByDate}
               onToggleSlotStatus={handleToggleSlotStatus}
-              isUpdating={setSlotsUnavailable.isPending || setSlotsAvailable.isPending}
+              onReserveManually={handleReserveManually}
+              onUnreserveManually={handleUnreserveManually}
+              isUpdating={isUpdating}
               fieldId={fieldId}
             />
           </div>

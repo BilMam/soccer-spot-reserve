@@ -28,6 +28,8 @@ interface DaySlotDetailsProps {
   slots: AvailabilitySlot[];
   date: Date;
   onToggleSlotStatus: (slot: AvailabilitySlot) => void;
+  onReserveManually?: (slot: AvailabilitySlot) => void;
+  onUnreserveManually?: (slot: AvailabilitySlot) => void;
   isUpdating?: boolean;
   fieldId: string;
   bookedSlots: Set<string>;
@@ -38,6 +40,8 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
   slots,
   date,
   onToggleSlotStatus,
+  onReserveManually,
+  onUnreserveManually,
   isUpdating = false,
   fieldId,
   bookedSlots,
@@ -64,7 +68,7 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
   };
 
   const canMarkUnavailable = (slot: AvailabilitySlot): boolean => {
-    // Ne pas permettre la modification des créneaux récurrents
+    // Ne pas permettre la modification des créneaux récurrents ou réservés manuellement
     return slot.is_available && !isSlotBooked(slot) && !slot.is_recurring;
   };
 
@@ -77,6 +81,20 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
   const handleToggleStatus = () => {
     if (selectedSlot) {
       onToggleSlotStatus(selectedSlot);
+      setSelectedSlot(null);
+    }
+  };
+
+  const handleReserveManually = () => {
+    if (selectedSlot && onReserveManually) {
+      onReserveManually(selectedSlot);
+      setSelectedSlot(null);
+    }
+  };
+
+  const handleUnreserveManually = () => {
+    if (selectedSlot && onUnreserveManually) {
+      onUnreserveManually(selectedSlot);
       setSelectedSlot(null);
     }
   };
@@ -146,6 +164,8 @@ const DaySlotDetails: React.FC<DaySlotDetailsProps> = ({
           canMarkUnavailable={canMarkUnavailable(selectedSlot)}
           onCancel={() => setSelectedSlot(null)}
           onToggleStatus={handleToggleStatus}
+          onReserveManually={onReserveManually ? handleReserveManually : undefined}
+          onUnreserveManually={onUnreserveManually ? handleUnreserveManually : undefined}
         />
       )}
 

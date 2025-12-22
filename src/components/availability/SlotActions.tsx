@@ -20,6 +20,8 @@ interface SlotActionsProps {
   canMarkUnavailable: boolean;
   onCancel: () => void;
   onToggleStatus: () => void;
+  onReserveManually?: () => void;
+  onUnreserveManually?: () => void;
 }
 
 const SlotActions: React.FC<SlotActionsProps> = ({
@@ -28,60 +30,115 @@ const SlotActions: React.FC<SlotActionsProps> = ({
   isUpdating,
   canMarkUnavailable,
   onCancel,
-  onToggleStatus
+  onToggleStatus,
+  onReserveManually,
+  onUnreserveManually
 }) => {
-  const getToggleButtonText = () => {
-    if (isBooked) {
-      return 'Créneau réservé';
-    }
-    
-    return selectedSlot.is_available ? 'Marquer indisponible' : 'Marquer disponible';
-  };
+  const isManualReservation = !selectedSlot.is_available && selectedSlot.unavailability_reason === 'Réservé manuellement';
 
-  const getToggleButtonVariant = () => {
+  const getStatusText = () => {
     if (isBooked) {
-      return 'secondary';
+      return 'Statut : Réservé en ligne (modification impossible)';
     }
-    
-    return selectedSlot.is_available ? 'destructive' : 'default';
+    if (isManualReservation) {
+      return 'Statut : Réservé manuellement';
+    }
+    return `Statut actuel : ${selectedSlot.is_available ? 'Disponible' : 'Indisponible'}`;
   };
 
   return (
-    <div className="pt-4 border-t bg-gray-50 p-4 rounded-lg">
+    <div className="pt-4 border-t bg-gray-50 p-4 rounded-lg space-y-3">
       <div className="flex items-center justify-between">
         <div className="text-sm">
           <div className="font-medium">
             Créneau sélectionné : {selectedSlot.start_time.slice(0, 5)} - {selectedSlot.end_time.slice(0, 5)}
           </div>
           <div className="text-gray-600">
-            {isBooked 
-              ? 'Statut : Réservé (modification impossible)'
-              : `Statut actuel : ${selectedSlot.is_available ? 'Disponible' : 'Indisponible'}`
-            }
+            {getStatusText()}
           </div>
         </div>
-        <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onCancel}
+        >
+          Annuler
+        </Button>
+      </div>
+      
+      {/* Actions disponibles selon le statut */}
+      <div className="flex flex-wrap gap-2">
+        {/* Créneau réservé en ligne - aucune action possible */}
+        {isBooked && (
           <Button
-            variant="outline"
+            variant="secondary"
             size="sm"
-            onClick={onCancel}
+            disabled
           >
-            Annuler
+            Créneau réservé
           </Button>
+        )}
+        
+        {/* Créneau réservé manuellement - annuler la réservation */}
+        {!isBooked && isManualReservation && onUnreserveManually && (
           <Button
-            variant={getToggleButtonVariant()}
+            variant="default"
+            size="sm"
+            onClick={onUnreserveManually}
+            disabled={isUpdating}
+            className="bg-indigo-600 hover:bg-indigo-700"
+          >
+            Annuler la réservation manuelle
+          </Button>
+        )}
+        
+        {/* Créneau disponible - deux options */}
+        {!isBooked && !isManualReservation && selectedSlot.is_available && (
+          <>
+            {onReserveManually && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={onReserveManually}
+                disabled={isUpdating}
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                📋 Réserver manuellement
+              </Button>
+            )}
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={onToggleStatus}
+              disabled={isUpdating || !canMarkUnavailable}
+            >
+              Marquer indisponible
+            </Button>
+          </>
+        )}
+        
+        {/* Créneau indisponible (maintenance) - rendre disponible */}
+        {!isBooked && !isManualReservation && !selectedSlot.is_available && (
+          <Button
+            variant="default"
             size="sm"
             onClick={onToggleStatus}
-            disabled={isUpdating || isBooked || (selectedSlot.is_available && !canMarkUnavailable)}
+            disabled={isUpdating}
           >
-            {getToggleButtonText()}
+            Marquer disponible
           </Button>
-        </div>
+        )}
       </div>
       
       {isBooked && (
-        <div className="mt-2 text-xs text-blue-600 bg-blue-100 p-2 rounded">
-          ℹ️ Ce créneau ne peut pas être marqué comme indisponible car il a une réservation active.
+        <div className="text-xs text-blue-600 bg-blue-100 p-2 rounded">
+          ℹ️ Ce créneau ne peut pas être modifié car il a une réservation active en ligne.
+        </div>
+      )}
+      
+      {isManualReservation && (
+        <div className="text-xs text-indigo-600 bg-indigo-100 p-2 rounded">
+          📋 Ce créneau a été réservé manuellement (hors plateforme). Vous pouvez annuler cette réservation pour le rendre à nouveau disponible.
         </div>
       )}
     </div>

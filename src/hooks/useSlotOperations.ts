@@ -198,11 +198,79 @@ export const useSlotOperations = (fieldId: string) => {
     }
   });
 
+  // Réserver un créneau manuellement (hors plateforme)
+  const reserveSlotManually = useMutation({
+    mutationFn: async (params: {
+      date: string;
+      startTime: string;
+      endTime: string;
+      notes?: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('field_availability')
+        .update({
+          is_available: false,
+          unavailability_reason: 'Réservé manuellement',
+          is_maintenance: false,
+          notes: params.notes || 'Réservation hors plateforme',
+          updated_at: new Date().toISOString()
+        })
+        .eq('field_id', fieldId)
+        .eq('date', params.date)
+        .eq('start_time', params.startTime);
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['field-availability-period', fieldId] });
+      toast.success('Créneau réservé manuellement');
+    },
+    onError: (error) => {
+      console.error('Erreur réservation manuelle:', error);
+      toast.error('Erreur lors de la réservation manuelle');
+    }
+  });
+
+  // Annuler une réservation manuelle
+  const unreserveSlotManually = useMutation({
+    mutationFn: async (params: {
+      date: string;
+      startTime: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('field_availability')
+        .update({
+          is_available: true,
+          unavailability_reason: null,
+          is_maintenance: false,
+          notes: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('field_id', fieldId)
+        .eq('date', params.date)
+        .eq('start_time', params.startTime);
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['field-availability-period', fieldId] });
+      toast.success('Réservation manuelle annulée');
+    },
+    onError: (error) => {
+      console.error('Erreur annulation réservation manuelle:', error);
+      toast.error('Erreur lors de l\'annulation');
+    }
+  });
+
   return {
     createAvailabilityForPeriod,
     createAvailabilityWithDaySpecificTimes,
     setSlotsUnavailable,
     setSlotsAvailable,
+    reserveSlotManually,
+    unreserveSlotManually,
     checkSlotBookingStatus
   };
 };
