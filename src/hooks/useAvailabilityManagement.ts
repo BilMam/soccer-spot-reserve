@@ -6,7 +6,14 @@ import { useSlotOperations } from './useSlotOperations';
 export const useAvailabilityManagement = (fieldId: string) => {
   const { useFieldAvailabilityForPeriod } = useFieldAvailability(fieldId);
   const { usePeriodTemplates: usePeriodTemplatesHook, savePeriodTemplate } = usePeriodTemplates(fieldId);
-  const { createAvailabilityForPeriod, createAvailabilityWithDaySpecificTimes, setSlotsUnavailable, setSlotsAvailable } = useSlotOperations(fieldId);
+  const { 
+    createAvailabilityForPeriod, 
+    createAvailabilityWithDaySpecificTimes, 
+    setSlotsUnavailable, 
+    setSlotsAvailable,
+    reserveSlotManually,
+    unreserveSlotManually
+  } = useSlotOperations(fieldId);
 
   return {
     useFieldAvailabilityForPeriod,
@@ -15,6 +22,8 @@ export const useAvailabilityManagement = (fieldId: string) => {
     createAvailabilityWithDaySpecificTimes,
     setSlotsUnavailable,
     setSlotsAvailable,
+    reserveSlotManually,
+    unreserveSlotManually,
     savePeriodTemplate
   };
 };

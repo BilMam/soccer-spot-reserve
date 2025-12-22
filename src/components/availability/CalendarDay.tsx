@@ -37,7 +37,14 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, book
   const recurring = slots.filter(s => s.is_recurring).length;
   const normalSlots = slots.filter(s => !s.is_recurring);
   const available = normalSlots.filter(s => s.is_available).length;
-  const unavailable = normalSlots.filter(s => !s.is_available).length;
+  
+  // Séparer les réservations manuelles des autres indisponibilités
+  const manualReserved = normalSlots.filter(
+    s => !s.is_available && s.unavailability_reason === 'Réservé manuellement'
+  ).length;
+  const unavailable = normalSlots.filter(
+    s => !s.is_available && s.unavailability_reason !== 'Réservé manuellement'
+  ).length;
   
   // NOUVELLE LOGIQUE: Utiliser la détection de chevauchement (seulement pour les créneaux normaux)
   const booked = normalSlots.filter(slot => {
@@ -48,13 +55,17 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, book
   const hasRecurring = recurring > 0;
   const hasUnavailable = unavailable > 0;
   const hasBooked = booked > 0;
-  const isFullyAvailable = hasSlots && unavailable === 0 && booked === 0 && recurring === 0;
+  const hasManualReserved = manualReserved > 0;
+  const isFullyAvailable = hasSlots && unavailable === 0 && booked === 0 && recurring === 0 && manualReserved === 0;
 
-  // Déterminer la couleur de fond avec priorité: Réservé > Récurrent > Indisponible > Disponible
+  // Déterminer la couleur de fond avec priorité: Réservé en ligne > Réservé manuellement > Récurrent > Indisponible > Disponible
   let bgColor = 'bg-gray-50 border-gray-200';
   if (hasBooked) {
-    // Bleu si réservé (priorité la plus haute)
+    // Bleu clair si réservé en ligne (priorité la plus haute)
     bgColor = 'bg-blue-50 border-blue-200';
+  } else if (hasManualReserved) {
+    // Indigo si réservé manuellement
+    bgColor = 'bg-indigo-100 border-indigo-200';
   } else if (hasRecurring) {
     // Violet si récurrent
     bgColor = 'bg-purple-50 border-purple-200';
@@ -73,20 +84,13 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, book
       total,
       available,
       unavailable,
+      manualReserved,
       booked,
       hasBooked,
+      hasManualReserved,
       bgColor,
       bookingsReceived: bookings.length,
-      bookingsList: bookings,
-      // Vérifier chaque slot individuellement
-      slotChecks: slots.map(slot => {
-        const overlaps = isSlotOverlappingWithBooking(slot.start_time, slot.end_time, bookings);
-        return {
-          slotTime: `${slot.start_time}-${slot.end_time}`,
-          isAvailable: slot.is_available,
-          overlapsWithBooking: overlaps
-        };
-      })
+      bookingsList: bookings
     });
   }
 
@@ -99,7 +103,7 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, book
       <span className="font-medium">{day.getDate()}</span>
       {hasSlots && (
         <div className="flex gap-1 mt-1">
-          {available > 0 && booked === 0 && recurring === 0 && (
+          {available > 0 && booked === 0 && recurring === 0 && manualReserved === 0 && (
             <Badge variant="secondary" className="text-xs px-1 py-0 bg-green-100 text-green-700">
               {available}
             </Badge>
@@ -107,6 +111,11 @@ const CalendarDay: React.FC<CalendarDayProps> = ({ day, slots, bookedSlots, book
           {booked > 0 && (
             <Badge variant="secondary" className="text-xs px-1 py-0 bg-blue-100 text-blue-700">
               {booked}
+            </Badge>
+          )}
+          {manualReserved > 0 && (
+            <Badge variant="secondary" className="text-xs px-1 py-0 bg-indigo-100 text-indigo-700">
+              {manualReserved}
             </Badge>
           )}
           {recurring > 0 && (

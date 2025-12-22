@@ -30,6 +30,8 @@ interface CalendarGridProps {
   bookedSlotsByDate: Record<string, Set<string>>;
   bookingsByDate: Record<string, BookingSlot[]>;
   onToggleSlotStatus: (slot: AvailabilitySlot) => void;
+  onReserveManually?: (slot: AvailabilitySlot) => void;
+  onUnreserveManually?: (slot: AvailabilitySlot) => void;
   isUpdating: boolean;
   fieldId: string;
 }
@@ -39,6 +41,8 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
   bookedSlotsByDate,
   bookingsByDate,
   onToggleSlotStatus,
+  onReserveManually,
+  onUnreserveManually,
   isUpdating,
   fieldId
 }) => {
@@ -102,6 +106,8 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
                 slots={cell.slots}
                 date={cell.date}  
                 onToggleSlotStatus={onToggleSlotStatus}
+                onReserveManually={onReserveManually}
+                onUnreserveManually={onUnreserveManually}
                 isUpdating={isUpdating}
                 fieldId={fieldId}
                 bookedSlots={bookedSlots}

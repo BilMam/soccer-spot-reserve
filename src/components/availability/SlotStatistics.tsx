@@ -23,8 +23,18 @@ const SlotStatistics: React.FC<SlotStatisticsProps> = ({
   bookedSlotsCount,
   isSlotBooked
 }) => {
+  // Calculer les réservations manuelles
+  const manualReservationsCount = slots.filter(
+    s => !s.is_available && s.unavailability_reason === 'Réservé manuellement'
+  ).length;
+
+  // Calculer les indisponibles (hors réservations manuelles)
+  const unavailableCount = slots.filter(
+    s => !s.is_available && s.unavailability_reason !== 'Réservé manuellement'
+  ).length;
+
   return (
-    <div className="grid grid-cols-3 gap-2 pt-4 border-t">
+    <div className="grid grid-cols-4 gap-2 pt-4 border-t">
       <div className="text-center">
         <div className="text-lg font-bold text-green-600">
           {slots.filter(s => s.is_available && !isSlotBooked(s)).length}
@@ -35,11 +45,17 @@ const SlotStatistics: React.FC<SlotStatisticsProps> = ({
         <div className="text-lg font-bold text-blue-600">
           {bookedSlotsCount}
         </div>
-        <div className="text-xs text-gray-600">Réservés</div>
+        <div className="text-xs text-gray-600">Réservés (en ligne)</div>
+      </div>
+      <div className="text-center">
+        <div className="text-lg font-bold text-indigo-600">
+          {manualReservationsCount}
+        </div>
+        <div className="text-xs text-gray-600">📋 Manuels</div>
       </div>
       <div className="text-center">
         <div className="text-lg font-bold text-red-600">
-          {slots.filter(s => !s.is_available).length}
+          {unavailableCount}
         </div>
         <div className="text-xs text-gray-600">Indisponibles</div>
       </div>

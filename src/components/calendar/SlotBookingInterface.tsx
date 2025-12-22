@@ -84,16 +84,27 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   console.log('🔍 SlotBookingInterface - bookingsByDate complet:', bookingsByDate);
 
   // Calculer les créneaux indisponibles (pas de réservation mais is_available = false)
+  // Les réservations manuelles sont traitées comme des créneaux "occupés" (bleu) plutôt qu'"indisponibles" (rouge)
   useEffect(() => {
+    // Identifier les créneaux réservés manuellement et les fusionner avec les réservations en ligne
+    const manualReservedSlots = availableSlots
+      .filter(slot => !slot.is_available && slot.unavailability_reason === 'Réservé manuellement')
+      .map(slot => `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`);
+    
+    // Fusionner avec les réservations en ligne pour les afficher tous comme "occupés"
+    const allOccupiedSlots = [...new Set([...bookedSlots, ...manualReservedSlots])];
+    
+    // Calculer les créneaux indisponibles (maintenance, etc.) - exclure les réservations manuelles
     const unavailable = availableSlots
-      .filter(slot => !slot.is_available)
+      .filter(slot => !slot.is_available && slot.unavailability_reason !== 'Réservé manuellement')
       .filter(slot => {
         const slotKey = `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`;
         return !bookedSlots.includes(slotKey);
       })
       .map(slot => `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`);
     
-    console.log('🔍 Créneaux indisponibles trouvés:', unavailable);
+    console.log('🔍 Créneaux occupés (en ligne + manuels):', allOccupiedSlots);
+    console.log('🔍 Créneaux indisponibles (maintenance):', unavailable);
     setUnavailableSlots(unavailable);
   }, [availableSlots, bookedSlots]);
 
