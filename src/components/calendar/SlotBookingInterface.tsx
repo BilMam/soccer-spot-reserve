@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -57,7 +57,6 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
 }) => {
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
   const [selectedEndTime, setSelectedEndTime] = useState<string>('');
-  const [unavailableSlots, setUnavailableSlots] = useState<string[]>([]);
   const [isCreatingCagnotte, setIsCreatingCagnotte] = useState(false);
   const [showCagnotteConfig, setShowCagnotteConfig] = useState(false);
   const navigate = useNavigate();
@@ -83,30 +82,39 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   console.log('🔍 SlotBookingInterface - bookedSlotsByDate complet:', bookedSlotsByDate);
   console.log('🔍 SlotBookingInterface - bookingsByDate complet:', bookingsByDate);
 
-  // Calculer les créneaux indisponibles (pas de réservation mais is_available = false)
-  // Les réservations manuelles sont traitées comme des créneaux "occupés" (bleu) plutôt qu'"indisponibles" (rouge)
+  const manualReservedSlots = useMemo(
+    () =>
+      availableSlots
+        .filter(slot => !slot.is_available && slot.unavailability_reason === 'Réservé manuellement')
+        .map(slot => `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`),
+    [availableSlots]
+  );
+
+  // Fusionner les réservations en ligne et manuelles pour bloquer la sélection
+  const occupiedSlots = useMemo(
+    () => [...new Set([...bookedSlots, ...manualReservedSlots])],
+    [bookedSlots, manualReservedSlots]
+  );
+
+  // Calculer les créneaux indisponibles (maintenance, etc.) - exclure les réservations manuelles
+  const unavailableSlots = useMemo(
+    () =>
+      availableSlots
+        .filter(slot => !slot.is_available && slot.unavailability_reason !== 'Réservé manuellement')
+        .filter(slot => {
+          const slotKey = `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`;
+          return !bookedSlots.includes(slotKey);
+        })
+        .map(slot => `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`),
+    [availableSlots, bookedSlots]
+  );
+
   useEffect(() => {
-    // Identifier les créneaux réservés manuellement et les fusionner avec les réservations en ligne
-    const manualReservedSlots = availableSlots
-      .filter(slot => !slot.is_available && slot.unavailability_reason === 'Réservé manuellement')
-      .map(slot => `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`);
-    
-    // Fusionner avec les réservations en ligne pour les afficher tous comme "occupés"
-    const allOccupiedSlots = [...new Set([...bookedSlots, ...manualReservedSlots])];
-    
-    // Calculer les créneaux indisponibles (maintenance, etc.) - exclure les réservations manuelles
-    const unavailable = availableSlots
-      .filter(slot => !slot.is_available && slot.unavailability_reason !== 'Réservé manuellement')
-      .filter(slot => {
-        const slotKey = `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`;
-        return !bookedSlots.includes(slotKey);
-      })
-      .map(slot => `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`);
-    
-    console.log('🔍 Créneaux occupés (en ligne + manuels):', allOccupiedSlots);
-    console.log('🔍 Créneaux indisponibles (maintenance):', unavailable);
-    setUnavailableSlots(unavailable);
-  }, [availableSlots, bookedSlots]);
+    console.log('🔍 Créneaux réservés en ligne:', bookedSlots);
+    console.log('🔍 Créneaux réservés manuellement:', manualReservedSlots);
+    console.log('🔍 Créneaux occupés (en ligne + manuels):', occupiedSlots);
+    console.log('🔍 Créneaux indisponibles (maintenance):', unavailableSlots);
+  }, [bookedSlots, manualReservedSlots, occupiedSlots, unavailableSlots]);
 
   // Réinitialiser l'heure de fin quand l'heure de début change
   useEffect(() => {
@@ -116,7 +124,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   }, [selectedStartTime, availableSlots]);
 
   // Initialize utility classes
-  const validator = new SlotValidationLogic(availableSlots, bookedSlots, bookings, recurringSlots, dateStr);
+  const validator = new SlotValidationLogic(availableSlots, occupiedSlots, bookings, recurringSlots, dateStr);
   const priceCalculator = new SlotPriceCalculator(pricing);
 
   const rangeIsAvailable = validator.isRangeAvailable(selectedStartTime, selectedEndTime);
@@ -183,13 +191,13 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
           </div>
         ) : (
           <>
-            <OccupiedSlotsDisplay 
-              occupiedSlots={bookedSlots} 
+            <OccupiedSlotsDisplay
+              occupiedSlots={occupiedSlots}
               unavailableSlots={unavailableSlots}
               hasSlots={availableSlots.length > 0}
               firstAvailableTime={firstAvailableTime}
             />
-            
+
             <TimeSlotSelector
               selectedStartTime={selectedStartTime}
               selectedEndTime={selectedEndTime}
@@ -197,7 +205,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               onEndTimeChange={setSelectedEndTime}
               availableSlots={availableSlots}
               fieldId={fieldId}
-              bookedSlots={bookedSlots}
+              bookedSlots={occupiedSlots}
               bookings={bookings}
               selectedDate={selectedDate}
               recurringSlots={recurringSlots}
@@ -228,7 +236,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               selectedStartTime={selectedStartTime}
               selectedEndTime={selectedEndTime}
               availableSlots={availableSlots}
-              bookedSlots={bookedSlots}
+              bookedSlots={occupiedSlots}
               bookings={bookings}
               recurringSlots={recurringSlots}
               fieldPrice={
