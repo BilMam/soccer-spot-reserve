@@ -58,6 +58,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
   const [selectedEndTime, setSelectedEndTime] = useState<string>('');
   const [unavailableSlots, setUnavailableSlots] = useState<string[]>([]);
+  const [occupiedSlots, setOccupiedSlots] = useState<string[]>([]);
   const [isCreatingCagnotte, setIsCreatingCagnotte] = useState(false);
   const [showCagnotteConfig, setShowCagnotteConfig] = useState(false);
   const navigate = useNavigate();
@@ -80,26 +81,24 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   console.log('🔍 SlotBookingInterface - Field ID:', fieldId);
   console.log('🔍 SlotBookingInterface - Créneaux reçus:', availableSlots.length);
   console.log('🔍 SlotBookingInterface - Créneaux réservés (temps réel):', bookedSlots);
-  console.log('🔍 SlotBookingInterface - bookedSlotsByDate complet:', bookedSlotsByDate);
-  console.log('🔍 SlotBookingInterface - bookingsByDate complet:', bookingsByDate);
 
-  // Calculer les créneaux indisponibles (pas de réservation mais is_available = false)
-  // Les réservations manuelles sont traitées comme des créneaux "occupés" (bleu) plutôt qu'"indisponibles" (rouge)
+  // Calculer les créneaux occupés (réservations en ligne + manuelles) et indisponibles (maintenance)
   useEffect(() => {
-    // Identifier les créneaux réservés manuellement et les fusionner avec les réservations en ligne
+    // Identifier les créneaux réservés manuellement
     const manualReservedSlots = availableSlots
       .filter(slot => !slot.is_available && slot.unavailability_reason === 'Réservé manuellement')
       .map(slot => `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`);
     
     // Fusionner avec les réservations en ligne pour les afficher tous comme "occupés"
     const allOccupiedSlots = [...new Set([...bookedSlots, ...manualReservedSlots])];
+    setOccupiedSlots(allOccupiedSlots);
     
     // Calculer les créneaux indisponibles (maintenance, etc.) - exclure les réservations manuelles
     const unavailable = availableSlots
       .filter(slot => !slot.is_available && slot.unavailability_reason !== 'Réservé manuellement')
       .filter(slot => {
         const slotKey = `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`;
-        return !bookedSlots.includes(slotKey);
+        return !allOccupiedSlots.includes(slotKey);
       })
       .map(slot => `${normalizeTime(slot.start_time)}-${normalizeTime(slot.end_time)}`);
     
@@ -116,7 +115,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   }, [selectedStartTime, availableSlots]);
 
   // Initialize utility classes
-  const validator = new SlotValidationLogic(availableSlots, bookedSlots, bookings, recurringSlots, dateStr);
+  const validator = new SlotValidationLogic(availableSlots, occupiedSlots, bookings, recurringSlots, dateStr);
   const priceCalculator = new SlotPriceCalculator(pricing);
 
   const rangeIsAvailable = validator.isRangeAvailable(selectedStartTime, selectedEndTime);
@@ -184,7 +183,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
         ) : (
           <>
             <OccupiedSlotsDisplay 
-              occupiedSlots={bookedSlots} 
+              occupiedSlots={occupiedSlots} 
               unavailableSlots={unavailableSlots}
               hasSlots={availableSlots.length > 0}
               firstAvailableTime={firstAvailableTime}
@@ -197,7 +196,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               onEndTimeChange={setSelectedEndTime}
               availableSlots={availableSlots}
               fieldId={fieldId}
-              bookedSlots={bookedSlots}
+              bookedSlots={occupiedSlots}
               bookings={bookings}
               selectedDate={selectedDate}
               recurringSlots={recurringSlots}
@@ -228,7 +227,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               selectedStartTime={selectedStartTime}
               selectedEndTime={selectedEndTime}
               availableSlots={availableSlots}
-              bookedSlots={bookedSlots}
+              bookedSlots={occupiedSlots}
               bookings={bookings}
               recurringSlots={recurringSlots}
               fieldPrice={
