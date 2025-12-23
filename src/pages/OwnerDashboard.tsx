@@ -12,6 +12,7 @@ import OwnerBookings from '@/components/OwnerBookings';
 import PaymentOnboarding from '@/components/PaymentOnboarding';
 import AvailabilityManagement from '@/components/availability/AvailabilityManagement';
 import { PayoutAccountsManager } from '@/components/owner/PayoutAccountsManager';
+import OwnerPromotions from '@/components/promotions/OwnerPromotions';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useOwnerStats, TimeFilterConfig } from '@/hooks/useOwnerStats';
 import { useOwnerFields } from '@/hooks/useOwnerFields';
@@ -82,6 +83,7 @@ const OwnerDashboard = () => {
             <TabsTrigger value="fields">Mes terrains</TabsTrigger>
             <TabsTrigger value="availability">Gestion créneaux</TabsTrigger>
             <TabsTrigger value="bookings">Réservations</TabsTrigger>
+            <TabsTrigger value="promotions">Promotions</TabsTrigger>
             <TabsTrigger value="payments">Paiements</TabsTrigger>
           </TabsList>
 
@@ -162,6 +164,10 @@ const OwnerDashboard = () => {
 
           <TabsContent value="bookings">
             <OwnerBookings ownerId={user.id} />
+          </TabsContent>
+
+          <TabsContent value="promotions">
+            <OwnerPromotions ownerId={user.id} />
           </TabsContent>
 
           <TabsContent value="payments">

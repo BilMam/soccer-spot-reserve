@@ -148,6 +148,7 @@ export type Database = {
           confirmation_email_sent: boolean | null
           created_at: string | null
           currency: string | null
+          discount_amount: number | null
           end_time: string
           field_id: string
           field_price: number | null
@@ -163,6 +164,9 @@ export type Database = {
           platform_fee_owner: number | null
           platform_fee_user: number | null
           player_count: number | null
+          promo_code_id: string | null
+          public_after_discount: number | null
+          public_before_discount: number | null
           special_requests: string | null
           start_time: string
           status: string | null
@@ -178,6 +182,7 @@ export type Database = {
           confirmation_email_sent?: boolean | null
           created_at?: string | null
           currency?: string | null
+          discount_amount?: number | null
           end_time: string
           field_id: string
           field_price?: number | null
@@ -193,6 +198,9 @@ export type Database = {
           platform_fee_owner?: number | null
           platform_fee_user?: number | null
           player_count?: number | null
+          promo_code_id?: string | null
+          public_after_discount?: number | null
+          public_before_discount?: number | null
           special_requests?: string | null
           start_time: string
           status?: string | null
@@ -208,6 +216,7 @@ export type Database = {
           confirmation_email_sent?: boolean | null
           created_at?: string | null
           currency?: string | null
+          discount_amount?: number | null
           end_time?: string
           field_id?: string
           field_price?: number | null
@@ -223,6 +232,9 @@ export type Database = {
           platform_fee_owner?: number | null
           platform_fee_user?: number | null
           player_count?: number | null
+          promo_code_id?: string | null
+          public_after_discount?: number | null
+          public_before_discount?: number | null
           special_requests?: string | null
           start_time?: string
           status?: string | null
@@ -244,6 +256,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "fields_without_payout"
             referencedColumns: ["field_id"]
+          },
+          {
+            foreignKeyName: "bookings_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "bookings_user_id_fkey"
@@ -1087,6 +1106,180 @@ export type Database = {
         }
         Relationships: []
       }
+      promo_codes: {
+        Row: {
+          code: string | null
+          created_at: string | null
+          discount_type: string
+          discount_value: number
+          end_date: string | null
+          id: string
+          is_automatic: boolean | null
+          min_booking_amount: number | null
+          name: string
+          owner_id: string
+          start_date: string
+          status: string
+          times_used: number | null
+          updated_at: string | null
+          usage_limit_per_user: number | null
+          usage_limit_total: number | null
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string | null
+          discount_type: string
+          discount_value: number
+          end_date?: string | null
+          id?: string
+          is_automatic?: boolean | null
+          min_booking_amount?: number | null
+          name: string
+          owner_id: string
+          start_date?: string
+          status?: string
+          times_used?: number | null
+          updated_at?: string | null
+          usage_limit_per_user?: number | null
+          usage_limit_total?: number | null
+        }
+        Update: {
+          code?: string | null
+          created_at?: string | null
+          discount_type?: string
+          discount_value?: number
+          end_date?: string | null
+          id?: string
+          is_automatic?: boolean | null
+          min_booking_amount?: number | null
+          name?: string
+          owner_id?: string
+          start_date?: string
+          status?: string
+          times_used?: number | null
+          updated_at?: string | null
+          usage_limit_per_user?: number | null
+          usage_limit_total?: number | null
+        }
+        Relationships: []
+      }
+      promo_fields: {
+        Row: {
+          created_at: string | null
+          field_id: string
+          id: string
+          promo_code_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          field_id: string
+          id?: string
+          promo_code_id: string
+        }
+        Update: {
+          created_at?: string | null
+          field_id?: string
+          id?: string
+          promo_code_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_fields_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promo_fields_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "fields_without_payout"
+            referencedColumns: ["field_id"]
+          },
+          {
+            foreignKeyName: "promo_fields_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promo_time_slots: {
+        Row: {
+          created_at: string | null
+          day_of_week: number | null
+          end_time: string
+          id: string
+          promo_code_id: string
+          start_time: string
+        }
+        Insert: {
+          created_at?: string | null
+          day_of_week?: number | null
+          end_time: string
+          id?: string
+          promo_code_id: string
+          start_time: string
+        }
+        Update: {
+          created_at?: string | null
+          day_of_week?: number | null
+          end_time?: string
+          id?: string
+          promo_code_id?: string
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_time_slots_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promo_usage: {
+        Row: {
+          booking_id: string
+          id: string
+          promo_code_id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          booking_id: string
+          id?: string
+          promo_code_id: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          booking_id?: string
+          id?: string
+          promo_code_id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_usage_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promo_usage_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurring_slots: {
         Row: {
           created_at: string | null
@@ -1903,6 +2096,14 @@ export type Database = {
           total_reviews: number
         }[]
       }
+      record_promo_usage: {
+        Args: {
+          p_booking_id: string
+          p_promo_code_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       reject_owner_application: {
         Args: { application_id: string; notes: string }
         Returns: undefined
@@ -1967,6 +2168,17 @@ export type Database = {
             }
             Returns: boolean
           }
+      validate_promo_code: {
+        Args: {
+          p_booking_amount: number
+          p_booking_date: string
+          p_code: string
+          p_field_id: string
+          p_start_time: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       user_role_type:
