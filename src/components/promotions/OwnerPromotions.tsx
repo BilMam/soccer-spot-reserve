@@ -112,7 +112,15 @@ const OwnerPromotions: React.FC<OwnerPromotionsProps> = ({ ownerId }) => {
         isOpen={isOpen}
         step={step}
         wizardData={wizardData}
-        fields={fields?.map(f => ({ id: f.id, name: f.name, location: f.location })) || []}
+        fields={fields?.map(f => ({ 
+          id: f.id, 
+          name: f.name, 
+          location: f.location,
+          net_price_1h: f.net_price_1h,
+          net_price_1h30: f.net_price_1h30,
+          net_price_2h: f.net_price_2h,
+          price_per_hour: f.price_per_hour
+        })) || []}
         isCreating={isCreating}
         onClose={closeWizard}
         onPrevStep={prevStep}

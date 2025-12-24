@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Clock, Plus, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { MapPin, Clock, Plus, X, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Field {
@@ -48,9 +49,14 @@ const StepTargeting: React.FC<StepTargetingProps> = ({
   onAllSlotsChange,
   onSlotsChange
 }) => {
-  const [showSlotPicker, setShowSlotPicker] = React.useState(false);
-  const [selectedDay, setSelectedDay] = React.useState<number | null>(null);
-  const [selectedTimeRange, setSelectedTimeRange] = React.useState<{ start: string; end: string } | null>(null);
+  const [showSlotPicker, setShowSlotPicker] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedTimeRange, setSelectedTimeRange] = useState<{ start: string; end: string } | null>(null);
+  
+  // Mode créneau personnalisé
+  const [customMode, setCustomMode] = useState(false);
+  const [customStartTime, setCustomStartTime] = useState('');
+  const [customEndTime, setCustomEndTime] = useState('');
 
   const toggleField = (fieldId: string) => {
     if (selectedFieldIds.includes(fieldId)) {
@@ -74,6 +80,22 @@ const StepTargeting: React.FC<StepTargetingProps> = ({
     }
   };
 
+  const addCustomSlot = () => {
+    if (customStartTime && customEndTime && customStartTime < customEndTime) {
+      const newSlot: TimeSlot = {
+        dayOfWeek: selectedDay,
+        startTime: customStartTime,
+        endTime: customEndTime
+      };
+      onSlotsChange([...selectedSlots, newSlot]);
+      setSelectedDay(null);
+      setCustomStartTime('');
+      setCustomEndTime('');
+      setCustomMode(false);
+      setShowSlotPicker(false);
+    }
+  };
+
   const removeSlot = (index: number) => {
     onSlotsChange(selectedSlots.filter((_, i) => i !== index));
   };
@@ -82,6 +104,8 @@ const StepTargeting: React.FC<StepTargetingProps> = ({
     const dayStr = slot.dayOfWeek !== null ? DAYS[slot.dayOfWeek] : 'Tous les jours';
     return `${dayStr} ${slot.startTime} - ${slot.endTime}`;
   };
+
+  const isCustomTimeValid = customStartTime && customEndTime && customStartTime < customEndTime;
 
   return (
     <div className="space-y-8">
@@ -158,7 +182,7 @@ const StepTargeting: React.FC<StepTargetingProps> = ({
             {selectedSlots.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {selectedSlots.map((slot, index) => (
-                  <Badge key={index} variant="secondary" className="gap-1">
+                  <Badge key={index} variant="secondary" className="gap-1 py-1.5">
                     {formatSlot(slot)}
                     <button
                       type="button"
@@ -174,9 +198,10 @@ const StepTargeting: React.FC<StepTargetingProps> = ({
 
             {/* Slot picker */}
             {showSlotPicker ? (
-              <div className="p-4 border rounded-lg space-y-4">
+              <div className="p-4 border rounded-lg space-y-4 bg-muted/30">
+                {/* Sélection du jour */}
                 <div>
-                  <Label className="mb-2 block">Jour (optionnel)</Label>
+                  <Label className="mb-2 block text-sm font-medium">Jour (optionnel)</Label>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
@@ -200,42 +225,115 @@ const StepTargeting: React.FC<StepTargetingProps> = ({
                   </div>
                 </div>
 
-                <div>
-                  <Label className="mb-2 block">Plage horaire</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {DEFAULT_SLOTS.map((slot) => (
-                      <Button
-                        key={slot.label}
-                        type="button"
-                        size="sm"
-                        variant={
-                          selectedTimeRange?.start === slot.startTime &&
-                          selectedTimeRange?.end === slot.endTime
-                            ? "default"
-                            : "outline"
-                        }
-                        onClick={() => setSelectedTimeRange({ start: slot.startTime, end: slot.endTime })}
-                      >
-                        {slot.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
+                {/* Toggle mode prédéfini / personnalisé */}
+                <div className="flex gap-2 border-b pb-3">
                   <Button
                     type="button"
-                    onClick={addSlot}
-                    disabled={!selectedTimeRange}
                     size="sm"
+                    variant={!customMode ? "default" : "ghost"}
+                    onClick={() => setCustomMode(false)}
                   >
-                    Ajouter
+                    Plages prédéfinies
                   </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={customMode ? "default" : "ghost"}
+                    onClick={() => setCustomMode(true)}
+                    className="gap-1"
+                  >
+                    <Settings2 className="w-3 h-3" />
+                    Créneau personnalisé
+                  </Button>
+                </div>
+
+                {!customMode ? (
+                  /* Plages prédéfinies */
+                  <div>
+                    <Label className="mb-2 block text-sm font-medium">Plage horaire</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {DEFAULT_SLOTS.map((slot) => (
+                        <Button
+                          key={slot.label}
+                          type="button"
+                          size="sm"
+                          variant={
+                            selectedTimeRange?.start === slot.startTime &&
+                            selectedTimeRange?.end === slot.endTime
+                              ? "default"
+                              : "outline"
+                          }
+                          onClick={() => setSelectedTimeRange({ start: slot.startTime, end: slot.endTime })}
+                        >
+                          {slot.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  /* Créneau personnalisé */
+                  <div className="space-y-3">
+                    <Label className="block text-sm font-medium">Horaires précis</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">Début</Label>
+                        <Input
+                          type="time"
+                          value={customStartTime}
+                          onChange={(e) => setCustomStartTime(e.target.value)}
+                          className="text-center"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">Fin</Label>
+                        <Input
+                          type="time"
+                          value={customEndTime}
+                          onChange={(e) => setCustomEndTime(e.target.value)}
+                          className="text-center"
+                        />
+                      </div>
+                    </div>
+                    {customStartTime && customEndTime && !isCustomTimeValid && (
+                      <p className="text-xs text-destructive">
+                        L'heure de fin doit être après l'heure de début
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2">
+                  {!customMode ? (
+                    <Button
+                      type="button"
+                      onClick={addSlot}
+                      disabled={!selectedTimeRange}
+                      size="sm"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Ajouter
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={addCustomSlot}
+                      disabled={!isCustomTimeValid}
+                      size="sm"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Ajouter ce créneau
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => setShowSlotPicker(false)}
+                    onClick={() => {
+                      setShowSlotPicker(false);
+                      setCustomMode(false);
+                      setCustomStartTime('');
+                      setCustomEndTime('');
+                    }}
                   >
                     Annuler
                   </Button>
