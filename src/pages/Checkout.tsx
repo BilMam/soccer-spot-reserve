@@ -3,18 +3,19 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { usePromoValidation } from '@/hooks/usePromoValidation';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import PromoCodeInput from '@/components/checkout/PromoCodeInput';
 import { 
   Calendar, 
   Clock, 
   MapPin, 
   Star, 
   CreditCard, 
-  Smartphone,
   ArrowLeft,
   Loader2,
   AlertCircle
@@ -59,6 +60,15 @@ const Checkout = () => {
 
   const checkoutData = location.state as CheckoutState;
 
+  // Hook de validation promo
+  const {
+    appliedPromo,
+    validationError,
+    isValidating,
+    validateCode,
+    clearPromo
+  } = usePromoValidation();
+
   // Rediriger si pas de données de checkout
   React.useEffect(() => {
     if (!checkoutData) {
@@ -89,6 +99,38 @@ const Checkout = () => {
     }
   });
 
+  // ========== CALCULS DES MONTANTS ==========
+  // Montants de BASE (sans promo)
+  const publicBase = checkoutData?.subtotal || 0;
+  const serviceFeeBase = checkoutData?.serviceFee || 0;
+  const totalBase = checkoutData?.totalPrice || 0;
+
+  // Flag pour savoir si une promo valide est appliquée
+  const hasValidPromo = appliedPromo !== null;
+
+  // Montants APRÈS promo (si applicable)
+  const discountAmount = hasValidPromo ? appliedPromo.discountAmount : 0;
+  const publicAfter = publicBase - discountAmount;
+  const serviceFeeAfter = Math.ceil(publicAfter * 0.03);
+  const totalAfter = publicAfter + serviceFeeAfter;
+
+  // Montant final à envoyer à PayDunya
+  const paymentAmount = hasValidPromo ? totalAfter : totalBase;
+
+  // Fonction pour valider le code promo
+  const handleValidatePromo = (code: string) => {
+    if (!user || !id || !checkoutData) return;
+    
+    validateCode(
+      code,
+      id,
+      new Date(checkoutData.selectedDate),
+      checkoutData.selectedStartTime,
+      user.id,
+      publicBase
+    );
+  };
+
   const createBookingMutation = useMutation({
     mutationFn: async () => {
       if (!user) {
@@ -105,7 +147,7 @@ const Checkout = () => {
       const durationMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
 
       // Prix PUBLIC (déjà calculé dans checkoutData.subtotal)
-      const publicPriceTotal = checkoutData.subtotal;
+      const publicPriceTotal = publicBase;
       
       // Calculer le montant net propriétaire
       const getNetPriceForOwner = (durationMin: number): number => {
@@ -125,9 +167,6 @@ const Checkout = () => {
       const netPriceOwner = getNetPriceForOwner(durationMinutes);
       const platformCommission = publicPriceTotal - netPriceOwner;
 
-      // Le total envoyé à PayDunya inclut les frais opérateurs
-      const finalTotalWithOperatorFees = checkoutData.totalPrice;
-
       // Créer la réservation
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
@@ -145,6 +184,12 @@ const Checkout = () => {
           platform_fee_owner: platformCommission,  // Commission plateforme (TOUTE la différence)
           owner_amount: netPriceOwner,  // Montant net EXACT garanti au propriétaire
           
+          // Champs promo (uniquement si promo valide)
+          promo_code_id: hasValidPromo ? appliedPromo.promoId : null,
+          public_before_discount: hasValidPromo ? publicBase : null,
+          discount_amount: hasValidPromo ? discountAmount : 0,
+          public_after_discount: hasValidPromo ? publicAfter : null,
+          
           status: 'pending',
           payment_status: 'pending',
           currency: 'XOF',
@@ -161,10 +206,10 @@ const Checkout = () => {
       const returnUrl = buildUrl('/mes-reservations');
       const cancelUrl = buildUrl('/mes-reservations');
 
-      // Créer le paiement PayDunya avec le montant TOTAL (incluant frais opérateurs)
+      // Créer le paiement PayDunya avec le montant FINAL (paymentAmount)
       const paymentRequestData = {
         booking_id: booking.id,
-        amount: finalTotalWithOperatorFees,  // Montant final avec frais opérateurs
+        amount: paymentAmount,  // Montant final (avec ou sans promo)
         field_name: field.name,
         date: checkoutData.selectedDate.toLocaleDateString('fr-FR'),
         time: `${checkoutData.selectedStartTime} - ${checkoutData.selectedEndTime}`,
@@ -369,21 +414,50 @@ const Checkout = () => {
                   </div>
                 </div>
 
-                 {/* Calcul prix */}
-                 <div className="space-y-3 py-4">
-                   <div className="flex justify-between text-sm">
-                     <span>Location terrain</span>
-                     <span>{formatXOF(checkoutData.subtotal)}</span>
-                   </div>
-                   <div className="flex justify-between text-sm text-muted-foreground">
-                     <span>Frais opérateurs (3%) – paiement sécurisé</span>
-                     <span>{formatXOF(checkoutData.serviceFee)}</span>
-                   </div>
-                   <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                     <span>Total à payer</span>
-                     <span className="text-primary">{formatXOF(checkoutData.totalPrice)}</span>
-                   </div>
-                 </div>
+                {/* Section code promo */}
+                <div className="py-4 border-b border-gray-200">
+                  <PromoCodeInput
+                    appliedPromo={appliedPromo}
+                    validationError={validationError}
+                    isValidating={isValidating}
+                    onValidate={handleValidatePromo}
+                    onClear={clearPromo}
+                  />
+                </div>
+
+                {/* Calcul prix */}
+                <div className="space-y-3 py-4">
+                  <div className="flex justify-between text-sm">
+                    <span>Location terrain</span>
+                    <span className={hasValidPromo ? 'line-through text-muted-foreground' : ''}>
+                      {formatXOF(publicBase)}
+                    </span>
+                  </div>
+
+                  {/* Ligne réduction (uniquement si promo valide) */}
+                  {hasValidPromo && (
+                    <>
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Réduction ({appliedPromo.name})</span>
+                        <span>-{formatXOF(discountAmount)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Sous-total après réduction</span>
+                        <span>{formatXOF(publicAfter)}</span>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Frais opérateurs (3%) – paiement sécurisé</span>
+                    <span>{formatXOF(hasValidPromo ? serviceFeeAfter : serviceFeeBase)}</span>
+                  </div>
+                  
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                    <span>Total à payer</span>
+                    <span className="text-primary">{formatXOF(paymentAmount)}</span>
+                  </div>
+                </div>
 
                 {/* Bouton paiement */}
                 <Button
@@ -399,7 +473,7 @@ const Checkout = () => {
                         : 'Redirection vers PayDunya...'}
                     </>
                   ) : (
-                    `Payer ${formatXOF(checkoutData.totalPrice)}`
+                    `Payer ${formatXOF(paymentAmount)}`
                   )}
                 </Button>
               </CardContent>
