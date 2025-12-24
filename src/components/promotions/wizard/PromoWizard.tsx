@@ -18,6 +18,10 @@ interface Field {
   id: string;
   name: string;
   location?: string;
+  net_price_1h?: number | null;
+  net_price_1h30?: number | null;
+  net_price_2h?: number | null;
+  price_per_hour?: number;
 }
 
 interface PromoWizardProps {
@@ -108,6 +112,9 @@ const PromoWizard: React.FC<PromoWizardProps> = ({
               discountValue={wizardData.discountValue}
               onDiscountTypeChange={(type) => onUpdateData({ discountType: type })}
               onDiscountValueChange={(value) => onUpdateData({ discountValue: value })}
+              fields={fields}
+              selectedFieldIds={wizardData.selectedFieldIds}
+              allFields={wizardData.allFields}
             />
           )}
           {step === 3 && (

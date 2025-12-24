@@ -3,12 +3,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { Percent, Banknote } from 'lucide-react';
+import PromoPreview from './PromoPreview';
+
+interface FieldWithPricing {
+  id: string;
+  name: string;
+  net_price_1h?: number | null;
+  net_price_1h30?: number | null;
+  net_price_2h?: number | null;
+  price_per_hour?: number;
+}
 
 interface StepValueProps {
   discountType: 'percent' | 'fixed';
   discountValue: number;
   onDiscountTypeChange: (type: 'percent' | 'fixed') => void;
   onDiscountValueChange: (value: number) => void;
+  // Props pour l'aperçu
+  fields?: FieldWithPricing[];
+  selectedFieldIds?: string[];
+  allFields?: boolean;
 }
 
 const QUICK_PERCENTS = [10, 15, 20, 25];
@@ -18,7 +32,10 @@ const StepValue: React.FC<StepValueProps> = ({
   discountType,
   discountValue,
   onDiscountTypeChange,
-  onDiscountValueChange
+  onDiscountValueChange,
+  fields = [],
+  selectedFieldIds = [],
+  allFields = true
 }) => {
   return (
     <div className="space-y-6">
@@ -107,6 +124,17 @@ const StepValue: React.FC<StepValueProps> = ({
             : `Les clients économiseront ${discountValue.toLocaleString()} XOF`}
         </p>
       </div>
+
+      {/* Aperçu des montants */}
+      {fields.length > 0 && (
+        <PromoPreview
+          fields={fields}
+          selectedFieldIds={selectedFieldIds}
+          allFields={allFields}
+          discountType={discountType}
+          discountValue={discountValue}
+        />
+      )}
     </div>
   );
 };
