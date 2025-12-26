@@ -10,9 +10,9 @@ export interface ActivePromo {
   isAutomatic: boolean;
   startDate: string;
   endDate: string | null;
-  minBookingAmount: number;
+  minBookingAmount?: number;
   // Créneaux ciblés (si applicable)
-  timeSlots: Array<{
+  timeSlots?: Array<{
     dayOfWeek: number | null;
     startTime: string;
     endTime: string;
@@ -128,10 +128,14 @@ export function useActivePromosForField(fieldId: string | undefined) {
 /**
  * Hook pour récupérer les promos actives pour plusieurs terrains (batch)
  */
+/**
+ * Hook pour récupérer TOUTES les promos actives pour plusieurs terrains (batch)
+ * Retourne un mapping terrain -> tableau de promos (pas seulement la meilleure)
+ */
 export function useActivePromosForFields(fieldIds: string[]) {
   return useQuery({
     queryKey: ['active-promos-fields', fieldIds],
-    queryFn: async (): Promise<Record<string, ActivePromo | null>> => {
+    queryFn: async (): Promise<Record<string, ActivePromo[]>> => {
       if (!fieldIds || fieldIds.length === 0) return {};
 
       const today = new Date().toISOString().split('T')[0];
@@ -143,7 +147,8 @@ export function useActivePromosForFields(fieldIds: string[]) {
         .in('field_id', fieldIds);
 
       if (pfError || !promoFields || promoFields.length === 0) {
-        return {};
+        // Initialiser avec des tableaux vides
+        return fieldIds.reduce((acc, id) => ({ ...acc, [id]: [] }), {} as Record<string, ActivePromo[]>);
       }
 
       const promoIds = [...new Set(promoFields.map(pf => pf.promo_code_id))];
@@ -175,7 +180,7 @@ export function useActivePromosForFields(fieldIds: string[]) {
         .or(`end_date.is.null,end_date.gte.${today}`);
 
       if (promoError || !promos) {
-        return {};
+        return fieldIds.reduce((acc, id) => ({ ...acc, [id]: [] }), {} as Record<string, ActivePromo[]>);
       }
 
       // Filtrer et mapper les promos valides
@@ -204,21 +209,25 @@ export function useActivePromosForFields(fieldIds: string[]) {
         };
       });
 
-      // Créer le mapping terrain -> meilleure promo
-      const result: Record<string, ActivePromo | null> = {};
+      // Créer le mapping terrain -> TOUTES les promos (pas seulement la meilleure)
+      const result: Record<string, ActivePromo[]> = {};
       fieldIds.forEach(fid => {
-        result[fid] = null;
+        result[fid] = [];
       });
 
       promoFields.forEach(pf => {
         const promo = promosById[pf.promo_code_id];
         if (promo) {
-          const existing = result[pf.field_id];
-          // Garder la promo avec la plus grande réduction
-          if (!existing || promo.discountValue > existing.discountValue) {
-            result[pf.field_id] = promo;
+          // Éviter les doublons
+          if (!result[pf.field_id].find(p => p.id === promo.id)) {
+            result[pf.field_id].push(promo);
           }
         }
+      });
+
+      // Trier par valeur de réduction décroissante
+      Object.keys(result).forEach(fieldId => {
+        result[fieldId].sort((a, b) => b.discountValue - a.discountValue);
       });
 
       return result;
