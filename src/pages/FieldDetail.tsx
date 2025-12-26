@@ -16,6 +16,8 @@ import { format } from 'date-fns';
 import { getDefaultSportImage } from '@/utils/defaultImages';
 import { getFieldTypeLabel } from '@/utils/fieldUtils';
 import { buildUrl } from '@/lib/urls';
+import { useActivePromosForField } from '@/hooks/useActivePromosForField';
+import PromoInfoChip from '@/components/promotions/PromoInfoChip';
 
 interface Field {
   id: string;
@@ -78,6 +80,9 @@ const FieldDetail = () => {
       return data as Field;
     }
   });
+
+  // Récupérer les promos actives pour ce terrain
+  const { data: activePromos } = useActivePromosForField(id);
 
 
   const getAmenityIcon = (amenity: string) => {
@@ -257,7 +262,7 @@ const FieldDetail = () => {
                   <span>{field.address}, {field.city}</span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="flex items-center space-x-2">
                     <Users className="w-5 h-5 text-gray-500" />
                     <span className="text-gray-700">{field.capacity} joueurs max</span>
@@ -269,6 +274,13 @@ const FieldDetail = () => {
                     </span>
                   </div>
                 </div>
+
+                {/* Chip promo discret */}
+                {activePromos && activePromos.length > 0 && (
+                  <div className="mb-6">
+                    <PromoInfoChip promos={activePromos} />
+                  </div>
+                )}
 
                 {field.description && (
                   <div className="mb-6">

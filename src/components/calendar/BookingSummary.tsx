@@ -1,8 +1,11 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
-import { calculateDuration } from '@/utils/timeUtils';
+
+interface PromoInfo {
+  discountLabel: string;
+  savings: number;
+}
 
 interface BookingSummaryProps {
   selectedStartTime: string;
@@ -16,6 +19,8 @@ interface BookingSummaryProps {
   durationMinutes: number;
   rangeIsAvailable: boolean;
   durationDisplay: string;
+  promo?: PromoInfo | null;
+  originalSubtotal?: number;
 }
 
 const BookingSummary: React.FC<BookingSummaryProps> = ({
@@ -29,7 +34,9 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
   price2h,
   durationMinutes,
   rangeIsAvailable,
-  durationDisplay
+  durationDisplay,
+  promo,
+  originalSubtotal
 }) => {
   if (!selectedStartTime || !selectedEndTime) return null;
 
@@ -41,7 +48,6 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
     } else if (durationMinutes === 120 && price2h) {
       return `${subtotal.toLocaleString()} XOF/2h`;
     } else {
-      // Pour les durées personnalisées, afficher le prix horaire de base
       return `${fieldPrice.toLocaleString()} XOF/h`;
     }
   };
@@ -64,12 +70,38 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
               {getPriceLabel()}
             </span>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Sous-total :</span>
-            <span className="text-sm">
-              {subtotal.toLocaleString()} XOF
-            </span>
-          </div>
+          
+          {/* Affichage avec promo */}
+          {promo && originalSubtotal ? (
+            <>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Sous-total :</span>
+                <span className="text-sm line-through text-muted-foreground">
+                  {originalSubtotal.toLocaleString()} XOF
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-orange-600">
+                  Réduction ({promo.discountLabel}) :
+                </span>
+                <span className="text-sm text-orange-600 font-medium">
+                  -{promo.savings.toLocaleString()} XOF
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Avec promo :</span>
+                <span className="text-sm font-bold text-green-600">
+                  {subtotal.toLocaleString()} XOF
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Sous-total :</span>
+              <span className="text-sm">{subtotal.toLocaleString()} XOF</span>
+            </div>
+          )}
+          
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">
               Frais opérateurs (3%) – paiement sécurisé :

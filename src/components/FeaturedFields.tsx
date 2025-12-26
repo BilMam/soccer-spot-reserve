@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -7,6 +6,7 @@ import FieldCard from './FieldCard';
 import { getDefaultSportImage } from '@/utils/defaultImages';
 import { getFieldTypeLabel } from '@/utils/fieldUtils';
 import { calculatePublicPrice } from '@/utils/publicPricing';
+import { useActivePromosForFields } from '@/hooks/useActivePromosForField';
 
 interface DatabaseField {
   id: string;
@@ -56,6 +56,9 @@ const FeaturedFields = () => {
     }
   });
 
+  // Récupérer les promos actives pour tous les terrains affichés
+  const fieldIds = fields?.map(f => f.id) || [];
+  const { data: promosMap } = useActivePromosForFields(fieldIds);
 
   // Transform database fields to FieldCard format
   const transformedFields = fields?.map((field: DatabaseField) => {
@@ -63,6 +66,9 @@ const FeaturedFields = () => {
     const publicPrice = field.public_price_1h 
       ?? (field.net_price_1h ? calculatePublicPrice(field.net_price_1h) : null)
       ?? (field.price_per_hour ? calculatePublicPrice(field.price_per_hour) : null);
+    
+    // Récupérer la promo pour ce terrain (si existe)
+    const promo = promosMap?.[field.id];
     
     return {
       id: field.id,
@@ -74,7 +80,13 @@ const FeaturedFields = () => {
       image: field.images?.[0] || getDefaultSportImage(field.sport_type),
       features: field.amenities || [],
       capacity: field.capacity,
-      type: getFieldTypeLabel(field.field_type)
+      type: getFieldTypeLabel(field.field_type),
+      sport_type: field.sport_type,
+      promo: promo ? {
+        discountType: promo.discountType,
+        discountValue: promo.discountValue,
+        endDate: promo.endDate
+      } : null
     };
   }) || [];
 
@@ -122,7 +134,7 @@ const FeaturedFields = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {transformedFields.map((field) => (
-            <FieldCard key={field.id} field={field} />
+            <FieldCard key={field.id} field={field} promo={field.promo} />
           ))}
         </div>
 

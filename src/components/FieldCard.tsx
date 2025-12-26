@@ -1,10 +1,16 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, MapPin, Users, Wifi, Car, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getSportIcon, getSportLabel } from '@/utils/sportUtils';
+import PromoBadge from './promotions/PromoBadge';
+
+interface FieldPromo {
+  discountType: 'percent' | 'fixed';
+  discountValue: number;
+  endDate?: string | null;
+}
 
 interface Field {
   id: string;
@@ -22,9 +28,10 @@ interface Field {
 
 interface FieldCardProps {
   field: Field;
+  promo?: FieldPromo | null;
 }
 
-const FieldCard: React.FC<FieldCardProps> = ({ field }) => {
+const FieldCard: React.FC<FieldCardProps> = ({ field, promo }) => {
   const navigate = useNavigate();
 
   const getFeatureIcon = (feature: string) => {
@@ -45,6 +52,13 @@ const FieldCard: React.FC<FieldCardProps> = ({ field }) => {
   const handleClick = () => {
     navigate(`/field/${field.id}`);
   };
+
+  // Calculer le prix avec promo si applicable
+  const displayPrice = promo 
+    ? promo.discountType === 'percent'
+      ? Math.round(field.price * (1 - promo.discountValue / 100))
+      : Math.max(0, field.price - promo.discountValue)
+    : field.price;
 
   return (
     <Card 
@@ -68,9 +82,20 @@ const FieldCard: React.FC<FieldCardProps> = ({ field }) => {
             {field.type}
           </Badge>
         </div>
-        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center space-x-1">
-          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-          <span className="text-xs font-medium">{field.rating}</span>
+        <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
+          <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center space-x-1">
+            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+            <span className="text-xs font-medium">{field.rating}</span>
+          </div>
+          {/* Badge promo discret */}
+          {promo && (
+            <PromoBadge 
+              discountType={promo.discountType}
+              discountValue={promo.discountValue}
+              endDate={promo.endDate}
+              size="sm"
+            />
+          )}
         </div>
       </div>
       
@@ -106,8 +131,21 @@ const FieldCard: React.FC<FieldCardProps> = ({ field }) => {
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t">
-            <div>
-              <span className="text-xl font-bold text-gray-900">{field.price.toLocaleString()} XOF</span>
+            <div className="flex items-center gap-2">
+              {promo ? (
+                <>
+                  <span className="text-sm text-muted-foreground line-through">
+                    {field.price.toLocaleString()} XOF
+                  </span>
+                  <span className="text-xl font-bold text-green-600">
+                    {displayPrice.toLocaleString()} XOF
+                  </span>
+                </>
+              ) : (
+                <span className="text-xl font-bold text-gray-900">
+                  {field.price.toLocaleString()} XOF
+                </span>
+              )}
               <span className="text-gray-500 text-sm">/heure</span>
             </div>
           </div>
