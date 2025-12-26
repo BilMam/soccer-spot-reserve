@@ -1,154 +1,183 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Star, MapPin, Users, Wifi, Car, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getSportIcon, getSportLabel } from '@/utils/sportUtils';
-import PromoBadge from './promotions/PromoBadge';
+import { Star, MapPin, Users, MessageCircle, Wifi, Car, Droplets, Sun, Wind, Shield, Home, Zap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { formatXOF } from '@/utils/publicPricing';
 
-interface FieldPromo {
+export interface FieldPromo {
   discountType: 'percent' | 'fixed';
   discountValue: number;
   endDate?: string | null;
+  isAutomatic?: boolean;
 }
 
-interface Field {
+export interface Field {
   id: string;
   name: string;
   location: string;
-  price: number;
+  price: number; // Prix public
   rating: number;
   reviews: number;
   image: string;
   features: string[];
   capacity: number;
   type: string;
-  sport_type?: string;
+  sportType?: string;
 }
 
 interface FieldCardProps {
   field: Field;
-  promo?: FieldPromo | null;
+  promos?: FieldPromo[];
 }
 
-const FieldCard: React.FC<FieldCardProps> = ({ field, promo }) => {
+const FieldCard: React.FC<FieldCardProps> = ({ field, promos = [] }) => {
   const navigate = useNavigate();
-
+  
   const getFeatureIcon = (feature: string) => {
-    switch (feature.toLowerCase()) {
-      case 'wifi':
-        return <Wifi className="w-3 h-3" />;
-      case 'parking':
-      case 'parking gratuit':
-        return <Car className="w-3 h-3" />;
-      case 'vestiaires':
-      case 'douches':
-        return <Clock className="w-3 h-3" />;
-      default:
-        return null;
-    }
+    const iconMap: Record<string, React.ReactNode> = {
+      'Éclairage': <Sun className="w-3 h-3" />,
+      'Parking': <Car className="w-3 h-3" />,
+      'Vestiaires': <Home className="w-3 h-3" />,
+      'Douches': <Droplets className="w-3 h-3" />,
+      'Wifi': <Wifi className="w-3 h-3" />,
+      'Sécurité': <Shield className="w-3 h-3" />,
+      'Climatisation': <Wind className="w-3 h-3" />,
+    };
+    return iconMap[feature] || null;
   };
 
   const handleClick = () => {
     navigate(`/field/${field.id}`);
   };
 
-  // Calculer le prix avec promo si applicable
-  const displayPrice = promo 
-    ? promo.discountType === 'percent'
-      ? Math.round(field.price * (1 - promo.discountValue / 100))
-      : Math.max(0, field.price - promo.discountValue)
-    : field.price;
+  // Calcul du prix avec la meilleure promo
+  const bestPromo = promos.length > 0 ? promos[0] : null; // Déjà trié par valeur
+  
+  let displayPrice = field.price;
+  if (bestPromo) {
+    if (bestPromo.discountType === 'percent') {
+      displayPrice = Math.round(field.price * (1 - bestPromo.discountValue / 100));
+    } else {
+      displayPrice = Math.max(0, field.price - bestPromo.discountValue);
+    }
+  }
+
+  // Limiter à 2 badges + compteur si plus
+  const displayPromos = promos.slice(0, 2);
+  const extraPromosCount = promos.length - 2;
 
   return (
     <Card 
-      id={`field-${field.id}`}
-      className="group cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 shadow-md"
+      className="overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-300 group"
       onClick={handleClick}
     >
-      <div className="relative overflow-hidden rounded-t-lg">
+      <div className="relative h-48 overflow-hidden">
         <img
-          src={field.image}
+          src={field.image || '/placeholder.svg'}
           alt={field.name}
-          className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
-        <div className="absolute top-3 left-3 flex gap-2">
-          {field.sport_type && (
-            <Badge className="bg-green-600 hover:bg-green-700">
-              {getSportIcon(field.sport_type)} {getSportLabel(field.sport_type)}
-            </Badge>
-          )}
-          <Badge className="bg-green-600 hover:bg-green-700 text-white">
-            {field.type}
+        
+        {/* Badge type de terrain */}
+        <Badge 
+          variant="secondary" 
+          className="absolute top-3 left-3 bg-background/90 backdrop-blur-sm"
+        >
+          {field.type}
+        </Badge>
+        
+        {/* Rating + Promo badges (droite) */}
+        <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5">
+          {/* Rating */}
+          <Badge variant="secondary" className="bg-background/90 backdrop-blur-sm">
+            <Star className="w-3 h-3 mr-1 fill-yellow-400 text-yellow-400" />
+            {field.rating.toFixed(1)}
           </Badge>
-        </div>
-        <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
-          <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center space-x-1">
-            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-            <span className="text-xs font-medium">{field.rating}</span>
-          </div>
-          {/* Badge promo discret */}
-          {promo && (
-            <PromoBadge 
-              discountType={promo.discountType}
-              discountValue={promo.discountValue}
-              endDate={promo.endDate}
-              size="sm"
-            />
+          
+          {/* Promo badges */}
+          {displayPromos.map((promo, index) => (
+            <Badge 
+              key={index}
+              className={`text-xs ${
+                promo.isAutomatic 
+                  ? 'bg-purple-500/90 hover:bg-purple-500/90' 
+                  : 'bg-orange-500/90 hover:bg-orange-500/90'
+              } backdrop-blur-sm text-white`}
+            >
+              {promo.isAutomatic && <Zap className="w-3 h-3 mr-0.5" />}
+              {promo.discountType === 'percent' 
+                ? `-${promo.discountValue}%` 
+                : `-${formatXOF(promo.discountValue)}`
+              }
+            </Badge>
+          ))}
+          
+          {/* Badge compteur si plus de 2 promos */}
+          {extraPromosCount > 0 && (
+            <Badge 
+              variant="outline" 
+              className="text-xs bg-background/90 backdrop-blur-sm border-primary text-primary"
+            >
+              +{extraPromosCount}
+            </Badge>
           )}
         </div>
       </div>
       
       <CardContent className="p-4">
-        <div className="space-y-3">
-          <div>
-            <h3 className="font-semibold text-lg text-gray-900 group-hover:text-green-600 transition-colors">
-              {field.name}
-            </h3>
-            <div className="flex items-center text-gray-500 text-sm mt-1">
-              <MapPin className="w-3 h-3 mr-1" />
-              {field.location}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-1 text-gray-600 text-sm">
-              <Users className="w-4 h-4" />
-              <span>{field.capacity} participants max</span>
-            </div>
-            <div className="text-sm text-gray-500">
-              {field.reviews} avis
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
+        <h3 className="font-semibold text-lg mb-1 line-clamp-1">{field.name}</h3>
+        
+        <div className="flex items-center text-muted-foreground text-sm mb-2">
+          <MapPin className="w-4 h-4 mr-1" />
+          <span className="line-clamp-1">{field.location}</span>
+        </div>
+        
+        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+          <span className="flex items-center">
+            <Users className="w-4 h-4 mr-1" />
+            {field.capacity} joueurs
+          </span>
+          <span className="flex items-center">
+            <MessageCircle className="w-4 h-4 mr-1" />
+            {field.reviews} avis
+          </span>
+        </div>
+        
+        {field.features.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3">
             {field.features.slice(0, 3).map((feature, index) => (
-              <div key={index} className="flex items-center space-x-1 text-xs text-gray-600 bg-gray-100 rounded-full px-2 py-1">
+              <Badge key={index} variant="outline" className="text-xs">
                 {getFeatureIcon(feature)}
-                <span>{feature}</span>
-              </div>
+                <span className="ml-1">{feature}</span>
+              </Badge>
             ))}
+            {field.features.length > 3 && (
+              <Badge variant="outline" className="text-xs">
+                +{field.features.length - 3}
+              </Badge>
+            )}
           </div>
-
-          <div className="flex items-center justify-between pt-2 border-t">
-            <div className="flex items-center gap-2">
-              {promo ? (
-                <>
-                  <span className="text-sm text-muted-foreground line-through">
-                    {field.price.toLocaleString()} XOF
-                  </span>
-                  <span className="text-xl font-bold text-green-600">
-                    {displayPrice.toLocaleString()} XOF
-                  </span>
-                </>
-              ) : (
-                <span className="text-xl font-bold text-gray-900">
-                  {field.price.toLocaleString()} XOF
+        )}
+        
+        <div className="flex items-center justify-between pt-2 border-t">
+          <div className="flex items-baseline gap-2">
+            {bestPromo ? (
+              <>
+                <span className="text-sm text-muted-foreground line-through">
+                  {formatXOF(field.price)}
                 </span>
-              )}
-              <span className="text-gray-500 text-sm">/heure</span>
-            </div>
+                <span className="text-lg font-bold text-green-600">
+                  {formatXOF(displayPrice)}
+                </span>
+              </>
+            ) : (
+              <span className="text-lg font-bold text-primary">
+                {formatXOF(field.price)}
+              </span>
+            )}
           </div>
+          <span className="text-sm text-muted-foreground">/heure</span>
         </div>
       </CardContent>
     </Card>

@@ -67,8 +67,8 @@ const FeaturedFields = () => {
       ?? (field.net_price_1h ? calculatePublicPrice(field.net_price_1h) : null)
       ?? (field.price_per_hour ? calculatePublicPrice(field.price_per_hour) : null);
     
-    // Récupérer la promo pour ce terrain (si existe)
-    const promo = promosMap?.[field.id];
+    // Récupérer les promos pour ce terrain (tableau)
+    const fieldPromos = promosMap?.[field.id] || [];
     
     return {
       id: field.id,
@@ -82,11 +82,12 @@ const FeaturedFields = () => {
       capacity: field.capacity,
       type: getFieldTypeLabel(field.field_type),
       sport_type: field.sport_type,
-      promo: promo ? {
-        discountType: promo.discountType,
-        discountValue: promo.discountValue,
-        endDate: promo.endDate
-      } : null
+      promos: fieldPromos.map(p => ({
+        discountType: p.discountType,
+        discountValue: p.discountValue,
+        endDate: p.endDate,
+        isAutomatic: p.isAutomatic
+      }))
     };
   }) || [];
 
@@ -134,7 +135,7 @@ const FeaturedFields = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {transformedFields.map((field) => (
-            <FieldCard key={field.id} field={field} promo={field.promo} />
+            <FieldCard key={field.id} field={field} promos={field.promos} />
           ))}
         </div>
 
