@@ -81,8 +81,7 @@ const FieldCard: React.FC<FieldCardProps> = ({ field, promos = [] }) => {
         
         {/* Badge type de terrain */}
         <Badge 
-          variant="secondary" 
-          className="absolute top-3 left-3 bg-background/90 backdrop-blur-sm"
+          className="absolute top-3 left-3 bg-green-500 hover:bg-green-500 text-white"
         >
           {field.type}
         </Badge>
