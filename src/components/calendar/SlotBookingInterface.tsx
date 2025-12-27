@@ -14,6 +14,8 @@ import { CagnotteConfigDialog } from './CagnotteConfigDialog';
 import { useBookingData } from '@/hooks/useBookingData';
 import { useRecurringSlots } from '@/hooks/useRecurringSlots';
 import { useAvailableTimesForDate } from '@/hooks/useAvailableTimesForDate';
+import { useActivePromosForField } from '@/hooks/useActivePromosForField';
+import { usePromoForSlot } from '@/hooks/usePromoForSlot';
 import { Button } from '@/components/ui/button';
 import { Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -71,7 +73,10 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   
   // Récupérer les créneaux récurrents
   const { recurringSlots = [] } = useRecurringSlots(fieldId);
-  
+
+  // Récupérer les promos actives pour ce terrain
+  const { data: activePromos } = useActivePromosForField(fieldId);
+
   // Convertir les données du hook au format attendu
   const bookedSlots = Array.from(bookedSlotsByDate[dateStr] || []);
   const bookings = bookingsByDate[dateStr] || [];
@@ -119,13 +124,24 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   const priceCalculator = new SlotPriceCalculator(pricing);
 
   const rangeIsAvailable = validator.isRangeAvailable(selectedStartTime, selectedEndTime);
-  
-  // Calculer le prix PUBLIC (déjà avec commission 3%)
-  const publicPrice = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
-  
-  // Calculer les frais opérateurs (3% du prix public)
+
+  // Calculer le prix PUBLIC initial (sans promo)
+  const publicPriceBeforePromo = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
+
+  // Vérifier si une promo automatique s'applique au créneau sélectionné
+  const promoResult = usePromoForSlot(
+    activePromos,
+    selectedDate,
+    selectedStartTime,
+    publicPriceBeforePromo
+  );
+
+  // Prix après application de la promo (si applicable)
+  const publicPrice = promoResult.isEligible ? promoResult.discountedPrice : publicPriceBeforePromo;
+
+  // Calculer les frais opérateurs (3% du prix public après promo)
   const operatorFee = Math.ceil(publicPrice * 0.03);
-  
+
   // Calculer le total final (prix public + frais opérateurs)
   const finalTotal = publicPrice + operatorFee;
   
@@ -220,6 +236,11 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               durationMinutes={durationMinutes}
               rangeIsAvailable={rangeIsAvailable}
               durationDisplay={durationDisplay}
+              promo={promoResult.isEligible ? {
+                discountLabel: promoResult.discountLabel,
+                savings: promoResult.savings
+              } : null}
+              originalSubtotal={promoResult.isEligible ? publicPriceBeforePromo : undefined}
             />
 
             <SlotBookingActions
@@ -239,6 +260,8 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               price2h={
                 pricing.public_price_2h ?? (pricing.price_2h ? calculatePublicPrice(pricing.price_2h) : undefined)
               }
+              promoDiscount={promoResult.isEligible ? promoResult.savings : 0}
+              promoId={promoResult.isEligible ? promoResult.promo?.id : undefined}
               onTimeSlotSelect={onTimeSlotSelect}
             />
 
