@@ -65,7 +65,7 @@ serve(async (req) => {
 
     let migrated_count = 0;
     let error_count = 0;
-    const migration_details = [];
+    const migration_details: Array<{ owner_id: string; user_id: string; phone: string; status: string; error_message?: string }> = [];
 
     // Process each legacy owner
     for (const owner of legacyOwners) {
@@ -73,7 +73,7 @@ serve(async (req) => {
         console.log(`[${timestamp}] Migrating owner: ${owner.id} (user: ${owner.user_id})`);
 
         // Get profile information
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('full_name, email')
           .eq('id', owner.user_id)
@@ -143,7 +143,7 @@ serve(async (req) => {
           user_id: owner.user_id,
           phone: owner.phone,
           status: 'error',
-          error_message: error.message
+          error_message: error instanceof Error ? error.message : String(error)
         });
 
         console.error(`[${timestamp}] Failed to migrate owner ${owner.id}:`, error);
@@ -174,7 +174,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        message: error.message,
+        message: error instanceof Error ? error.message : String(error),
         timestamp 
       }),
       { 

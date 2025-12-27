@@ -77,7 +77,7 @@ const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs = 1
     return response;
   } catch (error) {
     clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
+    if (error instanceof Error && error.name === 'AbortError') {
       throw new Error(`Request timeout after ${timeoutMs}ms`);
     }
     throw error;
@@ -175,11 +175,6 @@ serve(async (req) => {
     }
 
     // Check if normalized phone number is already used by another application
-    const { data: existingPhone } = await supabase
-      .from('owner_applications')
-      .select('id, user_id, phone')
-      .maybeSingle();
-
     // Since we can't use SQL functions easily, we'll fetch all applications and check in code
     const { data: allApplications } = await supabase
       .from('owner_applications')
@@ -286,20 +281,21 @@ serve(async (req) => {
     let errorCode = 'UNKNOWN_ERROR';
     let retryable = false;
     let status = 500;
+    const errorMessage = error instanceof Error ? error.message : String(error);
     
-    if (error.message.includes('CinetPay contact creation failed')) {
+    if (errorMessage.includes('CinetPay contact creation failed')) {
       errorCode = 'CINETPAY_ERROR';
       retryable = true;
       status = 503; // Service Unavailable
-    } else if (error.message.includes('already exists') || error.message.includes('APPLICATION_EXISTS')) {
+    } else if (errorMessage.includes('already exists') || errorMessage.includes('APPLICATION_EXISTS')) {
       errorCode = 'DUPLICATE_APPLICATION';
       retryable = false;
       status = 409; // Conflict
-    } else if (error.message.includes('Schema migration required')) {
+    } else if (errorMessage.includes('Schema migration required')) {
       errorCode = 'SCHEMA_ERROR';
       retryable = false;
       status = 500;
-    } else if (error.message.includes('OTP must be validated')) {
+    } else if (errorMessage.includes('OTP must be validated')) {
       errorCode = 'OTP_NOT_VALIDATED';
       retryable = true;
       status = 400; // Bad Request
@@ -308,7 +304,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        message: error.message,
+        message: errorMessage,
         code: errorCode,
         retryable: retryable,
         timestamp 

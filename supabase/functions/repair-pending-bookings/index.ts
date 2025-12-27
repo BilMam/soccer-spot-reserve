@@ -40,7 +40,14 @@ serve(async (req) => {
 
     console.log(`[repair-pending-bookings] 📋 ${pendingBookings?.length || 0} réservations pending trouvées`);
 
-    const results = [];
+    const results: Array<{
+      booking_id: string;
+      status: string;
+      real_token?: string;
+      paydunya_status?: string;
+      response_code?: string;
+      error?: string;
+    }> = [];
 
     for (const booking of pendingBookings || []) {
       console.log(`[repair-pending-bookings] 🔧 Traitement booking ${booking.id}...`);
@@ -123,7 +130,7 @@ serve(async (req) => {
             results.push({
               booking_id: booking.id,
               status: 'api_error',
-              error: error.message
+              error: error instanceof Error ? error.message : String(error)
             });
           }
         } else {
@@ -201,7 +208,7 @@ serve(async (req) => {
         results.push({
           booking_id: booking.id,
           status: 'api_error',
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         });
       }
     }
@@ -226,7 +233,7 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         function: 'repair-pending-bookings'
       }),
       {

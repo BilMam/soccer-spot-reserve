@@ -116,10 +116,10 @@ serve(async (req) => {
 
     console.log(`[${timestamp}] [create-paydunya-invoice] Payment data:`, paymentData);
 
-    // Get booking from database
+    // Get booking from database - MODIFICATION 1: Récupérer les champs promo
     const { data: existingBooking, error: bookingFetchError } = await supabaseClient
       .from('bookings')
-      .select('field_id, user_id, field_price, booking_date, start_time, end_time')
+      .select('field_id, user_id, field_price, platform_fee_owner, owner_amount, promo_code_id, booking_date, start_time, end_time')
       .eq('id', booking_id)
       .maybeSingle();
 
@@ -192,58 +192,102 @@ serve(async (req) => {
     const publicPrice = Math.round(amountCheckout / 1.03);
     const operatorFee = amountCheckout - publicPrice;
     
-    // ========== CALCUL DU PRIX NET PROPRIÉTAIRE ==========
-    // Calculer la durée de réservation en minutes
-    const startTime = new Date(`1970-01-01T${existingBooking.start_time}`);
-    const endTime = new Date(`1970-01-01T${existingBooking.end_time}`);
-    const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
-    const durationHours = durationMinutes / 60;
-
-    // Déterminer le prix NET original selon la durée configurée par le propriétaire
+    // ========== MODIFICATION 2: LOGIQUE HYBRIDE : PROMO vs SANS PROMO ==========
     let netPriceOwner: number;
-    if (durationMinutes === 60) {
-      // Réservation de 1 heure
-      netPriceOwner = field.net_price_1h;
-    } else if (durationMinutes === 90) {
-      // Réservation de 1h30
-      netPriceOwner = field.net_price_1h30 || field.net_price_1h;
-    } else if (durationMinutes === 120) {
-      // Réservation de 2 heures
-      netPriceOwner = field.net_price_2h || field.net_price_1h;
-    } else {
-      // Fallback : durées personnalisées (proportionnel au prix 1h)
-      netPriceOwner = Math.floor(field.net_price_1h * durationHours);
-    }
+    let ownerAmount: number;
+    let platformFeeOwner: number;
 
-    if (!netPriceOwner || netPriceOwner <= 0) {
-      console.error(`[${timestamp}] [create-paydunya-invoice] Invalid net price:`, {
-        duration_minutes: durationMinutes,
-        field_name: field.name,
-        net_price_1h: field.net_price_1h
+    // Détecte si une promo est appliquée sur cette réservation
+    const hasPromo = !!existingBooking.promo_code_id;
+
+    if (hasPromo) {
+      // ✅ AVEC PROMO : Utiliser les valeurs déjà calculées dans la booking
+      // Ces valeurs ont été calculées côté frontend avec la logique owner-funded
+      console.log(`[${timestamp}] [create-paydunya-invoice] 🎉 Promo détectée - Utilisation des valeurs pré-calculées`);
+
+      ownerAmount = existingBooking.owner_amount || 0;
+      platformFeeOwner = existingBooking.platform_fee_owner || 0;
+      netPriceOwner = existingBooking.field_price || ownerAmount;
+
+      // Validation de cohérence : vérifier que les valeurs sont cohérentes
+      const expectedTotal = ownerAmount + platformFeeOwner;
+      const tolerance = 10; // Tolérance d'arrondi de 10 XOF
+
+      if (Math.abs(publicPrice - expectedTotal) > tolerance) {
+        console.warn(`[${timestamp}] [create-paydunya-invoice] ⚠️ Incohérence détectée:`, {
+          public_price: publicPrice,
+          owner_amount: ownerAmount,
+          platform_fee_owner: platformFeeOwner,
+          expected_total: expectedTotal,
+          difference: publicPrice - expectedTotal
+        });
+      }
+
+      console.log(`[${timestamp}] [create-paydunya-invoice] Promo amounts:`, {
+        promo_id: existingBooking.promo_code_id,
+        owner_amount: ownerAmount,
+        platform_fee_owner: platformFeeOwner,
+        net_price_owner: netPriceOwner,
+        public_price: publicPrice
       });
-      throw new Error('Prix net propriétaire invalide pour cette durée');
+
+    } else {
+      // ✅ SANS PROMO : Recalculer depuis la DB (logique initiale)
+      // Cette logique est conservée pour compatibilité avec les réservations existantes
+      console.log(`[${timestamp}] [create-paydunya-invoice] Pas de promo - Recalcul depuis la DB`);
+
+      // Calculer la durée de réservation en minutes
+      const startTime = new Date(`1970-01-01T${existingBooking.start_time}`);
+      const endTime = new Date(`1970-01-01T${existingBooking.end_time}`);
+      const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+      const durationHours = durationMinutes / 60;
+
+      // Déterminer le prix NET original selon la durée configurée par le propriétaire
+      if (durationMinutes === 60) {
+        // Réservation de 1 heure
+        netPriceOwner = field.net_price_1h;
+      } else if (durationMinutes === 90) {
+        // Réservation de 1h30
+        netPriceOwner = field.net_price_1h30 || field.net_price_1h;
+      } else if (durationMinutes === 120) {
+        // Réservation de 2 heures
+        netPriceOwner = field.net_price_2h || field.net_price_1h;
+      } else {
+        // Fallback : durées personnalisées (proportionnel au prix 1h)
+        netPriceOwner = Math.floor(field.net_price_1h * durationHours);
+      }
+
+      if (!netPriceOwner || netPriceOwner <= 0) {
+        console.error(`[${timestamp}] [create-paydunya-invoice] Invalid net price:`, {
+          duration_minutes: durationMinutes,
+          field_name: field.name,
+          net_price_1h: field.net_price_1h
+        });
+        throw new Error('Prix net propriétaire invalide pour cette durée');
+      }
+
+      console.log(`[${timestamp}] [create-paydunya-invoice] Duration & Net Price:`, {
+        duration_minutes: durationMinutes,
+        duration_hours: durationHours,
+        net_price_owner: netPriceOwner,
+        field_name: field.name
+      });
+
+      // Le propriétaire touche EXACTEMENT ce qu'il a configuré (arrondi plancher)
+      ownerAmount = Math.floor(netPriceOwner);
+
+      // La plateforme garde TOUTE la différence (pas de calcul de %)
+      // Avec l'arrondi commercial, cette différence peut être > 3%
+      platformFeeOwner = publicPrice - ownerAmount;
     }
-
-    console.log(`[${timestamp}] [create-paydunya-invoice] Duration & Net Price:`, {
-      duration_minutes: durationMinutes,
-      duration_hours: durationHours,
-      net_price_owner: netPriceOwner,
-      field_name: field.name
-    });
-    
-    // Le propriétaire touche EXACTEMENT ce qu'il a configuré (arrondi plancher)
-    const ownerAmount = Math.floor(netPriceOwner);
-
-    // La plateforme garde TOUTE la différence (pas de calcul de %)
-    // Avec l'arrondi commercial, cette différence peut être > 3%
-    const platformFeeOwner = publicPrice - ownerAmount;
 
     // Validation : la plateforme ne doit jamais perdre d'argent
     if (platformFeeOwner < 0) {
       console.error(`[${timestamp}] [create-paydunya-invoice] Negative platform fee:`, {
         public_price: publicPrice,
         owner_amount: ownerAmount,
-        platform_fee_owner: platformFeeOwner
+        platform_fee_owner: platformFeeOwner,
+        has_promo: hasPromo
       });
       throw new Error(
         `Erreur de calcul: Le prix public (${publicPrice} XOF) est inférieur au prix net propriétaire (${ownerAmount} XOF). ` +
@@ -267,15 +311,13 @@ serve(async (req) => {
       
       // Montant reversé au propriétaire (= prix NET)
       owner_amount: ownerAmount,
-      owner_receives_exact_net: ownerAmount === Math.floor(netPriceOwner),
       
       // Commission plateforme (TOUTE la différence)
       platform_fee_owner: platformFeeOwner,
       platform_commission_effective: ((platformFeeOwner / publicPrice) * 100).toFixed(2) + '%',
       
-      // Comparaison avec l'ancien système (3% du prix public)
-      old_system_platform_fee: Math.ceil(publicPrice * 0.03),
-      gain_vs_old_system: platformFeeOwner - Math.ceil(publicPrice * 0.03),
+      // Has promo
+      has_promo: hasPromo,
       
       // Vérifications
       total_check: publicPrice === (ownerAmount + platformFeeOwner),
@@ -311,18 +353,34 @@ serve(async (req) => {
       });
     }
 
-    // Update existing booking with payment info
+    // ========== MODIFICATION 3: Update conditionnel de la booking ==========
+    // Si une promo est appliquée, on ne met à jour QUE le statut
+    // Les montants ont déjà été calculés correctement côté frontend
+    const bookingUpdate = hasPromo ? {
+      // Avec promo : Ne mettre à jour QUE le statut de paiement
+      // Les valeurs field_price, platform_fee_owner, owner_amount sont déjà correctes
+      payment_status: 'pending',
+      payout_sent: false
+    } : {
+      // Sans promo : Mettre à jour tous les montants (logique initiale)
+      field_price: publicPrice,
+      platform_fee_user: operatorFee,
+      platform_fee_owner: platformFeeOwner,
+      owner_amount: ownerAmount,
+      total_price: amountCheckout,
+      payment_status: 'pending',
+      payout_sent: false
+    };
+
+    console.log(`[${timestamp}] [create-paydunya-invoice] Booking update strategy:`, {
+      has_promo: hasPromo,
+      will_update_amounts: !hasPromo,
+      update_fields: Object.keys(bookingUpdate)
+    });
+
     const { data: booking, error: bookingError } = await supabaseClient
       .from('bookings')
-      .update({
-        field_price: publicPrice,
-        platform_fee_user: operatorFee,
-        platform_fee_owner: platformFeeOwner,
-        owner_amount: ownerAmount,
-        total_price: amountCheckout,
-        payment_status: 'pending',
-        payout_sent: false
-      })
+      .update(bookingUpdate)
       .eq('id', booking_id)
       .select()
       .single();
@@ -499,7 +557,7 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         timestamp,
         function: 'create-paydunya-invoice'
       }),

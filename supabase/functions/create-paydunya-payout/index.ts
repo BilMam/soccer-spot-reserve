@@ -54,7 +54,7 @@ interface PayoutResponse {
 }
 
 // Helper function with timeout
-const fetchWithTimeout = async (url: string, options: any, timeoutMs = 15000): Promise<Response> => {
+const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs = 15000): Promise<Response> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   
@@ -64,7 +64,7 @@ const fetchWithTimeout = async (url: string, options: any, timeoutMs = 15000): P
     return response;
   } catch (error) {
     clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
+    if (error instanceof Error && error.name === 'AbortError') {
       throw new Error(`Request timeout after ${timeoutMs}ms`);
     }
     throw error;
@@ -116,7 +116,7 @@ serve(async (req) => {
           id,
           name,
           payout_account_id,
-          payout_accounts!inner (
+          payout_accounts (
             id,
             phone,
             is_active,
@@ -132,7 +132,9 @@ serve(async (req) => {
       throw new Error(`Booking not found or not paid: ${bookingError?.message}`);
     }
 
-    const payoutAccount = bookingData.fields.payout_accounts;
+    // Access payout_accounts from the nested fields object
+    const fieldsData = bookingData.fields as { id: string; name: string; payout_account_id: string; payout_accounts: { id: string; phone: string; is_active: boolean; owner_id: string } | null };
+    const payoutAccount = fieldsData?.payout_accounts;
     const ownerPhone = payoutAccount?.phone;
 
     if (!ownerPhone) {
@@ -187,7 +189,8 @@ serve(async (req) => {
           owner_id: payoutAccount.owner_id,
           amount: bookingData.owner_amount,
           amount_net: bookingData.owner_amount,
-          status: 'pending'
+          status: 'pending',
+          platform_fee_owner: 0
         })
         .select('id')
         .single();
@@ -201,8 +204,8 @@ serve(async (req) => {
     }
 
     // Step 4: Execute transfer via PayDunya Direct Pay v2 (same API as refunds)
-    let transferResult;
-    let transferId;
+    let transferResult: { success: boolean; response_code?: string; response_text?: string; transaction_id?: string; amount?: number };
+    let transferId: string | undefined;
 
     if (isTestMode) {
       // Simulate successful transfer
@@ -252,9 +255,9 @@ serve(async (req) => {
           {
             method: 'POST',
             headers: {
-              'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
-              'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey,
-              'PAYDUNYA-TOKEN': paydunyaToken,
+              'PAYDUNYA-MASTER-KEY': paydunyaMasterKey!,
+              'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey!,
+              'PAYDUNYA-TOKEN': paydunyaToken!,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(getInvoicePayload),
@@ -295,9 +298,9 @@ serve(async (req) => {
           {
             method: 'POST',
             headers: {
-              'PAYDUNYA-MASTER-KEY': paydunyaMasterKey,
-              'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey,
-              'PAYDUNYA-TOKEN': paydunyaToken,
+              'PAYDUNYA-MASTER-KEY': paydunyaMasterKey!,
+              'PAYDUNYA-PRIVATE-KEY': paydunyaPrivateKey!,
+              'PAYDUNYA-TOKEN': paydunyaToken!,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(submitPayload),
@@ -337,7 +340,6 @@ serve(async (req) => {
           response_code: respCode,
           response_text: disbursementData.response_text || `Payout ${payStatus}`,
           transaction_id: transferId,
-          status: payStatus,
           amount: bookingData.owner_amount
         };
 
@@ -346,7 +348,7 @@ serve(async (req) => {
         console.error(`[${timestamp}] PayDunya transfer failed:`, error);
         transferResult = {
           success: false,
-          response_text: error.message,
+          response_text: error instanceof Error ? error.message : String(error),
           response_code: 'ERROR'
         };
       }
@@ -406,7 +408,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        message: error.message,
+        message: error instanceof Error ? error.message : String(error),
         timestamp 
       }),
       { 

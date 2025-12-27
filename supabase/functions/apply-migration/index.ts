@@ -138,7 +138,7 @@ END;
     return new Response(
       JSON.stringify({ 
         success: false, 
-        message: error.message,
+        message: error instanceof Error ? error.message : String(error),
         timestamp 
       }),
       { 
