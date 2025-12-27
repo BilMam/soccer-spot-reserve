@@ -137,9 +137,9 @@ const FieldDetail = () => {
     const [endHour, endMin] = endTime.split(':').map(Number);
     const durationMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
 
-    // Prix PUBLIC (subtotal = déjà après promo si applicable)
-    const publicPriceAfterPromo = subtotal;
-    const publicPriceBeforePromo = discountAmount ? subtotal + discountAmount : subtotal;
+    // Prix PUBLIC
+    const publicPriceAfterPromo = subtotal; // Prix après promo (si applicable)
+    const publicPriceBeforePromo = discountAmount ? subtotal + discountAmount : subtotal; // Prix avant promo
 
     // Calculer le montant net propriétaire
     const getNetPriceForOwner = (durationMin: number): number => {
@@ -157,7 +157,10 @@ const FieldDetail = () => {
     };
 
     const netPriceOwner = getNetPriceForOwner(durationMinutes);
-    const platformCommission = publicPriceAfterPromo - netPriceOwner;
+
+    // ⚠️ IMPORTANT : Commission calculée sur prix AVANT promo
+    // Sinon la commission peut devenir négative si promo > commission initiale
+    const platformCommission = publicPriceBeforePromo - netPriceOwner;
 
     // Créer la réservation et initialiser le paiement
     createBookingMutation.mutate({
@@ -167,8 +170,8 @@ const FieldDetail = () => {
       bookingDate: date,
       startTime,
       endTime,
-      publicPrice: publicPriceAfterPromo,
-      publicPriceBeforePromo: discountAmount ? publicPriceBeforePromo : undefined,
+      publicPrice: publicPriceAfterPromo, // Prix final payé par le client (après promo si applicable)
+      publicPriceBeforePromo: publicPriceBeforePromo, // Prix de base (toujours passé pour calcul cohérent)
       promoId,
       discountAmount,
       netPriceOwner,

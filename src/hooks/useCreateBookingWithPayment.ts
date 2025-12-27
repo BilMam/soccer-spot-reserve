@@ -43,7 +43,10 @@ export function useCreateBookingWithPayment() {
 
       console.log('🔄 Creating booking with params:', params);
 
-      // Calculer les frais opérateurs (3% du prix public après promo)
+      // Montant de base pour la réservation (AVANT promo)
+      const basePrice = publicPriceBeforePromo || publicPrice;
+
+      // Calculer les frais opérateurs (3% du prix public APRÈS promo)
       const serviceFee = Math.ceil(publicPrice * 0.03);
       const totalWithFees = publicPrice + serviceFee;
 
@@ -58,15 +61,15 @@ export function useCreateBookingWithPayment() {
           end_time: endTime,
 
           // Nouveau modèle de prix
-          total_price: publicPrice, // Prix public (ce que voit le client AVANT frais opérateurs)
+          total_price: basePrice, // ⚠️ Prix public AVANT promo (pour cohérence modèle)
           field_price: netPriceOwner, // Prix net pour le propriétaire
           platform_fee_user: 0, // Pas de frais user séparés
-          platform_fee_owner: platformCommission, // Commission plateforme
+          platform_fee_owner: platformCommission, // Commission plateforme (calculée sur prix AVANT promo)
           owner_amount: netPriceOwner, // Montant net EXACT garanti au propriétaire
 
           // Champs promo (uniquement si promo valide)
           promo_code_id: promoId || null,
-          public_before_discount: publicPriceBeforePromo || null,
+          public_before_discount: promoId ? publicPriceBeforePromo : null,
           discount_amount: discountAmount,
           public_after_discount: promoId ? publicPrice : null,
 
