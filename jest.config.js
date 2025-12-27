@@ -24,5 +24,6 @@ export default {
   extensionsToTreatAsEsm: ['.ts', '.tsx'],
   transformIgnorePatterns: [
     'node_modules/(?!(.*\\.mjs$|@supabase))'
-  ]
+  ],
+  modulePathIgnorePatterns: ['<rootDir>/soccer-spot-reserve']
 };
