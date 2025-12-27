@@ -17,6 +17,7 @@ import { getFieldTypeLabel } from '@/utils/fieldUtils';
 import { useActivePromosForField } from '@/hooks/useActivePromosForField';
 import PromoInfoChip from '@/components/promotions/PromoInfoChip';
 import { useCreateBookingWithPayment } from '@/hooks/useCreateBookingWithPayment';
+import { calculateNetFromPublic } from '@/utils/publicPricing';
 
 interface Field {
   id: string;
@@ -141,26 +142,14 @@ const FieldDetail = () => {
     const publicPriceAfterPromo = subtotal; // Prix après promo (si applicable)
     const publicPriceBeforePromo = discountAmount ? subtotal + discountAmount : subtotal; // Prix avant promo
 
-    // Calculer le montant net propriétaire
-    const getNetPriceForOwner = (durationMin: number): number => {
-      switch (durationMin) {
-        case 60:
-          return field.net_price_1h || field.price_per_hour;
-        case 90:
-          return field.net_price_1h30 || (field.net_price_1h || field.price_per_hour) * 1.5;
-        case 120:
-          return field.net_price_2h || (field.net_price_1h || field.price_per_hour) * 2;
-        default:
-          const hours = durationMin / 60;
-          return (field.net_price_1h || field.price_per_hour) * hours;
-      }
-    };
+    // ✅ VRAIE LOGIQUE OWNER-FUNDED :
+    // Le NET propriétaire est extrait depuis le prix public APRÈS promo
+    // Car la promo réduit le NET, puis le prix public est recalculé depuis le nouveau NET
+    const netPriceOwner = calculateNetFromPublic(publicPriceAfterPromo);
 
-    const netPriceOwner = getNetPriceForOwner(durationMinutes);
-
-    // ⚠️ IMPORTANT : Commission calculée sur prix AVANT promo
-    // Sinon la commission peut devenir négative si promo > commission initiale
-    const platformCommission = publicPriceBeforePromo - netPriceOwner;
+    // La commission PISport est calculée sur le prix APRÈS promo
+    // Commission = Prix public APRÈS - Net APRÈS
+    const platformCommission = publicPriceAfterPromo - netPriceOwner;
 
     // Créer la réservation et initialiser le paiement
     createBookingMutation.mutate({
