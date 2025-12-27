@@ -45,16 +45,27 @@ serve(async (req) => {
 
     console.log(`[${timestamp}] 📋 ${anomalies?.length || 0} anomalies à traiter`);
 
-    const results = {
+    const results: {
+      processed: number;
+      confirmed: number;
+      stillPending: number;
+      errors: number;
+      details: any[];
+    } = {
       processed: 0,
       confirmed: 0,
       stillPending: 0,
       errors: 0,
-      details: [] as any[]
+      details: []
     };
 
     for (const anomaly of anomalies || []) {
-      const anomalyLog = {
+      const anomalyLog: {
+        anomaly_id: string;
+        payment_intent_id: string;
+        status: string;
+        message: string;
+      } = {
         anomaly_id: anomaly.id,
         payment_intent_id: anomaly.payment_intent_id,
         status: 'processing',
@@ -230,7 +241,7 @@ serve(async (req) => {
       } catch (error) {
         console.error(`[${timestamp}] ❌ Erreur traitement anomalie ${anomaly.id}:`, error);
         anomalyLog.status = 'error';
-        anomalyLog.message = error.message;
+        anomalyLog.message = error instanceof Error ? error.message : String(error);
         results.errors++;
         results.details.push(anomalyLog);
 
@@ -267,7 +278,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

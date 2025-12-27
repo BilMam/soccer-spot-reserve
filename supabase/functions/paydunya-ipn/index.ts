@@ -440,133 +440,173 @@ serve(async (req) => {
         const confirmData = await confirmRes.json();
         const confirmStatus = (confirmData?.invoice?.status ?? confirmData?.status ?? '').toLowerCase();
         const confirmCode = confirmData?.response_code ?? confirmData?.['response_code'];
-        console.log('[paydunya-ipn] Fallback confirmation:', { confirmStatus, confirmCode });
-        
-        // Promouvoir à confirmed si response_code = '00' ou statut de succès
-        if (confirmCode === '00' || successStatuses.includes(confirmStatus)) {
+
+        console.log('[paydunya-ipn] PayDunya confirm response:', { confirmStatus, confirmCode });
+
+        if (confirmCode === '00' && successStatuses.includes(confirmStatus)) {
           normalizedStatus = 'completed';
-          console.log('[paydunya-ipn] ✅ Statut promu à completed via API de confirmation');
+          console.log('[paydunya-ipn] ✅ Statut confirmé comme complété par PayDunya API');
         }
-      } catch (error) {
-        console.error('[paydunya-ipn] Erreur lors de la vérification PayDunya:', error);
+      } catch (confirmError) {
+        console.error('[paydunya-ipn] Erreur confirmation PayDunya:', confirmError);
       }
     }
 
-    // Ne conserver que deux états : succès (confirmed/paid) ou échec (cancelled/failed)
-    let bookingStatus: string;
-    let paymentStatus: string;
+    // Chercher la réservation
+    let booking = null;
+    let bookingId = customData?.booking_id;
 
-    if (successStatuses.includes(normalizedStatus)) {
-      bookingStatus = 'confirmed';
-      paymentStatus = 'paid';
-      console.log('🔥 PAIEMENT PAYDUNYA CONFIRMÉ - Créneau bloqué définitivement');
-    } else {
-      // Tout statut non-succès est considéré comme un échec
-      bookingStatus = 'cancelled';
-      paymentStatus = 'failed';
-      console.log('💥 PAIEMENT PAYDUNYA ÉCHOUÉ - Créneau immédiatement libre');
-    }
-
-    // Find booking by payment_intent_id (paydunyaInvoiceToken)
-    let { data: bookingRow } = await supabaseClient
-      .from('bookings')
-      .select('id, status, payment_status, payment_intent_id')
-      .eq('payment_intent_id', paydunyaInvoiceToken)
-      .maybeSingle();
-
-    // Fallback: chercher par booking_id dans custom_data si pas trouvé
-    if (!bookingRow && customData?.booking_id) {
-      console.log('[paydunya-ipn] 🔍 Tentative de recherche par custom_data.booking_id:', customData.booking_id);
-      
-      const { data: fallbackBooking } = await supabaseClient
+    // Rechercher par payment_intent_id
+    if (!booking) {
+      const { data: bookingByToken } = await supabaseClient
         .from('bookings')
-        .select('id, status, payment_status, payment_intent_id')
-        .eq('id', customData.booking_id)
+        .select('*')
+        .eq('payment_intent_id', paydunyaInvoiceToken)
         .maybeSingle();
       
-      if (fallbackBooking) {
-        // Ne synchroniser que si payment_intent_id est vide ou égal au token interne
-        if (!fallbackBooking.payment_intent_id || fallbackBooking.payment_intent_id === internalInvoiceToken) {
-          console.log('[paydunya-ipn] ✅ Réservation trouvée via booking_id, synchronisation du token réel');
-          
-          await supabaseClient
-            .from('bookings')
-            .update({ 
-              payment_intent_id: paydunyaInvoiceToken,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', fallbackBooking.id);
-        } else {
-          console.log('[paydunya-ipn] ℹ️ Token existant conservé car déjà renseigné avec un token PSP');
-        }
-        
-        bookingRow = fallbackBooking;
+      if (bookingByToken) {
+        booking = bookingByToken;
+        bookingId = bookingByToken.id;
+        console.log('[paydunya-ipn] ✅ Booking trouvé par payment_intent_id:', bookingId);
       }
     }
 
-    if (!bookingRow) {
-      console.error('🚨 AUCUNE RÉSERVATION TROUVÉE POUR CE PAIEMENT PayDunya!');
-      console.error('Invoice Token:', paydunyaInvoiceToken);
-      console.error('Custom Data:', customData);
+    // Rechercher par internal invoice token
+    if (!booking && internalInvoiceToken) {
+      const { data: bookingByInternal } = await supabaseClient
+        .from('bookings')
+        .select('*')
+        .eq('payment_intent_id', internalInvoiceToken)
+        .maybeSingle();
       
-      // Log anomaly for monitoring
+      if (bookingByInternal) {
+        booking = bookingByInternal;
+        bookingId = bookingByInternal.id;
+        console.log('[paydunya-ipn] ✅ Booking trouvé par internal invoice token:', bookingId);
+      }
+    }
+
+    // Rechercher par booking_id direct
+    if (!booking && bookingId) {
+      const { data: bookingById } = await supabaseClient
+        .from('bookings')
+        .select('*')
+        .eq('id', bookingId)
+        .maybeSingle();
+      
+      if (bookingById) {
+        booking = bookingById;
+        console.log('[paydunya-ipn] ✅ Booking trouvé par ID direct:', bookingId);
+      }
+    }
+
+    if (!booking) {
+      console.error('[paydunya-ipn] ❌ Aucune réservation trouvée pour ce paiement');
+      
+      // Enregistrer l'anomalie
       await supabaseClient.from('payment_anomalies').insert({
         payment_intent_id: paydunyaInvoiceToken,
         amount: parseInt(total_amount || '0'),
         error_type: 'no_booking_found_paydunya',
-        error_message: 'No booking found for this PayDunya invoice_token or custom_data.booking_id',
+        error_message: 'Aucune réservation trouvée pour ce token PayDunya',
         webhook_data: payload
       });
+
+      return new Response('OK', { headers: corsHeaders });
+    }
+
+    console.log('[paydunya-ipn] 📋 Booking trouvé:', {
+      id: booking.id,
+      current_status: booking.status,
+      current_payment_status: booking.payment_status,
+      amount: booking.total_price
+    });
+
+    // Synchroniser le token PayDunya si différent
+    if (booking.payment_intent_id !== paydunyaInvoiceToken) {
+      await supabaseClient
+        .from('bookings')
+        .update({ 
+          payment_intent_id: paydunyaInvoiceToken,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id);
       
-      return new Response("OK", { status: 200, headers: corsHeaders });
+      console.log('[paydunya-ipn] 🔄 Token synchronisé:', paydunyaInvoiceToken);
     }
 
-    console.log(`[WEBHOOK] Booking found:`, bookingRow);
-
-    // Update booking
-    const { data: booking, error: updateError } = await supabaseClient
-      .from('bookings')
-      .update({
-        status: bookingStatus,
-        payment_status: paymentStatus,
-        paid_at: paymentStatus === 'paid' ? new Date().toISOString() : null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', bookingRow.id)
-      .select('id')
-      .single();
-
-    console.log(`✅ Réservation mise à jour: ${booking?.id} → ${bookingStatus}/${paymentStatus}`);
-
-    if (updateError) {
-      console.error('Erreur mise à jour réservation:', updateError);
-      throw updateError;
-    }
-
-    // Trigger automatic payout if payment confirmed
+    // Traiter le paiement selon le statut
+    let bookingStatus = booking.status;
+    let paymentStatus = booking.payment_status;
     let payoutTriggered = false;
-    if (paymentStatus === 'paid' && booking) {
-      console.log(`💰 Déclenchement payout automatique PayDunya pour booking ${booking.id}`);
-      try {
-        const { data: payoutResult, error: payoutError } = await supabaseClient.functions.invoke('create-paydunya-payout', {
-          body: { booking_id: booking.id }
-        });
 
-        if (payoutError) {
-          console.error('❌ Erreur déclenchement payout PayDunya:', payoutError);
-        } else {
-          console.log('✅ Payout PayDunya déclenché avec succès:', payoutResult);
-          payoutTriggered = true;
+    if (successStatuses.includes(normalizedStatus)) {
+      console.log('[paydunya-ipn] ✅ Paiement confirmé - Mise à jour de la réservation');
+
+      // Mettre à jour la réservation
+      const { error: updateError } = await supabaseClient
+        .from('bookings')
+        .update({
+          status: 'confirmed',
+          payment_status: 'paid',
+          paid_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id);
+
+      if (updateError) {
+        console.error('[paydunya-ipn] ❌ Erreur mise à jour booking:', updateError);
+      } else {
+        bookingStatus = 'confirmed';
+        paymentStatus = 'paid';
+
+        // Déclencher le payout automatique
+        try {
+          const { error: payoutError } = await supabaseClient.functions.invoke('create-paydunya-payout', {
+            body: { booking_id: booking.id }
+          });
+
+          if (payoutError) {
+            console.error('[paydunya-ipn] ⚠️ Erreur déclenchement payout:', payoutError);
+          } else {
+            console.log('[paydunya-ipn] 💰 Payout déclenché avec succès');
+            payoutTriggered = true;
+          }
+        } catch (payoutErr) {
+          console.error('[paydunya-ipn] ⚠️ Exception payout:', payoutErr);
         }
-      } catch (payoutError) {
-        console.error('❌ Erreur payout PayDunya:', payoutError);
       }
+    } else if (['failed', 'cancelled', 'declined'].includes(normalizedStatus)) {
+      console.log('[paydunya-ipn] ❌ Paiement échoué/annulé');
+
+      await supabaseClient
+        .from('bookings')
+        .update({
+          status: 'cancelled',
+          payment_status: 'failed',
+          cancellation_reason: `Paiement ${normalizedStatus}`,
+          cancelled_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id);
+
+      bookingStatus = 'cancelled';
+      paymentStatus = 'failed';
+    } else {
+      console.log('[paydunya-ipn] ⏳ Paiement en attente, aucune action');
     }
+
+    console.log('[paydunya-ipn] 🏁 Traitement terminé:', {
+      booking_id: booking.id,
+      final_status: bookingStatus,
+      final_payment_status: paymentStatus,
+      payout_triggered: payoutTriggered
+    });
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        booking_id: booking?.id, 
+      JSON.stringify({
+        success: true,
+        booking_id: booking.id,
         status: bookingStatus,
         payout_triggered: payoutTriggered
       }),
@@ -575,8 +615,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ ERREUR WEBHOOK PAYDUNYA CRITIQUE:', {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
       timestamp: new Date().toISOString()
     });
     
@@ -591,15 +631,15 @@ serve(async (req) => {
         payment_intent_id: 'webhook_error_paydunya',
         amount: 0,
         error_type: 'webhook_processing_error_paydunya',
-        error_message: error.message,
-        webhook_data: { error_stack: error.stack, timestamp: new Date().toISOString() }
+        error_message: error instanceof Error ? error.message : String(error),
+        webhook_data: { error_stack: error instanceof Error ? error.stack : undefined, timestamp: new Date().toISOString() }
       });
     } catch (logError) {
       console.error('Failed to log PayDunya webhook error:', logError);
     }
     
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }

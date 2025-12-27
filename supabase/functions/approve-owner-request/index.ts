@@ -32,13 +32,6 @@ serve(async (req) => {
       throw new Error('Utilisateur non authentifié')
     }
 
-    // Check admin role using the new role system
-    if (!await hasRole(user.id, 'super_admin') && 
-        !await hasRole(user.id, 'admin_general') && 
-        !await hasRole(user.id, 'admin_fields')) {
-      throw new Error('Permissions administrateur requises')
-    }
-
     // Helper function to check user roles
     async function hasRole(userId: string, role: string): Promise<boolean> {
       const { data } = await supabaseAdmin
@@ -49,6 +42,13 @@ serve(async (req) => {
         .eq('is_active', true)
         .maybeSingle()
       return !!data
+    }
+
+    // Check admin role using the new role system
+    if (!await hasRole(user.id, 'super_admin') && 
+        !await hasRole(user.id, 'admin_general') && 
+        !await hasRole(user.id, 'admin_fields')) {
+      throw new Error('Permissions administrateur requises')
     }
 
     // Get the application
@@ -91,8 +91,7 @@ serve(async (req) => {
           owner_id: owner.id,
           label: 'Compte principal',
           phone: application.phone_payout || application.phone,
-          is_active: true,
-          payment_provider: 'paydunya'
+          is_active: true
         })
         .select()
         .single()
@@ -165,7 +164,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,

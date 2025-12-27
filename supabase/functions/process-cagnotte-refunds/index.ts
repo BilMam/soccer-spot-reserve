@@ -82,7 +82,7 @@ serve(async (req) => {
       .from('cagnotte_contribution')
       .select(`
         *,
-        cagnotte:cagnotte(
+        cagnotte:cagnotte_id(
           id,
           status,
           field_id,
@@ -110,12 +110,11 @@ serve(async (req) => {
 
     console.log(`[process-cagnotte-refunds] 📋 ${contributions.length} contribution(s) à traiter`);
 
-    const results = [];
+    const results: Array<{ id: string; status: string; reference?: string; error?: string; reason?: string }> = [];
 
     for (const contrib of contributions) {
       try {
         const contributionId = contrib.id;
-        const pspTxId = contrib.psp_tx_id;
         const amount = contrib.amount;
 
         console.log(`[process-cagnotte-refunds] 💰 Traitement contribution ${contributionId} - ${amount} XOF`);
@@ -273,7 +272,7 @@ serve(async (req) => {
 
         // 🔒 VERROU LOGIQUE : Atomiquement marquer comme PROCESSING
         // Si count === 0, un autre processus traite déjà cette contribution → skip
-        const { count, error: lockError } = await supabase
+        const { data: lockData, error: lockError } = await supabase
           .from('cagnotte_contribution')
           .update({
             refund_attempt_count: contrib.refund_attempt_count + 1,
@@ -283,9 +282,9 @@ serve(async (req) => {
           })
           .eq('id', contributionId)
           .eq('refund_status', contrib.refund_status) // Vérification atomique
-          .select('id', { count: 'exact', head: true });
+          .select('id');
 
-        if (lockError || count === 0) {
+        if (lockError || !lockData || lockData.length === 0) {
           console.log(`[process-cagnotte-refunds] ⏭️ Contribution ${contributionId} déjà en traitement par un autre processus, skip`);
           results.push({ id: contributionId, status: 'SKIPPED', reason: 'Already being processed' });
           continue;
@@ -419,24 +418,23 @@ serve(async (req) => {
           .insert({
             contribution_id: contributionId,
             cagnotte_id: contrib.cagnotte_id,
-            amount: amount,
             phone_number: msisdn,
+            amount: amount,
             provider: withdrawMode,
             refund_reference: refundReference,
-            paydunya_status: payStatus,
             refund_status: refundStatus,
-            attempt_number: contrib.refund_attempt_count + 1,
+            paydunya_status: payStatus,
             metadata: {
-              psp_tx_id: pspTxId,
               disburse_token: disburseToken,
-              disburse_id: disburseId, // ⭐ Ajout référence interne unique
-              paydunya_mode: paydunyaMode, // ⭐ Mode (test/live)
+              disburse_id: disburseId,
               response_code: respCode,
-              full_response: disbursementData,
+              response_text: disbursementData.response_text,
+              timestamp: new Date().toISOString()
             },
+            attempt_number: contrib.refund_attempt_count + 1
           });
 
-        // Si le remboursement est déjà confirmé, vérifier si la cagnotte peut être marquée comme REFUNDED
+        // Si le remboursement est confirmé immédiatement, vérifier si la cagnotte peut être marquée comme REFUNDED
         if (refundStatus === 'REFUNDED') {
           await supabase.rpc('update_cagnotte_refund_status', {
             p_cagnotte_id: contrib.cagnotte_id
@@ -446,21 +444,19 @@ serve(async (req) => {
         results.push({
           id: contributionId,
           status: refundStatus,
-          reference: refundReference,
-          amount: amount,
+          reference: refundReference
         });
 
         console.log(`[process-cagnotte-refunds] ✅ Contribution ${contributionId} traitée: ${refundStatus}`);
 
-      } catch (err: any) {
-        console.error(`[process-cagnotte-refunds] ❌ Erreur traitement contribution ${contrib.id}:`, err);
-
-        // Mettre à jour avec l'erreur
+      } catch (contribError) {
+        console.error(`[process-cagnotte-refunds] ❌ Erreur contribution ${contrib.id}:`, contribError);
+        
         await supabase
           .from('cagnotte_contribution')
           .update({
             refund_status: 'FAILED',
-            refund_last_error: err.message || 'Erreur inconnue',
+            refund_last_error: contribError instanceof Error ? contribError.message : String(contribError),
             refund_last_attempt_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
@@ -469,27 +465,34 @@ serve(async (req) => {
         results.push({
           id: contrib.id,
           status: 'FAILED',
-          error: err.message,
+          error: contribError instanceof Error ? contribError.message : String(contribError)
         });
       }
     }
 
-    console.log('[process-cagnotte-refunds] 🏁 Traitement terminé');
+    console.log(`[process-cagnotte-refunds] 🏁 Traitement terminé: ${results.length} contributions traitées`);
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        processed: results.length,
-        results,
+      JSON.stringify({ 
+        success: true, 
+        processed: results.length, 
+        results 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error: any) {
-    console.error('[process-cagnotte-refunds] 💥 Erreur fatale:', error);
+  } catch (error) {
+    console.error('[process-cagnotte-refunds] ❌ Erreur globale:', error);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        success: false, 
+        error: error instanceof Error ? error.message : String(error)
+      }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
   }
 });
