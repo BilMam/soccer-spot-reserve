@@ -137,7 +137,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   );
 
   // Prix après application de la promo (si applicable)
-  const publicPrice = promoResult.isEligible ? promoResult.discountedPrice : publicPriceBeforePromo;
+  const publicPrice = promoResult.isEligible ? promoResult.publicPriceAfter : publicPriceBeforePromo;
 
   // Calculer les frais opérateurs (3% du prix public après promo)
   const operatorFee = Math.ceil(publicPrice * 0.03);
@@ -238,9 +238,9 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               durationDisplay={durationDisplay}
               promo={promoResult.isEligible ? {
                 discountLabel: promoResult.discountLabel,
-                savings: promoResult.savings
+                savings: promoResult.customerSavings
               } : null}
-              originalSubtotal={promoResult.isEligible ? publicPriceBeforePromo : undefined}
+              originalSubtotal={promoResult.isEligible ? promoResult.publicPriceBefore : undefined}
             />
 
             <SlotBookingActions
@@ -260,7 +260,7 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               price2h={
                 pricing.public_price_2h ?? (pricing.price_2h ? calculatePublicPrice(pricing.price_2h) : undefined)
               }
-              promoDiscount={promoResult.isEligible ? promoResult.savings : 0}
+              promoDiscount={promoResult.isEligible ? promoResult.customerSavings : 0}
               promoId={promoResult.isEligible ? promoResult.promo?.id : undefined}
               onTimeSlotSelect={onTimeSlotSelect}
             />

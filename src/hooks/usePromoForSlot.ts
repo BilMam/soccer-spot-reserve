@@ -1,13 +1,27 @@
 import { useMemo } from 'react';
 import { ActivePromo } from './useActivePromosForField';
-import { applyDiscount } from '@/utils/promoCalculations';
+import { calculatePromoImpact } from '@/utils/promoCalculations';
+import { calculateNetFromPublic } from '@/utils/publicPricing';
 
 interface PromoSlotResult {
   isEligible: boolean;
   promo: ActivePromo | null;
-  originalPrice: number;
-  discountedPrice: number;
-  savings: number;
+
+  // Prix PUBLIC
+  publicPriceBefore: number;
+  publicPriceAfter: number;
+  customerSavings: number; // Ce que le client économise
+
+  // NET PROPRIÉTAIRE
+  ownerNetBefore: number;
+  ownerNetAfter: number;
+  ownerLoss: number; // Ce que le proprio perd
+
+  // COMMISSION PISPORT
+  commissionBefore: number;
+  commissionAfter: number;
+
+  // UI
   discountLabel: string;
 }
 
@@ -48,35 +62,44 @@ function isSlotEligibleForPromo(
 
 /**
  * Hook pour vérifier si un créneau spécifique est éligible à une promo
- * et calculer le prix réduit
+ * et calculer le prix réduit (logique owner-funded)
  */
 export function usePromoForSlot(
   promos: ActivePromo[] | undefined,
   date: Date | null,
   startTime: string,
-  originalPrice: number
+  publicPriceBefore: number
 ): PromoSlotResult {
   return useMemo(() => {
+    // Calculer le net propriétaire depuis le prix public
+    const ownerNetBefore = calculateNetFromPublic(publicPriceBefore);
+
     const defaultResult: PromoSlotResult = {
       isEligible: false,
       promo: null,
-      originalPrice,
-      discountedPrice: originalPrice,
-      savings: 0,
+      publicPriceBefore,
+      publicPriceAfter: publicPriceBefore,
+      customerSavings: 0,
+      ownerNetBefore,
+      ownerNetAfter: ownerNetBefore,
+      ownerLoss: 0,
+      commissionBefore: publicPriceBefore - ownerNetBefore,
+      commissionAfter: publicPriceBefore - ownerNetBefore,
       discountLabel: ''
     };
 
-    if (!promos || promos.length === 0 || !date || !startTime || originalPrice <= 0) {
+    if (!promos || promos.length === 0 || !date || !startTime || publicPriceBefore <= 0) {
       return defaultResult;
     }
 
     // Trouver la meilleure promo applicable
     let bestPromo: ActivePromo | null = null;
     let bestSavings = 0;
+    let bestImpact = null;
 
     for (const promo of promos) {
-      // Vérifier le montant minimum
-      if (promo.minBookingAmount > 0 && originalPrice < promo.minBookingAmount) {
+      // Vérifier le montant minimum (sur prix public)
+      if (promo.minBookingAmount > 0 && publicPriceBefore < promo.minBookingAmount) {
         continue;
       }
 
@@ -85,65 +108,77 @@ export function usePromoForSlot(
         continue;
       }
 
-      // Calculer les économies
-      const discountedPrice = applyDiscount(originalPrice, promo.discountType, promo.discountValue);
-      const savings = originalPrice - discountedPrice;
+      // ✅ VRAIE LOGIQUE : Calculer l'impact sur le NET propriétaire
+      const impact = calculatePromoImpact(ownerNetBefore, promo.discountType, promo.discountValue);
 
-      if (savings > bestSavings) {
-        bestSavings = savings;
+      // Meilleure promo = celle qui fait économiser le plus au client
+      if (impact.customerSavings > bestSavings) {
+        bestSavings = impact.customerSavings;
         bestPromo = promo;
+        bestImpact = impact;
       }
     }
 
-    if (!bestPromo) {
+    if (!bestPromo || !bestImpact) {
       return defaultResult;
     }
 
-    const discountedPrice = applyDiscount(originalPrice, bestPromo.discountType, bestPromo.discountValue);
-    const savings = originalPrice - discountedPrice;
-
-    const discountLabel = bestPromo.discountType === 'percent' 
-      ? `-${bestPromo.discountValue}%` 
+    const discountLabel = bestPromo.discountType === 'percent'
+      ? `-${bestPromo.discountValue}%`
       : `-${bestPromo.discountValue.toLocaleString()} F`;
 
     return {
       isEligible: true,
       promo: bestPromo,
-      originalPrice,
-      discountedPrice,
-      savings,
+      publicPriceBefore: bestImpact.publicPriceBefore,
+      publicPriceAfter: bestImpact.publicPriceAfter,
+      customerSavings: bestImpact.customerSavings,
+      ownerNetBefore: bestImpact.ownerNetBefore,
+      ownerNetAfter: bestImpact.ownerNetAfter,
+      ownerLoss: bestImpact.ownerLoss,
+      commissionBefore: bestImpact.commissionBefore,
+      commissionAfter: bestImpact.commissionAfter,
       discountLabel
     };
-  }, [promos, date, startTime, originalPrice]);
+  }, [promos, date, startTime, publicPriceBefore]);
 }
 
 /**
  * Fonction utilitaire pour vérifier si un créneau est en promo (sans hook)
+ * Utilise la même logique owner-funded
  */
 export function checkSlotPromoEligibility(
   promos: ActivePromo[],
   date: Date,
   startTime: string,
-  originalPrice: number
+  publicPriceBefore: number
 ): PromoSlotResult {
+  const ownerNetBefore = calculateNetFromPublic(publicPriceBefore);
+
   const defaultResult: PromoSlotResult = {
     isEligible: false,
     promo: null,
-    originalPrice,
-    discountedPrice: originalPrice,
-    savings: 0,
+    publicPriceBefore,
+    publicPriceAfter: publicPriceBefore,
+    customerSavings: 0,
+    ownerNetBefore,
+    ownerNetAfter: ownerNetBefore,
+    ownerLoss: 0,
+    commissionBefore: publicPriceBefore - ownerNetBefore,
+    commissionAfter: publicPriceBefore - ownerNetBefore,
     discountLabel: ''
   };
 
-  if (!promos || promos.length === 0 || originalPrice <= 0) {
+  if (!promos || promos.length === 0 || publicPriceBefore <= 0) {
     return defaultResult;
   }
 
   let bestPromo: ActivePromo | null = null;
   let bestSavings = 0;
+  let bestImpact = null;
 
   for (const promo of promos) {
-    if (promo.minBookingAmount > 0 && originalPrice < promo.minBookingAmount) {
+    if (promo.minBookingAmount > 0 && publicPriceBefore < promo.minBookingAmount) {
       continue;
     }
 
@@ -151,32 +186,34 @@ export function checkSlotPromoEligibility(
       continue;
     }
 
-    const discountedPrice = applyDiscount(originalPrice, promo.discountType, promo.discountValue);
-    const savings = originalPrice - discountedPrice;
+    const impact = calculatePromoImpact(ownerNetBefore, promo.discountType, promo.discountValue);
 
-    if (savings > bestSavings) {
-      bestSavings = savings;
+    if (impact.customerSavings > bestSavings) {
+      bestSavings = impact.customerSavings;
       bestPromo = promo;
+      bestImpact = impact;
     }
   }
 
-  if (!bestPromo) {
+  if (!bestPromo || !bestImpact) {
     return defaultResult;
   }
 
-  const discountedPrice = applyDiscount(originalPrice, bestPromo.discountType, bestPromo.discountValue);
-  const savings = originalPrice - discountedPrice;
-
-  const discountLabel = bestPromo.discountType === 'percent' 
-    ? `-${bestPromo.discountValue}%` 
+  const discountLabel = bestPromo.discountType === 'percent'
+    ? `-${bestPromo.discountValue}%`
     : `-${bestPromo.discountValue.toLocaleString()} F`;
 
   return {
     isEligible: true,
     promo: bestPromo,
-    originalPrice,
-    discountedPrice,
-    savings,
+    publicPriceBefore: bestImpact.publicPriceBefore,
+    publicPriceAfter: bestImpact.publicPriceAfter,
+    customerSavings: bestImpact.customerSavings,
+    ownerNetBefore: bestImpact.ownerNetBefore,
+    ownerNetAfter: bestImpact.ownerNetAfter,
+    ownerLoss: bestImpact.ownerLoss,
+    commissionBefore: bestImpact.commissionBefore,
+    commissionAfter: bestImpact.commissionAfter,
     discountLabel
   };
 }

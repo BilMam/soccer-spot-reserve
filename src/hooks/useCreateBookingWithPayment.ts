@@ -43,7 +43,7 @@ export function useCreateBookingWithPayment() {
 
       console.log('🔄 Creating booking with params:', params);
 
-      // Calculer les frais opérateurs (3% du prix public après promo)
+      // Calculer les frais opérateurs (3% du prix public APRÈS promo)
       const serviceFee = Math.ceil(publicPrice * 0.03);
       const totalWithFees = publicPrice + serviceFee;
 
@@ -57,16 +57,20 @@ export function useCreateBookingWithPayment() {
           start_time: startTime,
           end_time: endTime,
 
-          // Nouveau modèle de prix
-          total_price: publicPrice, // Prix public (ce que voit le client AVANT frais opérateurs)
-          field_price: netPriceOwner, // Prix net pour le propriétaire
+          // ✅ MODÈLE OWNER-FUNDED :
+          // total_price = Prix public APRÈS promo (ce que voit le client AVANT frais opérateurs)
+          // field_price = Net propriétaire APRÈS promo (extrait du prix public via formule inverse)
+          // platform_fee_owner = Commission APRÈS promo (Prix public APRÈS - Net APRÈS)
+          // owner_amount = Net propriétaire APRÈS promo (montant garanti)
+          total_price: publicPrice, // Prix public APRÈS promo
+          field_price: netPriceOwner, // Net propriétaire APRÈS promo
           platform_fee_user: 0, // Pas de frais user séparés
-          platform_fee_owner: platformCommission, // Commission plateforme
-          owner_amount: netPriceOwner, // Montant net EXACT garanti au propriétaire
+          platform_fee_owner: platformCommission, // Commission APRÈS promo
+          owner_amount: netPriceOwner, // Net APRÈS promo (garanti)
 
-          // Champs promo (uniquement si promo valide)
+          // Champs promo (traçabilité complète)
           promo_code_id: promoId || null,
-          public_before_discount: publicPriceBeforePromo || null,
+          public_before_discount: promoId ? publicPriceBeforePromo : null,
           discount_amount: discountAmount,
           public_after_discount: promoId ? publicPrice : null,
 
