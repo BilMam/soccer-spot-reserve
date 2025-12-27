@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,10 +12,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Star, MapPin, Users, Clock, Wifi, Car, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
 import { getDefaultSportImage } from '@/utils/defaultImages';
 import { getFieldTypeLabel } from '@/utils/fieldUtils';
-import { buildUrl } from '@/lib/urls';
 import { useActivePromosForField } from '@/hooks/useActivePromosForField';
 import PromoInfoChip from '@/components/promotions/PromoInfoChip';
 
@@ -52,11 +50,6 @@ const FieldDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedStartTime, setSelectedStartTime] = useState<string>('');
-  const [selectedEndTime, setSelectedEndTime] = useState<string>('');
-  const [totalPrice, setTotalPrice] = useState<number>(0);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const { data: field, isLoading } = useQuery({
     queryKey: ['field', id],
@@ -84,7 +77,6 @@ const FieldDetail = () => {
   // Récupérer les promos actives pour ce terrain
   const { data: activePromos } = useActivePromosForField(id);
 
-
   const getAmenityIcon = (amenity: string) => {
     switch (amenity.toLowerCase()) {
       case 'wifi':
@@ -96,9 +88,7 @@ const FieldDetail = () => {
     }
   };
 
-  const handleTimeSlotSelect = async (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => {
-    if (isProcessingPayment) return; // Protection anti-double-clic
-    
+  const handleTimeSlotSelect = (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => {
     console.log('🎯 Sélection créneau dans FieldDetail:', {
       date: date.toISOString(),
       startTime,
@@ -117,75 +107,18 @@ const FieldDetail = () => {
       navigate('/auth');
       return;
     }
-    
-    setIsProcessingPayment(true);
-    
-    try {
-      // Créer la réservation en statut pending
-      const { data: booking, error: bookingError } = await supabase
-        .from('bookings')
-        .insert({
-          field_id: id,
-          user_id: user.id,
-          booking_date: format(date, 'yyyy-MM-dd'),
-          start_time: startTime,
-          end_time: endTime,
-          total_price: subtotal,
-          field_price: subtotal,
-          platform_fee_user: serviceFee,
-          status: 'pending',
-          payment_status: 'pending'
-        })
-        .select()
-        .single();
 
-      if (bookingError || !booking) {
-        throw new Error(bookingError?.message || 'Erreur lors de la création de la réservation');
+    // Naviguer vers le checkout avec toutes les données nécessaires
+    navigate(`/checkout/${id}`, {
+      state: {
+        selectedDate: date,
+        selectedStartTime: startTime,
+        selectedEndTime: endTime,
+        subtotal: subtotal,
+        serviceFee: serviceFee,
+        totalPrice: total
       }
-
-      // Construire les URLs de retour
-      const returnUrl = buildUrl('/mes-reservations');
-      const cancelUrl = buildUrl('/mes-reservations');
-
-      // Appeler l'edge function PayDunya
-      const { data: paymentData, error: paymentError } = await supabase.functions.invoke('create-paydunya-invoice', {
-        body: {
-          booking_id: booking.id,
-          amount: total,
-          field_name: field?.name || 'Terrain',
-          date: format(date, 'dd/MM/yyyy'),
-          time: `${startTime} - ${endTime}`,
-          return_url: returnUrl,
-          cancel_url: cancelUrl
-        }
-      });
-
-      if (paymentError || !paymentData?.url) {
-        const errorMessage = paymentData?.error || paymentError?.message || 'Erreur lors de la génération du paiement';
-        throw new Error(errorMessage);
-      }
-
-      // Message avant redirection
-      toast({
-        title: "🔄 Redirection en cours",
-        description: "Vous allez être redirigé vers PayDunya pour finaliser le paiement. Veuillez patienter et ne pas fermer cette page.",
-        duration: 3000
-      });
-
-      // Délai pour que l'utilisateur voie le message
-      setTimeout(() => {
-        window.location.href = paymentData.url;
-      }, 1500);
-      
-    } catch (error: any) {
-      console.error('Erreur lors de la réservation:', error);
-      setIsProcessingPayment(false); // Débloquer en cas d'erreur
-      toast({
-        title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de la réservation.",
-        variant: "destructive"
-      });
-    }
+    });
   };
 
   if (isLoading) {
