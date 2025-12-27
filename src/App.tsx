@@ -8,7 +8,6 @@ import AuthConfirm from '@/pages/AuthConfirm';
 import Profile from '@/pages/Profile';
 import Search from '@/pages/Search';
 import FieldDetail from '@/pages/FieldDetail';
-import Checkout from '@/pages/Checkout';
 import AddField from '@/pages/AddField';
 import EditField from '@/pages/EditField';
 import BecomeOwner from '@/pages/BecomeOwner';
@@ -40,7 +39,6 @@ function App() {
               <Route path="/profile" element={<Profile />} />
               <Route path="/search" element={<Search />} />
               <Route path="/field/:id" element={<FieldDetail />} />
-              <Route path="/checkout/:id" element={<Checkout />} />
               <Route path="/add-field" element={<AddField />} />
               <Route path="/edit-field/:id" element={<EditField />} />
               <Route path="/become-owner" element={<BecomeOwner />} />

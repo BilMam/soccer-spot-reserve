@@ -16,6 +16,7 @@ import { getDefaultSportImage } from '@/utils/defaultImages';
 import { getFieldTypeLabel } from '@/utils/fieldUtils';
 import { useActivePromosForField } from '@/hooks/useActivePromosForField';
 import PromoInfoChip from '@/components/promotions/PromoInfoChip';
+import { useCreateBookingWithPayment } from '@/hooks/useCreateBookingWithPayment';
 
 interface Field {
   id: string;
@@ -77,6 +78,9 @@ const FieldDetail = () => {
   // Récupérer les promos actives pour ce terrain
   const { data: activePromos } = useActivePromosForField(id);
 
+  // Hook pour créer la réservation et le paiement
+  const createBookingMutation = useCreateBookingWithPayment();
+
   const getAmenityIcon = (amenity: string) => {
     switch (amenity.toLowerCase()) {
       case 'wifi':
@@ -88,16 +92,27 @@ const FieldDetail = () => {
     }
   };
 
-  const handleTimeSlotSelect = (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => {
+  const handleTimeSlotSelect = (
+    date: Date,
+    startTime: string,
+    endTime: string,
+    subtotal: number,
+    serviceFee: number,
+    total: number,
+    promoId?: string,
+    discountAmount?: number
+  ) => {
     console.log('🎯 Sélection créneau dans FieldDetail:', {
       date: date.toISOString(),
       startTime,
       endTime,
       subtotal,
       serviceFee,
-      total
+      total,
+      promoId,
+      discountAmount
     });
-    
+
     if (!user) {
       toast({
         title: "Connexion requise",
@@ -108,16 +123,56 @@ const FieldDetail = () => {
       return;
     }
 
-    // Naviguer vers le checkout avec toutes les données nécessaires
-    navigate(`/checkout/${id}`, {
-      state: {
-        selectedDate: date,
-        selectedStartTime: startTime,
-        selectedEndTime: endTime,
-        subtotal: subtotal,
-        serviceFee: serviceFee,
-        totalPrice: total
+    if (!field) {
+      toast({
+        title: "Erreur",
+        description: "Informations du terrain non disponibles.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Calculer la durée et les montants
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const [endHour, endMin] = endTime.split(':').map(Number);
+    const durationMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+
+    // Prix PUBLIC (subtotal = déjà après promo si applicable)
+    const publicPriceAfterPromo = subtotal;
+    const publicPriceBeforePromo = discountAmount ? subtotal + discountAmount : subtotal;
+
+    // Calculer le montant net propriétaire
+    const getNetPriceForOwner = (durationMin: number): number => {
+      switch (durationMin) {
+        case 60:
+          return field.net_price_1h || field.price_per_hour;
+        case 90:
+          return field.net_price_1h30 || (field.net_price_1h || field.price_per_hour) * 1.5;
+        case 120:
+          return field.net_price_2h || (field.net_price_1h || field.price_per_hour) * 2;
+        default:
+          const hours = durationMin / 60;
+          return (field.net_price_1h || field.price_per_hour) * hours;
       }
+    };
+
+    const netPriceOwner = getNetPriceForOwner(durationMinutes);
+    const platformCommission = publicPriceAfterPromo - netPriceOwner;
+
+    // Créer la réservation et initialiser le paiement
+    createBookingMutation.mutate({
+      fieldId: field.id,
+      fieldName: field.name,
+      userId: user.id,
+      bookingDate: date,
+      startTime,
+      endTime,
+      publicPrice: publicPriceAfterPromo,
+      publicPriceBeforePromo: discountAmount ? publicPriceBeforePromo : undefined,
+      promoId,
+      discountAmount,
+      netPriceOwner,
+      platformCommission
     });
   };
 

@@ -33,7 +33,18 @@ interface SlotBookingActionsProps {
   fieldPrice: number;
   price1h30?: number | null;
   price2h?: number | null;
-  onTimeSlotSelect: (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => void;
+  promoDiscount?: number; // Montant de la réduction
+  promoId?: string; // ID de la promo appliquée
+  onTimeSlotSelect: (
+    date: Date,
+    startTime: string,
+    endTime: string,
+    subtotal: number,
+    serviceFee: number,
+    total: number,
+    promoId?: string,
+    discountAmount?: number
+  ) => void;
 }
 
 const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
@@ -47,6 +58,8 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
   fieldPrice,
   price1h30,
   price2h,
+  promoDiscount = 0,
+  promoId,
   onTimeSlotSelect
 }) => {
   const { toast } = useToast();
@@ -90,23 +103,36 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
     }
     
     setIsBooking(true);
-    
-    // Calculer le prix PUBLIC (déjà avec commission 3%)
-    const publicPrice = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
-    
-    // Frais opérateurs (3% du prix public)
+
+    // Calculer le prix PUBLIC AVANT promo
+    const publicPriceBeforePromo = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
+
+    // Appliquer la réduction si promo
+    const publicPrice = publicPriceBeforePromo - promoDiscount;
+
+    // Frais opérateurs (3% du prix public APRÈS promo)
     const PAYMENT_OPERATOR_FEE_RATE = 0.03;
     const operatorFee = Math.ceil(publicPrice * PAYMENT_OPERATOR_FEE_RATE);
     const finalTotal = publicPrice + operatorFee;
-    
-    // subtotal = prix public, serviceFee = frais opérateurs, total = final
-    onTimeSlotSelect(selectedDate, selectedStartTime, selectedEndTime, publicPrice, operatorFee, finalTotal);
+
+    // subtotal = prix public après promo, serviceFee = frais opérateurs, total = final
+    onTimeSlotSelect(
+      selectedDate,
+      selectedStartTime,
+      selectedEndTime,
+      publicPrice,
+      operatorFee,
+      finalTotal,
+      promoId,
+      promoDiscount
+    );
   };
 
   const rangeIsAvailable = validator.isRangeAvailable(selectedStartTime, selectedEndTime);
-  
-  // Calculer pour l'affichage
-  const publicPrice = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
+
+  // Calculer pour l'affichage (avec promo si applicable)
+  const publicPriceBeforePromo = priceCalculator.calculateTotalPrice(selectedStartTime, selectedEndTime);
+  const publicPrice = publicPriceBeforePromo - promoDiscount;
   const PAYMENT_OPERATOR_FEE_RATE = 0.03;
   const operatorFee = Math.ceil(publicPrice * PAYMENT_OPERATOR_FEE_RATE);
   const finalTotal = publicPrice + operatorFee;

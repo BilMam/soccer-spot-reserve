@@ -74,22 +74,26 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
           {/* Affichage avec promo */}
           {promo && originalSubtotal ? (
             <>
+              <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-lg p-3 mb-2">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="text-lg">🎉</span>
+                  <span className="text-sm font-bold text-orange-700 uppercase tracking-wide">
+                    Promo appliquée !
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs text-orange-600">
+                  <span>Réduction {promo.discountLabel}</span>
+                  <span className="font-bold">-{promo.savings.toLocaleString()} XOF</span>
+                </div>
+              </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Sous-total :</span>
+                <span className="text-sm text-gray-600">Prix initial :</span>
                 <span className="text-sm line-through text-muted-foreground">
                   {originalSubtotal.toLocaleString()} XOF
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-orange-600">
-                  Réduction ({promo.discountLabel}) :
-                </span>
-                <span className="text-sm text-orange-600 font-medium">
-                  -{promo.savings.toLocaleString()} XOF
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Avec promo :</span>
+                <span className="text-sm text-gray-600">Prix avec promo :</span>
                 <span className="text-sm font-bold text-green-600">
                   {subtotal.toLocaleString()} XOF
                 </span>
