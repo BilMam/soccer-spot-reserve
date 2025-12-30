@@ -142,17 +142,20 @@ const StepFinalize: React.FC<StepFinalizeProps> = ({
                 className="mt-1"
               />
             </div>
-            <div>
-              <Label htmlFor="usage-per-user">Par utilisateur</Label>
-              <Input
-                id="usage-per-user"
-                type="number"
-                min={1}
-                value={wizardData.usageLimitPerUser}
-                onChange={(e) => onUsageLimitPerUserChange(Number(e.target.value) || 1)}
-                className="mt-1"
-              />
-            </div>
+            {/* Champ "Par utilisateur" masqué pour les promos automatiques */}
+            {wizardData.promoType === 'code' && (
+              <div>
+                <Label htmlFor="usage-per-user">Par utilisateur</Label>
+                <Input
+                  id="usage-per-user"
+                  type="number"
+                  min={1}
+                  value={wizardData.usageLimitPerUser}
+                  onChange={(e) => onUsageLimitPerUserChange(Number(e.target.value) || 1)}
+                  className="mt-1"
+                />
+              </div>
+            )}
           </div>
 
           <div>

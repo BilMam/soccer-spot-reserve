@@ -33,8 +33,18 @@ function isSlotEligibleForPromo(
   date: Date,
   startTime: string
 ): boolean {
+  console.log('🔍 [isSlotEligibleForPromo] Vérification:', {
+    promo: promo.name,
+    hasTimeSlots: !!promo.timeSlots,
+    timeSlotsLength: promo.timeSlots?.length || 0,
+    date: date.toISOString(),
+    dayOfWeek: date.getDay(),
+    startTime
+  });
+
   // Si pas de créneaux ciblés, la promo s'applique à tous les créneaux
   if (!promo.timeSlots || promo.timeSlots.length === 0) {
+    console.log('🔍 [isSlotEligibleForPromo] ✅ Tous créneaux éligibles (pas de restriction)');
     return true;
   }
 
@@ -42,10 +52,23 @@ function isSlotEligibleForPromo(
   const [startHour, startMin] = startTime.split(':').map(Number);
   const slotStartMinutes = startHour * 60 + startMin;
 
+  console.log('🔍 [isSlotEligibleForPromo] Créneau à vérifier:', {
+    dayOfWeek,
+    slotStartMinutes,
+    startTime
+  });
+
   // Vérifier si le créneau correspond à l'un des créneaux ciblés
-  return promo.timeSlots.some(ts => {
+  const isEligible = promo.timeSlots.some(ts => {
+    console.log('🔍 [isSlotEligibleForPromo] Test timeSlot:', {
+      tsDayOfWeek: ts.dayOfWeek,
+      tsStartTime: ts.startTime,
+      tsEndTime: ts.endTime
+    });
+
     // Vérifier le jour de la semaine (null = tous les jours)
     if (ts.dayOfWeek !== null && ts.dayOfWeek !== dayOfWeek) {
+      console.log('🔍 [isSlotEligibleForPromo] ❌ Jour non correspondant');
       return false;
     }
 
@@ -55,9 +78,23 @@ function isSlotEligibleForPromo(
     const tsStartMinutes = tsStartHour * 60 + tsStartMin;
     const tsEndMinutes = tsEndHour * 60 + tsEndMin;
 
+    console.log('🔍 [isSlotEligibleForPromo] Comparaison horaire:', {
+      slotStartMinutes,
+      tsStartMinutes,
+      tsEndMinutes,
+      inRange: slotStartMinutes >= tsStartMinutes && slotStartMinutes < tsEndMinutes
+    });
+
     // Le créneau doit commencer dans la plage horaire de la promo
-    return slotStartMinutes >= tsStartMinutes && slotStartMinutes < tsEndMinutes;
+    const matches = slotStartMinutes >= tsStartMinutes && slotStartMinutes < tsEndMinutes;
+    if (matches) {
+      console.log('🔍 [isSlotEligibleForPromo] ✅ TimeSlot correspondant trouvé');
+    }
+    return matches;
   });
+
+  console.log('🔍 [isSlotEligibleForPromo] Résultat final:', isEligible);
+  return isEligible;
 }
 
 /**
@@ -88,7 +125,16 @@ export function usePromoForSlot(
       discountLabel: ''
     };
 
+    console.log('🎁 [usePromoForSlot] Paramètres:', {
+      promosCount: promos?.length || 0,
+      date: date?.toISOString(),
+      dayOfWeek: date?.getDay(),
+      startTime,
+      publicPriceBefore
+    });
+
     if (!promos || promos.length === 0 || !date || !startTime || publicPriceBefore <= 0) {
+      console.log('🎁 [usePromoForSlot] ❌ Aucune promo applicable - conditions initiales non remplies');
       return defaultResult;
     }
 
@@ -98,13 +144,25 @@ export function usePromoForSlot(
     let bestImpact = null;
 
     for (const promo of promos) {
+      console.log('🎁 [usePromoForSlot] Test promo:', promo.name, {
+        minBookingAmount: promo.minBookingAmount,
+        publicPriceBefore,
+        hasTimeSlots: !!promo.timeSlots,
+        timeSlotsCount: promo.timeSlots?.length || 0
+      });
+
       // Vérifier le montant minimum (sur prix public)
       if (promo.minBookingAmount > 0 && publicPriceBefore < promo.minBookingAmount) {
+        console.log('🎁 [usePromoForSlot] ❌ Promo rejetée - montant minimum non atteint');
         continue;
       }
 
       // Vérifier l'éligibilité du créneau
-      if (!isSlotEligibleForPromo(promo, date, startTime)) {
+      const isEligible = isSlotEligibleForPromo(promo, date, startTime);
+      console.log('🎁 [usePromoForSlot] Éligibilité créneau:', isEligible);
+
+      if (!isEligible) {
+        console.log('🎁 [usePromoForSlot] ❌ Promo rejetée - créneau non éligible');
         continue;
       }
 
@@ -113,19 +171,35 @@ export function usePromoForSlot(
 
       // Meilleure promo = celle qui fait économiser le plus au client
       if (impact.customerSavings > bestSavings) {
+        console.log('🎁 [usePromoForSlot] ✅ Promo retenue - économies:', impact.customerSavings, 'XOF');
         bestSavings = impact.customerSavings;
         bestPromo = promo;
         bestImpact = impact;
       }
     }
 
+    console.log('🎁 [usePromoForSlot] Résultat final:', {
+      hasBestPromo: !!bestPromo,
+      bestPromoName: bestPromo?.name,
+      customerSavings: bestSavings
+    });
+
     if (!bestPromo || !bestImpact) {
+      console.log('🎁 [usePromoForSlot] ❌ Aucune promo trouvée');
       return defaultResult;
     }
 
     const discountLabel = bestPromo.discountType === 'percent'
       ? `-${bestPromo.discountValue}%`
       : `-${bestPromo.discountValue.toLocaleString()} F`;
+
+    console.log('🎁 [usePromoForSlot] 🎉 PROMO APPLIQUÉE:', {
+      promo: bestPromo.name,
+      discountLabel,
+      publicBefore: bestImpact.publicPriceBefore,
+      publicAfter: bestImpact.publicPriceAfter,
+      savings: bestImpact.customerSavings
+    });
 
     return {
       isEligible: true,
