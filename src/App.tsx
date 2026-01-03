@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
@@ -21,6 +20,8 @@ import MesReservations from '@/pages/MesReservations';
 import Cagnotte from '@/pages/Cagnotte';
 import ContributionProof from '@/pages/ContributionProof';
 import ContributionReceipt from '@/pages/ContributionReceipt';
+import Messages from '@/pages/Messages';
+import Conversation from '@/pages/Conversation';
 import NotFound from '@/pages/NotFound';
 import { AuthProvider } from '@/hooks/useAuth';
 
@@ -50,6 +51,8 @@ function App() {
               <Route path="/booking-success" element={<BookingSuccess />} />
               <Route path="/payment/:token" element={<PaymentPage />} />
               <Route path="/mes-reservations" element={<MesReservations />} />
+              <Route path="/messages" element={<Messages />} />
+              <Route path="/conversation/:id" element={<Conversation />} />
               <Route path="/cagnotte/:id" element={<Cagnotte />} />
               <Route path="/p/:code" element={<ContributionProof />} />
               <Route path="/receipt/:token" element={<ContributionReceipt />} />

@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, MapPin, Clock, Users, Star, X, Clock4, CheckCircle, Zap } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, Star, X, Clock4, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import EnhancedReviewDialog from '@/components/EnhancedReviewDialog';
 import SmartConfirmationInfo from './SmartConfirmationInfo';
+import { ContactButton } from '@/components/chat/ContactButton';
 
 interface Booking {
   id: string;
@@ -26,6 +27,7 @@ interface Booking {
     name: string;
     location: string;
     address: string;
+    owner_id: string;
   };
   reviews: Array<{ id: string }>;
 }
@@ -51,7 +53,8 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
             id,
             name,
             location,
-            address
+            address,
+            owner_id
           ),
           reviews (
             id
@@ -232,6 +235,14 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
                           {booking.total_price.toLocaleString()} XOF
                         </div>
                         <div className="flex space-x-2">
+                          {/* Bouton Contacter pour les réservations confirmées */}
+                          {booking.status === 'confirmed' && (
+                            <ContactButton
+                              bookingId={booking.id}
+                              fieldId={booking.fields.id}
+                              ownerId={booking.fields.owner_id}
+                            />
+                          )}
                           {canReview(booking) && (
                             <Button 
                               size="sm" 
