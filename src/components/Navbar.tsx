@@ -1,10 +1,11 @@
 import React from 'react';
-import { Search, User, MapPin, LogOut } from 'lucide-react';
+import { Search, User, MapPin, LogOut, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
+import { useConversations } from '@/hooks/useConversations';
 import AdminNavigation from '@/components/AdminNavigation';
 import {
   DropdownMenu,
@@ -19,6 +20,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { hasAdminPermissions } = useAdminPermissions();
   const { isOwner } = usePermissions();
+  const { unreadCount } = useConversations();
 
   const handleSignOut = async () => {
     await signOut();
@@ -57,6 +59,23 @@ const Navbar = () => {
           <div className="flex items-center space-x-4">
             {/* Admin Navigation - shows admin/super-admin buttons if user has permissions */}
             {hasAdminPermissions && <AdminNavigation />}
+            
+            {/* Messages Button */}
+            {user && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/messages')}
+                className="relative"
+              >
+                <MessageCircle className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </Button>
+            )}
             
             {user ? (
               <DropdownMenu>
