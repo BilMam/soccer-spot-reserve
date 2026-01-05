@@ -2,7 +2,7 @@ import React from 'react';
 import { Search, User, MapPin, LogOut, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { useConversations } from '@/hooks/useConversations';
@@ -18,6 +18,7 @@ import {
 const Navbar = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { hasAdminPermissions } = useAdminPermissions();
   const { isOwner } = usePermissions();
   const { unreadCount } = useConversations();
@@ -60,8 +61,8 @@ const Navbar = () => {
             {/* Admin Navigation - shows admin/super-admin buttons if user has permissions */}
             {hasAdminPermissions && <AdminNavigation />}
             
-            {/* Messages Button */}
-            {user && (
+            {/* Messages Button - Only visible on /profile page */}
+            {user && location.pathname === '/profile' && (
               <Button
                 variant="ghost"
                 size="sm"
