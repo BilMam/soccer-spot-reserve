@@ -22,6 +22,7 @@ import ContributionProof from '@/pages/ContributionProof';
 import ContributionReceipt from '@/pages/ContributionReceipt';
 import Messages from '@/pages/Messages';
 import Conversation from '@/pages/Conversation';
+import Install from '@/pages/Install';
 import NotFound from '@/pages/NotFound';
 import { AuthProvider } from '@/hooks/useAuth';
 
@@ -56,6 +57,7 @@ function App() {
               <Route path="/cagnotte/:id" element={<Cagnotte />} />
               <Route path="/p/:code" element={<ContributionProof />} />
               <Route path="/receipt/:token" element={<ContributionReceipt />} />
+              <Route path="/install" element={<Install />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
