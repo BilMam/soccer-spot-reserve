@@ -1,6 +1,8 @@
 
 import React from 'react';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Clock } from 'lucide-react';
 
 interface BasicConfigurationFormProps {
   startTime: string;
@@ -19,9 +21,29 @@ const BasicConfigurationForm: React.FC<BasicConfigurationFormProps> = ({
   onEndTimeChange,
   onSlotDurationChange
 }) => {
+  const is24h = startTime === '00:00' && endTime === '23:30';
+
+  const handle24hToggle = (checked: boolean) => {
+    if (checked) {
+      onStartTimeChange('00:00');
+      onEndTimeChange('23:30');
+    } else {
+      onStartTimeChange('08:00');
+      onEndTimeChange('22:00');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <h4 className="font-medium">Horaires de disponibilité</h4>
+
+      <div className="flex items-center justify-between rounded-lg border p-3">
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Terrain ouvert 24h/24</span>
+        </div>
+        <Switch checked={is24h} onCheckedChange={handle24hToggle} />
+      </div>
       
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -30,6 +52,7 @@ const BasicConfigurationForm: React.FC<BasicConfigurationFormProps> = ({
             type="time"
             value={startTime}
             onChange={(e) => onStartTimeChange(e.target.value)}
+            disabled={is24h}
           />
         </div>
         <div>
@@ -38,6 +61,7 @@ const BasicConfigurationForm: React.FC<BasicConfigurationFormProps> = ({
             type="time"
             value={endTime}
             onChange={(e) => onEndTimeChange(e.target.value)}
+            disabled={is24h}
           />
         </div>
       </div>
@@ -52,7 +76,7 @@ const BasicConfigurationForm: React.FC<BasicConfigurationFormProps> = ({
           value={slotDuration}
           onChange={(e) => onSlotDurationChange(parseInt(e.target.value))}
         />
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           Détermine la granularité des réservations (ex: 30min = créneaux de 30 minutes)
         </p>
       </div>
