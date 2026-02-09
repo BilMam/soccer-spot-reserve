@@ -6,6 +6,7 @@ export const timeToMinutes = (time: string): number => {
 };
 
 export const minutesToTime = (minutes: number): string => {
+  if (minutes >= 1440) return '00:00';
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
@@ -13,11 +14,9 @@ export const minutesToTime = (minutes: number): string => {
 
 export const generateTimeOptions = (): string[] => {
   const times: string[] = [];
-  for (let hour = 8; hour <= 22; hour++) {
+  for (let hour = 0; hour < 24; hour++) {
     times.push(`${hour.toString().padStart(2, '0')}:00`);
-    if (hour < 22) {
-      times.push(`${hour.toString().padStart(2, '0')}:30`);
-    }
+    times.push(`${hour.toString().padStart(2, '0')}:30`);
   }
   return times;
 };

@@ -17,7 +17,7 @@ export class AvailableEndTimesCalculator {
 
     console.log('🔍 getAvailableEndTimes - Recherche depuis:', startTime);
 
-    for (let minutes = startMinutes + 30; minutes <= timeToMinutes('22:00'); minutes += 30) {
+    for (let minutes = startMinutes + 30; minutes <= 1440; minutes += 30) {
       const currentSlotStart = minutesToTime(minutes - 30);
       const currentSlotEnd = minutesToTime(minutes);
       const endTime = minutesToTime(minutes);
