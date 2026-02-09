@@ -62,12 +62,12 @@ const OwnerDashboard = () => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-            <TabsTrigger value="fields">Mes terrains</TabsTrigger>
-            <TabsTrigger value="availability">Gestion créneaux</TabsTrigger>
-            <TabsTrigger value="bookings">Réservations</TabsTrigger>
-            <TabsTrigger value="payments">Paiements</TabsTrigger>
+          <TabsList className="flex w-full overflow-x-auto no-scrollbar">
+            <TabsTrigger value="overview" className="whitespace-nowrap shrink-0">Vue d'ensemble</TabsTrigger>
+            <TabsTrigger value="fields" className="whitespace-nowrap shrink-0">Mes terrains</TabsTrigger>
+            <TabsTrigger value="availability" className="whitespace-nowrap shrink-0">Gestion créneaux</TabsTrigger>
+            <TabsTrigger value="bookings" className="whitespace-nowrap shrink-0">Réservations</TabsTrigger>
+            <TabsTrigger value="payments" className="whitespace-nowrap shrink-0">Paiements</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
