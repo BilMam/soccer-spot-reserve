@@ -1,34 +1,30 @@
 
+## Corriger l'affichage des onglets sur mobile
 
-## Ajouter un bouton "24/7" dans la configuration des creneaux
+### Probleme identifie
+Sur mobile, les onglets du dashboard proprietaire (6 onglets) et ceux de la gestion des creneaux (4 onglets) debordent et se chevauchent car ils sont trop nombreux pour tenir sur une seule ligne.
 
-### Ce qui sera fait
-Ajouter un bouton/toggle "Terrain 24/7" dans le formulaire `BasicConfigurationForm` (la section "Horaires de disponibilite") qui, lorsqu'il est active :
-- Met automatiquement l'heure d'ouverture a **00:00**
-- Met automatiquement l'heure de fermeture a **23:30** (dernier creneau possible)
-- Desactive visuellement les champs heure pour montrer que c'est en mode 24h
+### Solution
+Rendre les `TabsList` scrollables horizontalement sur mobile grace a des classes CSS, sans toucher au composant `tabs.tsx` global (pour ne pas impacter le reste de l'app).
 
-### Fichier modifie
+### Modifications
 
-**`src/components/availability/BasicConfigurationForm.tsx`**
+**1. `src/pages/OwnerDashboard.tsx`** (ligne 81)
+- Remplacer `<TabsList>` par `<TabsList className="flex w-full overflow-x-auto no-scrollbar">`
+- Ajouter `className="whitespace-nowrap shrink-0"` sur chaque `TabsTrigger` pour empecher le texte de se couper
 
-Ajout d'un bouton toggle au-dessus des champs horaires :
+**2. `src/components/availability/AvailabilityManagement.tsx`** (ligne 91)
+- Remplacer `<TabsList className="grid w-full grid-cols-4">` par `<TabsList className="flex w-full overflow-x-auto no-scrollbar">`
+- Ajouter `className="whitespace-nowrap shrink-0"` sur chaque `TabsTrigger`
 
+**3. `src/index.css`** -- Ajouter un utilitaire CSS pour masquer la scrollbar
+```css
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 ```
-[Horaires de disponibilite]
-[ Toggle: Terrain ouvert 24h/24 ]    <-- NOUVEAU
 
-Heure d'ouverture: [00:00]  (grise si 24/7)
-Heure de fermeture: [23:30]  (grise si 24/7)
-Duree des creneaux: [30 min]
-```
+**4. Fichiers dans `soccer-spot-reserve/`** -- Appliquer les memes modifications aux fichiers equivalents.
 
-Details techniques :
-- Un state local `is24h` derive de `startTime === '00:00' && endTime === '23:30'`
-- Au clic sur le toggle : appelle `onStartTimeChange('00:00')` et `onEndTimeChange('23:30')`
-- Au declic : remet les valeurs par defaut `08:00` / `22:00`
-- Les inputs `type="time"` deviennent `disabled` quand le mode 24/7 est actif
-- Utilisation du composant `Switch` de shadcn/ui existant avec un label et une icone horloge
-
-Le meme changement sera applique dans `soccer-spot-reserve/src/components/availability/BasicConfigurationForm.tsx`.
-
+### Resultat
+- Sur mobile : les onglets restent lisibles et on peut les faire defiler horizontalement avec le doigt
+- Sur desktop : aucun changement visible, tous les onglets tiennent deja dans l'ecran
