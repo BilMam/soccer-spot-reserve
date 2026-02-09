@@ -88,11 +88,11 @@ const AvailabilityManagement: React.FC<AvailabilityManagementProps> = ({
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="period">Sélection période</TabsTrigger>
-          <TabsTrigger value="creation">Création créneaux</TabsTrigger>
-          <TabsTrigger value="recurring">Créneaux récurrents</TabsTrigger>
-          <TabsTrigger value="calendar">Calendrier</TabsTrigger>
+        <TabsList className="flex w-full overflow-x-auto no-scrollbar">
+          <TabsTrigger value="period" className="whitespace-nowrap shrink-0">Sélection période</TabsTrigger>
+          <TabsTrigger value="creation" className="whitespace-nowrap shrink-0">Création créneaux</TabsTrigger>
+          <TabsTrigger value="recurring" className="whitespace-nowrap shrink-0">Créneaux récurrents</TabsTrigger>
+          <TabsTrigger value="calendar" className="whitespace-nowrap shrink-0">Calendrier</TabsTrigger>
         </TabsList>
 
         <TabsContent value="period">
