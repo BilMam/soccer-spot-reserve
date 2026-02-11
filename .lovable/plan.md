@@ -1,59 +1,27 @@
 
 
-## Ajouter des indicateurs visuels de scroll sur les onglets mobile
+## Corriger la visibilite des onglets aux extremites
 
 ### Probleme
-Les onglets sont maintenant scrollables, mais rien n'indique visuellement a l'utilisateur qu'il peut faire defiler vers la droite pour voir plus d'onglets.
+Les degradees (indicateurs de scroll) de 40px couvrent les premiers et derniers onglets, rendant leur texte partiellement cache. Meme en scrollant au maximum, on ne voit pas entierement "Mes terrains" a gauche ni "Periode" a droite.
 
 ### Solution
-Ajouter un effet de degrade (fondu) sur le bord droit de la barre d'onglets quand il y a du contenu cache. Cela donne un signal visuel clair que la liste continue au-dela de l'ecran.
+Deux ajustements simples :
 
-### Approche technique
-Creer un composant wrapper `ScrollableTabsList` qui :
-1. Detecte si le contenu depasse (scroll possible)
-2. Affiche un degrade a droite quand on peut scroller vers la droite
-3. Affiche un degrade a gauche quand on a deja scrolle
-4. Les degrades disparaissent quand on atteint le bout
+**1. Reduire la largeur des degradees**
+- Passer de `w-10` (40px) a `w-6` (24px) pour les deux degradees
+- Cela suffit comme indicateur visuel tout en cachant beaucoup moins de texte
 
-### Modifications
+**2. Ajouter du padding horizontal dans la TabsList**
+- Ajouter `px-1` au `TabsList` pour creer un petit espace interne aux extremites
+- Cela garantit que le premier et le dernier onglet ne sont pas colles au bord
 
-**1. Nouveau fichier : `src/components/ui/ScrollableTabsList.tsx`**
-- Composant qui wrappe `TabsList` avec un conteneur relatif
-- Utilise `useRef` et `onScroll` pour detecter la position du scroll
-- Affiche des pseudo-elements avec un degrade blanc vers transparent sur les bords
-- Le degrade droit apparait par defaut (indiquant "il y a plus a droite")
-- Le degrade gauche apparait quand l'utilisateur a scrolle
+### Fichiers modifies
 
-```text
-+--------------------------------------------------+
-| Onglet 1 | Onglet 2 | Onglet 3 | On...  ~~~fade |
-+--------------------------------------------------+
-                                    ^ degrade blanc
-                                      signal visuel
-```
-
-**2. `src/pages/OwnerDashboard.tsx`**
-- Remplacer `TabsList` par `ScrollableTabsList` pour les 6 onglets du dashboard
-
-**3. `src/components/availability/AvailabilityManagement.tsx`**
-- Remplacer `TabsList` par `ScrollableTabsList` pour les 4 onglets
-
-**4. Fichiers dans `soccer-spot-reserve/`**
-- Appliquer les memes modifications aux fichiers equivalents
-
-### Details techniques du composant ScrollableTabsList
-
-Le composant :
-- Utilise un `div` parent en `position: relative` avec `overflow: hidden`
-- Place la `TabsList` existante a l'interieur avec le scroll horizontal
-- Ajoute deux `div` absolues pour les degradees (gauche et droite)
-- Le degrade droit utilise `background: linear-gradient(to right, transparent, white)`
-- Le degrade gauche utilise `background: linear-gradient(to left, transparent, white)`
-- Un `useEffect` + `onScroll` verifie `scrollLeft` et `scrollWidth - clientWidth` pour afficher/masquer chaque degrade
-- Le degrade fait environ 40px de large, juste assez pour signaler sans cacher trop de contenu
-- Sur desktop, si tout tient sans scroll, aucun degrade n'apparait
+**`src/components/ui/ScrollableTabsList.tsx`** et **`soccer-spot-reserve/src/components/ui/ScrollableTabsList.tsx`**
+- Ligne 38 : changer `w-10` en `w-6` pour le degrade gauche
+- Ligne 41 : changer `w-10` en `w-6` pour le degrade droit
 
 ### Resultat
-- L'utilisateur voit immediatement que les onglets continuent grace au fondu sur le bord droit
-- En scrollant, un fondu apparait aussi a gauche pour signaler qu'il peut revenir
-- Sur desktop, rien ne change car tout tient deja dans l'ecran
+Les onglets aux extremites seront entierement visibles quand on scrolle a fond, et les degradees restent visibles comme indicateur de scroll sans cacher le texte.
+
