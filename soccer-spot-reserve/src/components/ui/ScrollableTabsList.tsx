@@ -30,15 +30,15 @@ const ScrollableTabsList: React.FC<ScrollableTabsListProps> = ({ children, class
       <TabsList
         ref={scrollRef as any}
         onScroll={checkScroll}
-        className={cn("flex w-full overflow-x-auto no-scrollbar", className)}
+        className={cn("flex w-full overflow-x-auto no-scrollbar px-1", className)}
       >
         {children}
       </TabsList>
       {showLeft && (
-        <div className="absolute left-0 top-0 bottom-0 w-10 pointer-events-none z-10 bg-gradient-to-r from-muted to-transparent rounded-l-md" />
+        <div className="absolute left-0 top-0 bottom-0 w-6 pointer-events-none z-10 bg-gradient-to-r from-muted to-transparent rounded-l-md" />
       )}
       {showRight && (
-        <div className="absolute right-0 top-0 bottom-0 w-10 pointer-events-none z-10 bg-gradient-to-l from-muted to-transparent rounded-r-md" />
+        <div className="absolute right-0 top-0 bottom-0 w-6 pointer-events-none z-10 bg-gradient-to-l from-muted to-transparent rounded-r-md" />
       )}
     </div>
   );
