@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import ScrollableTabsList from '@/components/ui/ScrollableTabsList';
 import { Settings, Calendar, Clock, AlertTriangle, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -87,11 +88,11 @@ const AvailabilityManagement: React.FC<AvailabilityManagementProps> = ({
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="flex w-full overflow-x-auto no-scrollbar">
+        <ScrollableTabsList>
           <TabsTrigger value="period" className="whitespace-nowrap shrink-0">Sélection période</TabsTrigger>
           <TabsTrigger value="creation" className="whitespace-nowrap shrink-0">Création créneaux</TabsTrigger>
           <TabsTrigger value="calendar" className="whitespace-nowrap shrink-0">Calendrier</TabsTrigger>
-        </TabsList>
+        </ScrollableTabsList>
 
         <TabsContent value="period">
           <PeriodSelector

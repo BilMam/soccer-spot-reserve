@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs';
+import ScrollableTabsList from '@/components/ui/ScrollableTabsList';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import OwnerStats from '@/components/OwnerStats';
@@ -78,14 +79,14 @@ const OwnerDashboard = () => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="flex w-full overflow-x-auto no-scrollbar">
+          <ScrollableTabsList>
             <TabsTrigger value="overview" className="whitespace-nowrap shrink-0">Vue d'ensemble</TabsTrigger>
             <TabsTrigger value="fields" className="whitespace-nowrap shrink-0">Mes terrains</TabsTrigger>
             <TabsTrigger value="availability" className="whitespace-nowrap shrink-0">Gestion créneaux</TabsTrigger>
             <TabsTrigger value="bookings" className="whitespace-nowrap shrink-0">Réservations</TabsTrigger>
             <TabsTrigger value="promotions" className="whitespace-nowrap shrink-0">Promotions</TabsTrigger>
             <TabsTrigger value="payments" className="whitespace-nowrap shrink-0">Paiements</TabsTrigger>
-          </TabsList>
+          </ScrollableTabsList>
 
           <TabsContent value="overview">
             <div className="space-y-6">
