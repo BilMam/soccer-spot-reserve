@@ -98,6 +98,7 @@ const SlotCreationFormContent: React.FC<SlotCreationFormContentProps> = ({
             onStartTimeChange={(time) => onFormDataChange({ ...formData, startTime: time })}
             onEndTimeChange={(time) => onFormDataChange({ ...formData, endTime: time })}
             onSlotDurationChange={(duration) => onFormDataChange({ ...formData, slotDuration: duration })}
+            onToggle24h={(start, end) => onFormDataChange({ ...formData, startTime: start, endTime: end })}
           />
 
           <DaySelectionForm
