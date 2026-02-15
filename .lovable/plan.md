@@ -1,27 +1,35 @@
 
 
-## Corriger la visibilite des onglets aux extremites
+## Corriger le bouton "Terrain ouvert 24h/24"
 
-### Probleme
-Les degradees (indicateurs de scroll) de 40px couvrent les premiers et derniers onglets, rendant leur texte partiellement cache. Meme en scrollant au maximum, on ne voit pas entierement "Mes terrains" a gauche ni "Periode" a droite.
+### Probleme identifie
+Dans `BasicConfigurationForm.tsx`, le `Switch` est enveloppe dans un `div` cliquable. Quand on clique sur le Switch :
+1. Le `onCheckedChange` du Switch se declenche (toggle ON)
+2. Le `onClick` du `div` parent se declenche aussi (toggle OFF)
+
+Resultat : les deux evenements s'annulent et rien ne change visuellement.
 
 ### Solution
-Deux ajustements simples :
+Ajouter `e.stopPropagation()` sur le Switch pour empecher l'evenement de remonter au `div` parent. Ainsi :
+- Cliquer sur le Switch = un seul toggle (via `onCheckedChange`)
+- Cliquer sur le texte/zone autour = un seul toggle (via `onClick` du div)
 
-**1. Reduire la largeur des degradees**
-- Passer de `w-10` (40px) a `w-6` (24px) pour les deux degradees
-- Cela suffit comme indicateur visuel tout en cachant beaucoup moins de texte
+### Fichiers a modifier
 
-**2. Ajouter du padding horizontal dans la TabsList**
-- Ajouter `px-1` au `TabsList` pour creer un petit espace interne aux extremites
-- Cela garantit que le premier et le dernier onglet ne sont pas colles au bord
+**`src/components/availability/BasicConfigurationForm.tsx`** (ligne 48)
+- Envelopper le Switch dans un `div` avec `onClick={(e) => e.stopPropagation()}`
 
-### Fichiers modifies
+**`soccer-spot-reserve/src/components/availability/BasicConfigurationForm.tsx`**
+- Meme modification
 
-**`src/components/ui/ScrollableTabsList.tsx`** et **`soccer-spot-reserve/src/components/ui/ScrollableTabsList.tsx`**
-- Ligne 38 : changer `w-10` en `w-6` pour le degrade gauche
-- Ligne 41 : changer `w-10` en `w-6` pour le degrade droit
+### Detail technique
+```text
+Avant :
+  <Switch checked={is24h} onCheckedChange={handle24hToggle} />
 
-### Resultat
-Les onglets aux extremites seront entierement visibles quand on scrolle a fond, et les degradees restent visibles comme indicateur de scroll sans cacher le texte.
+Apres :
+  <div onClick={(e) => e.stopPropagation()}>
+    <Switch checked={is24h} onCheckedChange={handle24hToggle} />
+  </div>
+```
 
