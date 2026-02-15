@@ -11,6 +11,7 @@ interface BasicConfigurationFormProps {
   onStartTimeChange: (time: string) => void;
   onEndTimeChange: (time: string) => void;
   onSlotDurationChange: (duration: number) => void;
+  onToggle24h?: (start: string, end: string) => void;
 }
 
 const BasicConfigurationForm: React.FC<BasicConfigurationFormProps> = ({
@@ -19,17 +20,26 @@ const BasicConfigurationForm: React.FC<BasicConfigurationFormProps> = ({
   slotDuration,
   onStartTimeChange,
   onEndTimeChange,
-  onSlotDurationChange
+  onSlotDurationChange,
+  onToggle24h
 }) => {
   const is24h = startTime === '00:00' && endTime === '23:30';
 
   const handle24hToggle = (checked: boolean) => {
     if (checked) {
-      onStartTimeChange('00:00');
-      onEndTimeChange('23:30');
+      if (onToggle24h) {
+        onToggle24h('00:00', '23:30');
+      } else {
+        onStartTimeChange('00:00');
+        onEndTimeChange('23:30');
+      }
     } else {
-      onStartTimeChange('08:00');
-      onEndTimeChange('22:00');
+      if (onToggle24h) {
+        onToggle24h('08:00', '22:00');
+      } else {
+        onStartTimeChange('08:00');
+        onEndTimeChange('22:00');
+      }
     }
   };
 
