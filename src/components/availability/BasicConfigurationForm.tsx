@@ -45,7 +45,9 @@ const BasicConfigurationForm: React.FC<BasicConfigurationFormProps> = ({
           <Clock className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium">Terrain ouvert 24h/24</span>
         </div>
-        <Switch checked={is24h} onCheckedChange={handle24hToggle} />
+        <div onClick={(e) => e.stopPropagation()}>
+          <Switch checked={is24h} onCheckedChange={handle24hToggle} />
+        </div>
       </div>
       
       <div className="grid grid-cols-2 gap-4">
