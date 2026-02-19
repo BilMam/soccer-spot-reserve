@@ -42,15 +42,20 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
   }
 
   // 1️⃣ Trouver l'horaire global théorique (earliestStart / latestEnd sur toute la période)
+  // Note: '00:00:00' comme end_time signifie minuit (fin de journée), pas début
   const allStarts = slots.map(s => s.start_time).sort();
+  const hasEndAtMidnight = slots.some(s => s.end_time === '00:00:00');
   const allEnds = slots.map(s => s.end_time).sort();
   const globalStart = allStarts[0];
-  const globalEnd = allEnds[allEnds.length - 1];
+  // Si un créneau finit à minuit (00:00:00), c'est le vrai "dernier" horaire
+  const globalEnd = hasEndAtMidnight ? '00:00:00' : allEnds[allEnds.length - 1];
 
   // 2️⃣ Calculer la durée la plus commune des créneaux
   const durations = slots.map(s => {
     const start = timeToMinutes(s.start_time);
-    const end = timeToMinutes(s.end_time);
+    let end = timeToMinutes(s.end_time);
+    // Minuit (00:00) comme end_time = fin de journée = 1440 minutes
+    if (end === 0 && start > 0) end = 1440;
     return end - start;
   });
   
@@ -91,7 +96,8 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
       if (slot.start_time < current.earliest) {
         current.earliest = slot.start_time;
       }
-      if (slot.end_time > current.latest) {
+      // '00:00:00' comme end_time = minuit = toujours le plus tardif
+      if (slot.end_time === '00:00:00' || (current.latest !== '00:00:00' && slot.end_time > current.latest)) {
         current.latest = slot.end_time;
       }
     }
@@ -143,12 +149,19 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
     daySpecificTimes: daySpecificTimes.length > 0 ? daySpecificTimes : []
   });
 
+  // Normaliser les heures: enlever les secondes (DB retourne 'HH:MM:SS', le frontend attend 'HH:MM')
+  const normalizeTime = (t: string) => t.length > 5 ? t.substring(0, 5) : t;
+
   return {
-    startTime: globalStart,
-    endTime: globalEnd,
+    startTime: normalizeTime(globalStart),
+    endTime: normalizeTime(globalEnd),
     slotDuration: mostCommonDuration,
     excludeDays: excludeDays,
-    daySpecificTimes: daySpecificTimes
+    daySpecificTimes: daySpecificTimes.map(d => ({
+      ...d,
+      startTime: normalizeTime(d.startTime),
+      endTime: normalizeTime(d.endTime)
+    }))
   };
 };
 
