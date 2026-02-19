@@ -12,6 +12,7 @@ import SlotCreationFormLoading from './SlotCreationFormLoading';
 import { DaySpecificTime } from './DaySelectionForm';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 
 interface SlotCreationFormProps {
   fieldId: string;
@@ -108,8 +109,8 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     try {
       setCreationStep('creating');
 
-      const startDateISO = startDate.toISOString().split('T')[0];
-      const endDateISO = endDate.toISOString().split('T')[0];
+      const startDateISO = format(startDate, 'yyyy-MM-dd');
+      const endDateISO = format(endDate, 'yyyy-MM-dd');
 
       // Construire le tableau des créneaux à créer
       const slotsToCreate: Array<{ dayOfWeek: number; start: string; end: string }> = [];
