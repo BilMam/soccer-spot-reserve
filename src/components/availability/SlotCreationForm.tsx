@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAvailabilityManagement } from '@/hooks/useAvailabilityManagement';
 import { useExistingSlots } from '@/hooks/useExistingSlots';

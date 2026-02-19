@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAvailabilityManagement } from '@/hooks/useAvailabilityManagement';
 import { useExistingSlots } from '@/hooks/useExistingSlots';
@@ -77,8 +78,8 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
       setCreationStep('creating');
       
       const result = await createAvailabilityForPeriod.mutateAsync({
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        endDate: format(endDate, 'yyyy-MM-dd'),
         startTime: formData.startTime,
         endTime: formData.endTime,
         slotDuration: formData.slotDuration,
