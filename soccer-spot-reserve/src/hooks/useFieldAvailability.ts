@@ -15,7 +15,8 @@ export const useFieldAvailability = (fieldId: string) => {
           .gte('date', startDate)
           .lte('date', endDate)
           .order('date', { ascending: true })
-          .order('start_time', { ascending: true });
+          .order('start_time', { ascending: true })
+          .limit(10000);
 
         if (error) throw error;
         return data;

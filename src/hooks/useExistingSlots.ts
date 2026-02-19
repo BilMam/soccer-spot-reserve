@@ -14,7 +14,8 @@ export const useExistingSlots = (fieldId: string, startDate: Date, endDate: Date
         .gte('date', format(startDate, 'yyyy-MM-dd'))
         .lte('date', format(endDate, 'yyyy-MM-dd'))
         .order('date')
-        .order('start_time');
+        .order('start_time')
+        .limit(10000);
 
       if (error) throw error;
       return data || [];

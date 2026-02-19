@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAvailabilityManagement } from '@/hooks/useAvailabilityManagement';
 import { useExistingSlots } from '@/hooks/useExistingSlots';
@@ -108,8 +109,8 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
     try {
       setCreationStep('creating');
 
-      const startDateISO = startDate.toISOString().split('T')[0];
-      const endDateISO = endDate.toISOString().split('T')[0];
+      const startDateISO = format(startDate, 'yyyy-MM-dd');
+      const endDateISO = format(endDate, 'yyyy-MM-dd');
 
       // Construire le tableau des créneaux à créer
       const slotsToCreate: Array<{ dayOfWeek: number; start: string; end: string }> = [];
