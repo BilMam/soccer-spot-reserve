@@ -75,18 +75,19 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
     totalSlots: slots.length
   });
 
-  // 3️⃣ Pour chaque dayOfWeek présent, calculer son min start et max end
-  const perDay = new Map<number, { earliest: string; latest: string }>();
-  
+  // 3️⃣ Pour chaque dayOfWeek présent, calculer son min start, max end, et compter les créneaux
+  const perDay = new Map<number, { earliest: string; latest: string; count: number }>();
+
   slots.forEach(slot => {
     const [y, m, d] = slot.date.split('-').map(Number);
     const jsDate = new Date(y, m - 1, d);
     const dow = jsDate.getDay(); // 0 = dimanche, 1 = lundi, etc.
-    
+
     if (!perDay.has(dow)) {
-      perDay.set(dow, { earliest: slot.start_time, latest: slot.end_time });
+      perDay.set(dow, { earliest: slot.start_time, latest: slot.end_time, count: 1 });
     } else {
       const current = perDay.get(dow)!;
+      current.count++;
       if (slot.start_time < current.earliest) {
         current.earliest = slot.start_time;
       }
@@ -96,14 +97,28 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
     }
   });
 
+  // Calculer le nombre moyen de créneaux par jour pour détecter les anomalies
+  const dayCounts = Array.from(perDay.values()).map(d => d.count);
+  const maxDayCount = Math.max(...dayCounts);
+
   // 4️⃣ Construire daySpecificTimes = jours où l'horaire n'est pas le même que le global
+  // IMPORTANT: ignorer les jours avec anormalement peu de créneaux (données tronquées/corrompues)
   const daySpecificTimes: Array<{
     dayOfWeek: number;
     startTime: string;
     endTime: string;
   }> = [];
-  
+
   perDay.forEach((times, dow) => {
+    const dayName = getDayName(dow);
+
+    // Si ce jour a moins de 50% des créneaux du jour le plus complet,
+    // c'est probablement des données tronquées → on ignore (utiliser l'horaire global)
+    if (times.count < maxDayCount * 0.5) {
+      console.log(`  ⚠️ ${dayName}: ${times.count} créneaux (vs max ${maxDayCount}) → données incomplètes, horaire global utilisé`);
+      return;
+    }
+
     // Si ce jour a des horaires différents du global, on l'ajoute
     if (times.earliest !== globalStart || times.latest !== globalEnd) {
       daySpecificTimes.push({
@@ -111,8 +126,7 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
         startTime: times.earliest,
         endTime: times.latest
       });
-      
-      const dayName = getDayName(dow);
+
       console.log(`  🕒 Horaires spécifiques pour ${dayName}: ${times.earliest}-${times.latest} (vs global ${globalStart}-${globalEnd})`);
     }
   });
