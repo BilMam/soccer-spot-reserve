@@ -58,7 +58,11 @@ const SlotSummary: React.FC<SlotSummaryProps> = ({
         </div>
         <div className="flex justify-between">
           <span>Horaires :</span>
-          <span>{startTime} - {endTime}</span>
+          <span>
+            {startTime === '00:00' && (endTime === '00:00' || endTime === '23:30')
+              ? '24h/24 (00:00 - minuit)'
+              : `${startTime} - ${endTime}`}
+          </span>
         </div>
         <div className="flex justify-between">
           <span>Durée des créneaux :</span>

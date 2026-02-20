@@ -11,7 +11,6 @@ import SlotCreationFormContent from './SlotCreationFormContent';
 import SlotCreationFormActions from './SlotCreationFormActions';
 import SlotCreationFormLoading from './SlotCreationFormLoading';
 import { DaySpecificTime } from './DaySelectionForm';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -88,8 +87,10 @@ const SlotCreationForm: React.FC<SlotCreationFormProps> = ({
       const dayEnd = specificTime?.endTime || formData.endTime;
       
       // Calculer les créneaux pour ce jour
+      // '00:00' comme endTime = minuit fin de journée = 1440 minutes
       const startMinutes = parseInt(dayStart.split(':')[0]) * 60 + parseInt(dayStart.split(':')[1]);
-      const endMinutes = parseInt(dayEnd.split(':')[0]) * 60 + parseInt(dayEnd.split(':')[1]);
+      const rawEndMinutes = parseInt(dayEnd.split(':')[0]) * 60 + parseInt(dayEnd.split(':')[1]);
+      const endMinutes = (rawEndMinutes === 0 && startMinutes >= 0) ? 1440 : rawEndMinutes;
       const slotsForDay = Math.floor((endMinutes - startMinutes) / formData.slotDuration);
       
       totalSlots += slotsForDay;

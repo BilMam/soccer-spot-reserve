@@ -23,15 +23,17 @@ const BasicConfigurationForm: React.FC<BasicConfigurationFormProps> = ({
   onSlotDurationChange,
   onToggle24h
 }) => {
-  const is24h = startTime === '00:00' && endTime === '23:30';
+  // '00:00' comme endTime signifie minuit (fin de journée) = vrai 24h/24
+  // On accepte aussi '23:30' pour rétrocompatibilité avec les anciennes données
+  const is24h = startTime === '00:00' && (endTime === '00:00' || endTime === '23:30');
 
   const handle24hToggle = (checked: boolean) => {
     if (checked) {
       if (onToggle24h) {
-        onToggle24h('00:00', '23:30');
+        onToggle24h('00:00', '00:00');
       } else {
         onStartTimeChange('00:00');
-        onEndTimeChange('23:30');
+        onEndTimeChange('00:00');
       }
     } else {
       if (onToggle24h) {

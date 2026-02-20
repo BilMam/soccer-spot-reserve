@@ -42,15 +42,20 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
   }
 
   // 1️⃣ Trouver l'horaire global théorique (earliestStart / latestEnd sur toute la période)
+  // Note: '00:00:00' comme end_time signifie minuit (fin de journée), pas début
   const allStarts = slots.map(s => s.start_time).sort();
+  const hasEndAtMidnight = slots.some(s => s.end_time === '00:00:00');
   const allEnds = slots.map(s => s.end_time).sort();
   const globalStart = allStarts[0];
-  const globalEnd = allEnds[allEnds.length - 1];
+  // Si un créneau finit à minuit (00:00:00), c'est le vrai "dernier" horaire
+  const globalEnd = hasEndAtMidnight ? '00:00:00' : allEnds[allEnds.length - 1];
 
   // 2️⃣ Calculer la durée la plus commune des créneaux
   const durations = slots.map(s => {
     const start = timeToMinutes(s.start_time);
-    const end = timeToMinutes(s.end_time);
+    let end = timeToMinutes(s.end_time);
+    // Minuit (00:00) comme end_time = fin de journée = 1440 minutes
+    if (end === 0 && start > 0) end = 1440;
     return end - start;
   });
   
@@ -75,35 +80,51 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
     totalSlots: slots.length
   });
 
-  // 3️⃣ Pour chaque dayOfWeek présent, calculer son min start et max end
-  const perDay = new Map<number, { earliest: string; latest: string }>();
-  
+  // 3️⃣ Pour chaque dayOfWeek présent, calculer son min start, max end, et compter les créneaux
+  const perDay = new Map<number, { earliest: string; latest: string; count: number }>();
+
   slots.forEach(slot => {
     const [y, m, d] = slot.date.split('-').map(Number);
     const jsDate = new Date(y, m - 1, d);
     const dow = jsDate.getDay(); // 0 = dimanche, 1 = lundi, etc.
-    
+
     if (!perDay.has(dow)) {
-      perDay.set(dow, { earliest: slot.start_time, latest: slot.end_time });
+      perDay.set(dow, { earliest: slot.start_time, latest: slot.end_time, count: 1 });
     } else {
       const current = perDay.get(dow)!;
+      current.count++;
       if (slot.start_time < current.earliest) {
         current.earliest = slot.start_time;
       }
-      if (slot.end_time > current.latest) {
+      // '00:00:00' comme end_time = minuit = toujours le plus tardif
+      if (slot.end_time === '00:00:00' || (current.latest !== '00:00:00' && slot.end_time > current.latest)) {
         current.latest = slot.end_time;
       }
     }
   });
 
+  // Calculer le nombre moyen de créneaux par jour pour détecter les anomalies
+  const dayCounts = Array.from(perDay.values()).map(d => d.count);
+  const maxDayCount = Math.max(...dayCounts);
+
   // 4️⃣ Construire daySpecificTimes = jours où l'horaire n'est pas le même que le global
+  // IMPORTANT: ignorer les jours avec anormalement peu de créneaux (données tronquées/corrompues)
   const daySpecificTimes: Array<{
     dayOfWeek: number;
     startTime: string;
     endTime: string;
   }> = [];
-  
+
   perDay.forEach((times, dow) => {
+    const dayName = getDayName(dow);
+
+    // Si ce jour a moins de 50% des créneaux du jour le plus complet,
+    // c'est probablement des données tronquées → on ignore (utiliser l'horaire global)
+    if (times.count < maxDayCount * 0.5) {
+      console.log(`  ⚠️ ${dayName}: ${times.count} créneaux (vs max ${maxDayCount}) → données incomplètes, horaire global utilisé`);
+      return;
+    }
+
     // Si ce jour a des horaires différents du global, on l'ajoute
     if (times.earliest !== globalStart || times.latest !== globalEnd) {
       daySpecificTimes.push({
@@ -111,8 +132,7 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
         startTime: times.earliest,
         endTime: times.latest
       });
-      
-      const dayName = getDayName(dow);
+
       console.log(`  🕒 Horaires spécifiques pour ${dayName}: ${times.earliest}-${times.latest} (vs global ${globalStart}-${globalEnd})`);
     }
   });
@@ -129,12 +149,19 @@ export const extractSlotConfiguration = (slots: AvailabilitySlot[]): ExtractedSl
     daySpecificTimes: daySpecificTimes.length > 0 ? daySpecificTimes : []
   });
 
+  // Normaliser les heures: enlever les secondes (DB retourne 'HH:MM:SS', le frontend attend 'HH:MM')
+  const normalizeTime = (t: string) => t.length > 5 ? t.substring(0, 5) : t;
+
   return {
-    startTime: globalStart,
-    endTime: globalEnd,
+    startTime: normalizeTime(globalStart),
+    endTime: normalizeTime(globalEnd),
     slotDuration: mostCommonDuration,
     excludeDays: excludeDays,
-    daySpecificTimes: daySpecificTimes
+    daySpecificTimes: daySpecificTimes.map(d => ({
+      ...d,
+      startTime: normalizeTime(d.startTime),
+      endTime: normalizeTime(d.endTime)
+    }))
   };
 };
 
