@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +15,7 @@ import FieldAmenitiesForm from './FieldAmenitiesForm';
 import FieldPayoutAccountForm from './FieldPayoutAccountForm';
 import ErrorAlert from '@/components/ErrorAlert';
 import { useGeocodingService } from '@/hooks/useGeocodingService';
+import { reverseGeocode } from '@/utils/googleMapsUtils';
 import { toast } from 'sonner';
 import { calculatePublicPrice } from '@/utils/publicPricing';
 
@@ -52,6 +53,8 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
   const [error, setError] = useState<string | null>(null);
   const [fieldOwner, setFieldOwner] = useState<string | null>(null);
   const [locationSource, setLocationSource] = useState<'geocoding' | 'geolocation' | null>(null);
+  const [resolvedAddress, setResolvedAddress] = useState<string | null>(null);
+  const initialLoadDone = useRef(false);
 
   const { 
     geocodeFieldAddress, 
@@ -188,17 +191,33 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
   }, [geocodeFieldAddress, geocodingError]);
 
   // Géocodage automatique avec debounce
+  // Géocodage automatique avec debounce - skip si coordonnées déjà présentes
   useEffect(() => {
     if (!isApiReady || locationSource === 'geolocation') return;
+    // Ne pas re-geocoder si des coordonnées valides existent déjà
+    if (formData.latitude !== null && formData.longitude !== null) return;
 
     const timer = setTimeout(() => {
       if (formData.address && formData.city) {
         performGeocode(formData.address, formData.city);
       }
-    }, 2000); // Attendre 2 secondes après la dernière modification
+    }, 2000);
 
     return () => clearTimeout(timer);
-  }, [formData.address, formData.city, isApiReady, performGeocode, locationSource]);
+  }, [formData.address, formData.city, isApiReady, performGeocode, locationSource, formData.latitude, formData.longitude]);
+
+  // Reverse geocoding pour afficher une adresse lisible
+  useEffect(() => {
+    if (!formData.latitude || !formData.longitude || !isApiReady) return;
+    
+    let cancelled = false;
+    reverseGeocode(formData.latitude, formData.longitude).then(address => {
+      if (!cancelled && address) {
+        setResolvedAddress(address);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [formData.latitude, formData.longitude, isApiReady]);
 
   // Géolocalisation utilisateur
   const handleUserGeolocation = async () => {
@@ -402,7 +421,7 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
           <div className="text-sm text-green-600 flex items-center space-x-2">
             <MapPin className="w-4 h-4" />
             <span>
-              ✅ Terrain localisé {locationSource === 'geolocation' ? '(via votre position)' : '(via l\'adresse)'} : {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+              ✅ Terrain localisé {locationSource === 'geolocation' ? '(via votre position)' : '(via l\'adresse)'} : {resolvedAddress || `${formData.latitude.toFixed(6)}, ${formData.longitude.toFixed(6)}`}
             </span>
           </div>
         )}
