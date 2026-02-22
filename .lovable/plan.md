@@ -1,66 +1,59 @@
 
 
-## Corriger les erreurs de build + Ajouter le support multi-photos et video
+## Carrousel d'images sur la page terrain + Correction upload video
 
-### 1. Corriger l'erreur de build : import duplique
+### Probleme 1 : Une seule image affichee
 
-**Fichier** : `src/components/availability/SlotCreationForm.tsx`
+Dans `FieldDetail.tsx` (ligne 215-216), seule la premiere image est affichee :
+```
+src={field.images?.[0]}
+```
+Il n'y a aucun mecanisme pour naviguer entre les images.
 
-La ligne 2 et la ligne 15 importent toutes les deux `format` depuis `date-fns`. Supprimer la ligne 15 (doublon).
+**Solution** : Ajouter un carrousel avec des fleches gauche/droite et des indicateurs (points) en bas. Utiliser un state `currentIndex` pour naviguer. Afficher les videos avec un element `<video>` quand l'URL est une video.
 
-### 2. Corriger le bug multi-upload (une seule photo sauvegardee)
+Meme chose dans `FieldCard.tsx` : la carte dans le fil affiche `field.image` (une seule image). On n'ajoutera pas de carrousel sur les cartes (trop petit), mais la page detail aura le carrousel complet.
 
-**Fichier** : `src/components/ImageUpload.tsx` (et version `soccer-spot-reserve/`)
+### Probleme 2 : Upload video echoue
 
-Le probleme est a la ligne 104 : dans la boucle `for`, `images` est capture par la closure au debut de la boucle. Quand on uploade 3 fichiers, chaque iteration fait `[...images, publicUrl]` avec le meme tableau `images` initial, donc seule la derniere image est conservee.
+Le bucket Supabase `field-images` a ete cree avec :
+- `file_size_limit = 5242880` (5MB)
+- `allowed_mime_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']`
 
-**Correction** : utiliser un `ref` pour tracker les images ajoutees pendant la boucle, ou accumuler les URLs et faire un seul appel a `onImagesChange` a la fin.
+Les videos (MP4, WebM) sont **rejetees** par le bucket car :
+1. Les types MIME video ne sont pas dans `allowed_mime_types`
+2. La limite de 5MB est trop petite pour les videos
 
-```text
-Solution : accumuler les URLs uploadees puis appeler onImagesChange une seule fois
-const uploadedUrls: string[] = [];
-for (const file of files) {
-  const url = await uploadFile(file);
-  uploadedUrls.push(url);
-}
-onImagesChange([...images, ...uploadedUrls]);
+**Solution** : Migration SQL pour mettre a jour le bucket :
+- Augmenter `file_size_limit` a 52428800 (50MB)
+- Ajouter `video/mp4`, `video/webm`, `video/quicktime` aux types autorises
+
+### Modifications
+
+**1. Nouvelle migration SQL**
+```sql
+UPDATE storage.buckets
+SET
+  file_size_limit = 52428800,
+  allowed_mime_types = ARRAY[
+    'image/jpeg','image/jpg','image/png','image/webp',
+    'video/mp4','video/webm','video/quicktime'
+  ]
+WHERE id = 'field-images';
 ```
 
-### 3. Ajouter le support video
+**2. `src/pages/FieldDetail.tsx`**
+- Ajouter un state `currentImageIndex`
+- Remplacer l'image unique par un carrousel avec fleches gauche/droite
+- Detecter les URLs video et afficher `<video>` avec controls
+- Afficher des indicateurs (points) en bas de l'image
+- Importer `ChevronLeft`, `ChevronRight` de lucide-react
 
-**Fichier** : `src/components/ImageUpload.tsx` (et version `soccer-spot-reserve/`)
+**3. `soccer-spot-reserve/src/pages/FieldDetail.tsx`**
+- Memes modifications
 
-- Ajouter `video/mp4,video/webm,video/quicktime` dans l'attribut `accept` de l'input file
-- Afficher les fichiers video avec un element `<video>` au lieu de `<img>` (detection par extension ou type MIME)
-- Renommer les labels "Images" en "Photos et videos" dans l'interface
-- Augmenter la limite de taille pour les videos (max 50MB)
-- Mettre a jour le texte d'aide : "Formats supportes: JPEG, PNG, WebP, MP4, WebM"
-
-**Base de donnees** : Aucun changement necessaire. Le champ `images` (text array) stocke deja des URLs, il peut stocker des URLs de videos aussi.
-
-**Storage** : Le bucket `field-images` accepte deja tous les types de fichiers. Aucun changement necessaire.
-
-### 4. Corriger les erreurs edge functions (pre-existantes)
-
-Ces erreurs dans les edge functions ne sont pas liees a nos changements mais doivent etre corrigees :
-
-- `create-paydunya-payout/index.ts:136` : ajouter un cast via `unknown`
-- `send-sms-notification/index.ts:66` : caster `error` en `Error`
-- `simulate-paydunya-payment/index.ts:118` : caster `error` en `Error`
-- `test-webhook-connectivity/index.ts:56` : caster `error` en `Error`
-- `verify-owner-otp/index.ts:207` : caster `error` en `Error`
-
-Pattern de correction : `(error as Error).message`
-
-### Fichiers a modifier
-
-1. `src/components/availability/SlotCreationForm.tsx` — supprimer import duplique
-2. `soccer-spot-reserve/src/components/availability/SlotCreationForm.tsx` — idem si duplique
-3. `src/components/ImageUpload.tsx` — fix multi-upload + support video
-4. `soccer-spot-reserve/src/components/ImageUpload.tsx` — idem
-5. `supabase/functions/create-paydunya-payout/index.ts` — fix type error
-6. `supabase/functions/send-sms-notification/index.ts` — fix type error
-7. `supabase/functions/simulate-paydunya-payment/index.ts` — fix type error
-8. `supabase/functions/test-webhook-connectivity/index.ts` — fix type error
-9. `supabase/functions/verify-owner-otp/index.ts` — fix type error
+### Resultat
+- Le proprietaire peut uploader des videos jusqu'a 50MB
+- Les joueurs voient toutes les photos et videos du terrain avec des fleches de navigation
+- Les videos sont jouables directement sur la page
 
