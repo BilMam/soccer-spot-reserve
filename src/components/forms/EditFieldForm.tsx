@@ -15,7 +15,7 @@ import FieldAmenitiesForm from './FieldAmenitiesForm';
 import FieldPayoutAccountForm from './FieldPayoutAccountForm';
 import ErrorAlert from '@/components/ErrorAlert';
 import { useGeocodingService } from '@/hooks/useGeocodingService';
-import { reverseGeocode } from '@/utils/googleMapsUtils';
+import { reverseGeocodeREST } from '@/utils/googleMapsUtils';
 import { toast } from 'sonner';
 import { calculatePublicPrice } from '@/utils/publicPricing';
 
@@ -206,18 +206,21 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
     return () => clearTimeout(timer);
   }, [formData.address, formData.city, isApiReady, performGeocode, locationSource, formData.latitude, formData.longitude]);
 
-  // Reverse geocoding pour afficher une adresse lisible
+  // Reverse geocoding REST pour afficher une adresse lisible
   useEffect(() => {
-    if (!formData.latitude || !formData.longitude || !isApiReady) return;
-    
+    if (!formData.latitude || !formData.longitude) return;
+
     let cancelled = false;
-    reverseGeocode(formData.latitude, formData.longitude).then(address => {
+    const fetchAddress = async () => {
+      const address = await reverseGeocodeREST(formData.latitude!, formData.longitude!);
       if (!cancelled && address) {
         setResolvedAddress(address);
       }
-    });
+    };
+
+    fetchAddress();
     return () => { cancelled = true; };
-  }, [formData.latitude, formData.longitude, isApiReady]);
+  }, [formData.latitude, formData.longitude]);
 
   // Géolocalisation utilisateur
   const handleUserGeolocation = async () => {
