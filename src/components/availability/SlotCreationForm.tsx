@@ -12,7 +12,6 @@ import SlotCreationFormActions from './SlotCreationFormActions';
 import SlotCreationFormLoading from './SlotCreationFormLoading';
 import { DaySpecificTime } from './DaySelectionForm';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
 
 interface SlotCreationFormProps {
   fieldId: string;
