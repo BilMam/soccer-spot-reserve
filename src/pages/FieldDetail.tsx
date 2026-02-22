@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +19,7 @@ import { useActivePromosForField } from '@/hooks/useActivePromosForField';
 import PromoInfoChip from '@/components/promotions/PromoInfoChip';
 import { useCreateBookingWithPayment } from '@/hooks/useCreateBookingWithPayment';
 import { calculateNetFromPublic } from '@/utils/publicPricing';
+import { reverseGeocode, loadGoogleMaps } from '@/utils/googleMapsUtils';
 
 interface Field {
   id: string;
@@ -56,6 +57,7 @@ const FieldDetail = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [dynamicHours, setDynamicHours] = useState<{ start: string; end: string } | null>(null);
+  const [resolvedAddress, setResolvedAddress] = useState<string | null>(null);
 
   const { data: field, isLoading } = useQuery({
     queryKey: ['field', id],
@@ -79,6 +81,18 @@ const FieldDetail = () => {
       return data as Field;
     }
   });
+
+  // Reverse geocoding pour obtenir l'adresse exacte
+  useEffect(() => {
+    if (!field?.latitude || !field?.longitude) return;
+    let cancelled = false;
+    loadGoogleMaps().then(() => {
+      reverseGeocode(field.latitude!, field.longitude!).then(addr => {
+        if (!cancelled && addr) setResolvedAddress(addr);
+      });
+    }).catch(err => console.warn('Reverse geocoding failed:', err));
+    return () => { cancelled = true; };
+  }, [field?.latitude, field?.longitude]);
 
   // Récupérer les promos actives pour ce terrain
   const { data: activePromos } = useActivePromosForField(id);
@@ -243,7 +257,7 @@ const FieldDetail = () => {
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:underline"
                   >
-                    {field.address}, {field.city}
+                    {resolvedAddress || field.location || `${field.address}, ${field.city}`}
                   </a>
                 </div>
 
