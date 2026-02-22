@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { Upload, X, Plus, Loader2, Link, Image as ImageIcon } from 'lucide-react';
+import { Upload, X, Plus, Loader2, Link, Image as ImageIcon, Video } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -21,6 +21,19 @@ interface UploadingFile {
   preview: string;
   progress: number;
 }
+
+const VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mov', '.quicktime'];
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+
+const isVideoUrl = (url: string): boolean => {
+  const lower = url.toLowerCase();
+  return VIDEO_EXTENSIONS.some(ext => lower.includes(ext));
+};
+
+const isVideoFile = (file: File): boolean => {
+  return file.type.startsWith('video/');
+};
 
 const ImageUpload: React.FC<ImageUploadProps> = ({ 
   images, 
@@ -64,13 +77,20 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     
     if (files.length === 0) return;
     
-    // Vérifier la limite
     if (images.length + files.length > maxImages) {
-      toast.error(`Limite de ${maxImages} images dépassée`);
+      toast.error(`Limite de ${maxImages} fichiers dépassée`);
       return;
     }
 
-    // Créer les previews
+    for (const file of files) {
+      const maxSize = isVideoFile(file) ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+      const maxLabel = isVideoFile(file) ? '50MB' : '5MB';
+      if (file.size > maxSize) {
+        toast.error(`${file.name} dépasse la taille maximale de ${maxLabel}`);
+        return;
+      }
+    }
+
     const newUploadingFiles: UploadingFile[] = files.map(file => ({
       file,
       preview: URL.createObjectURL(file),
@@ -79,12 +99,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
     setUploadingFiles(prev => [...prev, ...newUploadingFiles]);
 
-    // Upload des fichiers un par un
+    const uploadedUrls: string[] = [];
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       
       try {
-        // Simuler le progrès
         setUploadingFiles(prev => 
           prev.map(uf => 
             uf.file === file ? { ...uf, progress: 50 } : uf
@@ -92,18 +112,14 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         );
 
         const publicUrl = await uploadFile(file);
+        uploadedUrls.push(publicUrl);
         
-        // Upload terminé
         setUploadingFiles(prev => 
           prev.map(uf => 
             uf.file === file ? { ...uf, progress: 100 } : uf
           )
         );
 
-        // Ajouter l'URL aux images
-        onImagesChange([...images, publicUrl]);
-
-        // Supprimer de la liste d'upload après un délai
         setTimeout(() => {
           setUploadingFiles(prev => prev.filter(uf => uf.file !== file));
         }, 1000);
@@ -111,13 +127,14 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       } catch (error: any) {
         console.error('Erreur upload:', error);
         toast.error(error.message || 'Erreur lors de l\'upload');
-        
-        // Supprimer le fichier en erreur
         setUploadingFiles(prev => prev.filter(uf => uf.file !== file));
       }
     }
 
-    // Reset l'input
+    if (uploadedUrls.length > 0) {
+      onImagesChange([...images, ...uploadedUrls]);
+    }
+
     event.target.value = '';
   }, [images, maxImages, onImagesChange, user?.id]);
 
@@ -125,22 +142,22 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     if (!newImageUrl) return;
     
     try {
-      new URL(newImageUrl); // Valider l'URL
+      new URL(newImageUrl);
       
       if (images.includes(newImageUrl)) {
-        toast.error('Cette image est déjà ajoutée');
+        toast.error('Ce fichier est déjà ajouté');
         return;
       }
       
       if (images.length >= maxImages) {
-        toast.error(`Limite de ${maxImages} images atteinte`);
+        toast.error(`Limite de ${maxImages} fichiers atteinte`);
         return;
       }
       
       onImagesChange([...images, newImageUrl]);
       setNewImageUrl('');
     } catch {
-      toast.error('URL d\'image invalide');
+      toast.error('URL invalide');
     }
   };
 
@@ -171,7 +188,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
                 <input
                   type="file"
                   multiple
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
                   onChange={handleFileSelect}
                   className="hidden"
                   id="image-upload"
@@ -181,12 +198,15 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
                   htmlFor="image-upload"
                   className={`cursor-pointer ${isAtLimit ? 'cursor-not-allowed opacity-50' : ''}`}
                 >
-                  <ImageIcon className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                  <div className="flex justify-center space-x-2 mb-4">
+                    <ImageIcon className="w-10 h-10 text-gray-400" />
+                    <Video className="w-10 h-10 text-gray-400" />
+                  </div>
                   <p className="text-lg font-medium text-gray-900 mb-2">
-                    {isAtLimit ? `Limite de ${maxImages} images atteinte` : 'Sélectionner des images'}
+                    {isAtLimit ? `Limite de ${maxImages} fichiers atteinte` : 'Sélectionner des photos ou vidéos'}
                   </p>
                   <p className="text-gray-500">
-                    Formats supportés: JPEG, PNG, WebP (max 5MB par image)
+                    Photos: JPEG, PNG, WebP (max 5MB) · Vidéos: MP4, WebM (max 50MB)
                   </p>
                 </label>
               </div>
@@ -225,21 +245,26 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
             </Button>
           </div>
           {isAtLimit && (
-            <p className="text-sm text-gray-500">Limite de {maxImages} images atteinte</p>
+            <p className="text-sm text-gray-500">Limite de {maxImages} fichiers atteinte</p>
           )}
         </TabsContent>
       </Tabs>
 
-      {/* Files en cours d'upload */}
       {uploadingFiles.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {uploadingFiles.map((uploadingFile, index) => (
             <div key={index} className="relative">
-              <img 
-                src={uploadingFile.preview} 
-                alt="En cours d'upload"
-                className="w-full h-32 object-cover rounded border"
-              />
+              {isVideoFile(uploadingFile.file) ? (
+                <div className="w-full h-32 bg-gray-100 rounded border flex items-center justify-center">
+                  <Video className="w-8 h-8 text-gray-400" />
+                </div>
+              ) : (
+                <img 
+                  src={uploadingFile.preview} 
+                  alt="En cours d'upload"
+                  className="w-full h-32 object-cover rounded border"
+                />
+              )}
               <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded">
                 {uploadingFile.progress < 100 ? (
                   <div className="text-center text-white">
@@ -257,34 +282,50 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         </div>
       )}
 
-      {/* Images ajoutées */}
       {images.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h4 className="font-medium">Images ajoutées ({images.length}/{maxImages})</h4>
-            <Badge variant="secondary">{images.length} image{images.length > 1 ? 's' : ''}</Badge>
+            <h4 className="font-medium">Photos et vidéos ({images.length}/{maxImages})</h4>
+            <Badge variant="secondary">{images.length} fichier{images.length > 1 ? 's' : ''}</Badge>
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {images.map((imageUrl, index) => (
+            {images.map((mediaUrl, index) => (
               <div key={index} className="relative group">
-                <img 
-                  src={imageUrl} 
-                  alt={`Image ${index + 1}`}
-                  className="w-full h-32 object-cover rounded border"
-                  onError={(e) => {
-                    e.currentTarget.src = '/placeholder.svg';
-                  }}
-                />
+                {isVideoUrl(mediaUrl) ? (
+                  <video 
+                    src={mediaUrl}
+                    className="w-full h-32 object-cover rounded border"
+                    muted
+                    preload="metadata"
+                  />
+                ) : (
+                  <img 
+                    src={mediaUrl} 
+                    alt={`Image ${index + 1}`}
+                    className="w-full h-32 object-cover rounded border"
+                    onError={(e) => {
+                      e.currentTarget.src = '/placeholder.svg';
+                    }}
+                  />
+                )}
                 <Button
                   type="button"
                   variant="destructive"
                   size="sm"
                   className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => removeImage(imageUrl)}
+                  onClick={() => removeImage(mediaUrl)}
                 >
                   <X className="w-3 h-3" />
                 </Button>
+                {isVideoUrl(mediaUrl) && (
+                  <div className="absolute bottom-2 left-2">
+                    <Badge variant="secondary" className="text-xs">
+                      <Video className="w-3 h-3 mr-1" />
+                      Vidéo
+                    </Badge>
+                  </div>
+                )}
               </div>
             ))}
           </div>

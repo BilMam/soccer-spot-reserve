@@ -11,7 +11,7 @@ interface FieldImageFormProps {
 const FieldImageForm: React.FC<FieldImageFormProps> = ({ images, onImagesChange }) => {
   return (
     <div className="space-y-4">
-      <Label>Photos du terrain</Label>
+      <Label>Photos et vidéos du terrain</Label>
       <ImageUpload
         images={images}
         onImagesChange={onImagesChange}
