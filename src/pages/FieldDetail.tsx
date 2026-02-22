@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,10 +7,11 @@ import Navbar from '@/components/Navbar';
 import ReviewsList from '@/components/ReviewsList';
 import FavoriteButton from '@/components/FavoriteButton';
 import FieldCalendar from '@/components/FieldCalendar';
+import FieldMediaCarousel from '@/components/FieldMediaCarousel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Star, MapPin, Users, Clock, Wifi, Car, ArrowLeft } from 'lucide-react';
+import { Star, MapPin, Users, Clock, Wifi, Car, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getDefaultSportImage } from '@/utils/defaultImages';
 import { getFieldTypeLabel } from '@/utils/fieldUtils';
@@ -210,24 +211,15 @@ const FieldDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Images */}
-            <div className="relative h-96 rounded-2xl overflow-hidden">
-              <img
-                src={field.images?.[0] || getDefaultSportImage(field.sport_type)}
-                alt={field.name}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-4 left-4">
-                <Badge className="bg-green-600 hover:bg-green-700">
-                  {getFieldTypeLabel(field.field_type)}
-                </Badge>
-              </div>
-              <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-2 flex items-center space-x-1">
-                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                <span className="font-medium">{field.rating}</span>
-                <span className="text-gray-500">({field.total_reviews})</span>
-              </div>
-            </div>
+            {/* Images/Videos Carousel */}
+            <FieldMediaCarousel
+              images={field.images}
+              fallback={getDefaultSportImage(field.sport_type)}
+              fieldName={field.name}
+              fieldType={field.field_type}
+              rating={field.rating}
+              totalReviews={field.total_reviews}
+            />
 
             {/* Field Info */}
             <Card>
