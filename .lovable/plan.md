@@ -1,26 +1,47 @@
 
-## Harmoniser le style de l'adresse sur la page terrain
 
-### Ce qui change
+## Corriger le bouton "Retour" qui ne repond pas toujours
 
-**Fichier : `src/pages/FieldDetail.tsx` (lignes 253-266)**
+### Probleme
 
-Actuellement, l'adresse entiere est un lien bleu (`text-blue-600`). On va :
+Le bouton "Retour" en haut a gauche de la page terrain (ligne 223-230 de `FieldDetail.tsx`) utilise `navigate(-1)` qui depend de l'historique du navigateur. Quand l'utilisateur arrive directement sur la page (lien partage, actualisation), il n'y a pas d'historique precedent et le clic ne produit aucun effet.
 
-1. Mettre l'icone MapPin en bleu (`text-blue-600`) pour indiquer visuellement que c'est cliquable/localisation
-2. Garder le texte de l'adresse en couleur normale (`text-gray-700`) comme les autres infos
-3. Le lien reste cliquable (ouvre Google Maps) mais avec un style discret : soulignement au survol seulement
+### Solution
 
-**Avant :**
+**Fichier : `src/pages/FieldDetail.tsx` (lignes 223-230)**
+
+1. Remplacer `navigate(-1)` par une logique avec fallback : si l'historique existe, revenir en arriere ; sinon, naviguer vers `/search`
+2. Augmenter legèrement la zone de clic du bouton pour eviter les clics rates
+
+```typescript
+// Avant
+<Button 
+  variant="ghost" 
+  onClick={() => navigate(-1)}
+  className="mb-6 flex items-center space-x-2"
+>
+
+// Apres
+<Button 
+  variant="ghost" 
+  onClick={() => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/search');
+    }
+  }}
+  className="mb-6 flex items-center space-x-2 px-3 py-2"
+>
 ```
-<MapPin className="w-5 h-5 mr-2" />  (gris)
-<a className="text-blue-600 hover:underline">adresse</a>  (bleu)
-```
 
-**Apres :**
-```
-<MapPin className="w-5 h-5 mr-2 text-blue-600" />  (bleu)
-<a className="text-gray-700 hover:underline hover:text-blue-600">adresse</a>  (gris normal, bleu au survol)
-```
+### Detail technique
 
-Le design sera coherent avec les autres lignes d'info (capacite, horaires) tout en gardant l'icone bleue pour signaler la localisation.
+- `window.history.length > 1` verifie qu'il y a une page precedente dans l'historique
+- Si non, on redirige vers `/search` comme destination logique par defaut
+- Le padding supplementaire (`px-3 py-2`) agrandit la zone de clic du bouton ghost
+
+### Fichier a modifier
+
+- `src/pages/FieldDetail.tsx` uniquement (lignes 223-230)
+
