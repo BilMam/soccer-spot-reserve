@@ -53,6 +53,7 @@ const FieldDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [dynamicHours, setDynamicHours] = useState<{ start: string; end: string } | null>(null);
 
   const { data: field, isLoading } = useQuery({
     queryKey: ['field', id],
@@ -242,7 +243,12 @@ const FieldDetail = () => {
                   <div className="flex items-center space-x-2">
                     <Clock className="w-5 h-5 text-gray-500" />
                     <span className="text-gray-700">
-                      {field.availability_start} - {field.availability_end}
+                      {dynamicHours
+                        ? (dynamicHours.start === '00:00' && dynamicHours.end === '00:00')
+                          ? 'Ouvert 24h/24'
+                          : `${dynamicHours.start} - ${dynamicHours.end}`
+                        : `${field.availability_start} - ${field.availability_end}`
+                      }
                     </span>
                   </div>
                 </div>
@@ -298,6 +304,7 @@ const FieldDetail = () => {
                 price_2h: field.price_2h
               }}
               onTimeSlotSelect={handleTimeSlotSelect}
+              onHoursChange={(start, end) => setDynamicHours({ start, end })}
             />
             </div>
           </div>

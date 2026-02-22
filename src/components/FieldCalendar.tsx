@@ -1,21 +1,24 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { useFieldAvailability } from '@/hooks/useFieldAvailability';
 import CalendarDateSelector from '@/components/calendar/CalendarDateSelector';
 import SlotBookingInterface from '@/components/calendar/SlotBookingInterface';
 import type { FieldPricing } from '@/types/pricing';
+import { normalizeTime } from '@/utils/timeUtils';
 
 interface FieldCalendarProps {
   fieldId: string;
   pricing: FieldPricing;
   onTimeSlotSelect: (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => void;
+  onHoursChange?: (start: string, end: string) => void;
 }
 
 const FieldCalendar: React.FC<FieldCalendarProps> = ({
   fieldId,
   pricing,
-  onTimeSlotSelect
+  onTimeSlotSelect,
+  onHoursChange
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
@@ -25,6 +28,21 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
   const endDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
   
   const { data: availableSlots = [], isLoading } = useFieldAvailabilityForPeriod(startDateStr, endDateStr);
+
+  // Calculer et remonter les horaires du jour sélectionné
+  useEffect(() => {
+    if (!onHoursChange || availableSlots.length === 0) return;
+    
+    const times = availableSlots.map(s => ({
+      start: normalizeTime(s.start_time),
+      end: normalizeTime(s.end_time)
+    }));
+    
+    const firstHour = times.reduce((min, t) => t.start < min ? t.start : min, times[0].start);
+    const lastHour = times.reduce((max, t) => t.end > max ? t.end : max, times[0].end);
+    
+    onHoursChange(firstHour, lastHour);
+  }, [availableSlots, onHoursChange]);
 
   return (
     <div className="space-y-6">
