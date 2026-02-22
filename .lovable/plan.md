@@ -1,53 +1,91 @@
 
+## Corriger le reverse geocoding qui echoue silencieusement
 
-## Afficher l'adresse exacte via reverse geocoding sur la page terrain
+### Diagnostic
 
-### Probleme
+Le code actuel dans `FieldDetail.tsx` (lignes 86-95) appelle `reverseGeocode` apres `loadGoogleMaps`, mais :
 
-Le terrain "MySport" a ses coordonnees GPS stockees dans les champs `address` ("5.336352") et `city` ("-3.948337") au lieu d'une vraie adresse. Le champ `location` contient "Cocody" (la commune), mais ce n'est pas assez precis.
+1. La fonction `reverseGeocode` (dans `googleMapsUtils.ts` ligne 161-205) **avale toutes les erreurs** : elle fait un `catch` et retourne `null` silencieusement
+2. Le `.then(addr => ...)` dans le `useEffect` ne catch pas les rejections internes de `reverseGeocode`
+3. Cause probable : la cle API Google Maps n'a pas le service "Geocoding API" active, ou le quota est depasse. Le Geocoder cote JS retourne un statut d'erreur (ex: `REQUEST_DENIED`) qui est catch et ignore
 
-Sur la page `FieldDetail.tsx`, l'affichage montre directement `field.address, field.city` = "5.336352, -3.948337" -- incomprehensible pour un joueur.
+### Solution robuste : double approche
 
-La solution : utiliser `reverseGeocode(field.latitude, field.longitude)` pour obtenir l'adresse exacte (ex: "Rue des Jardins, Cocody, Abidjan") et l'afficher a la place.
+Plutot que de dependre uniquement du SDK JavaScript Google Maps (qui necessite le chargement complet du script), ajouter un **fallback via l'API REST Geocoding** qui fonctionne avec un simple `fetch`. Cela resout aussi le probleme de timing du chargement du SDK.
 
 ### Modifications
 
-**Fichier : `src/pages/FieldDetail.tsx`**
+**1. `src/utils/googleMapsUtils.ts`** -- Ajouter une fonction `reverseGeocodeREST`
 
-1. Importer `reverseGeocode` et `loadGoogleMaps` depuis `@/utils/googleMapsUtils`
-2. Ajouter un state `resolvedAddress` (initialement `null`)
-3. Ajouter un `useEffect` qui :
-   - Verifie que `field.latitude` et `field.longitude` existent
-   - Charge Google Maps API via `loadGoogleMaps()`
-   - Appelle `reverseGeocode(field.latitude, field.longitude)`
-   - Stocke le resultat dans `resolvedAddress`
-4. Modifier l'affichage (ligne 246) : utiliser `resolvedAddress` si disponible, sinon `field.location` comme fallback, sinon `field.address, field.city`
+Nouvelle fonction qui utilise directement l'API REST Google Maps Geocoding :
+```typescript
+export const reverseGeocodeREST = async (
+  latitude: number, 
+  longitude: number
+): Promise<string | null> => {
+  try {
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&language=fr&key=${GOOGLE_MAPS_API_KEY}`
+    );
+    const data = await response.json();
+    
+    if (data.status === 'OK' && data.results?.length > 0) {
+      return data.results[0].formatted_address;
+    }
+    
+    console.warn('Reverse geocoding REST echoue:', data.status, data.error_message);
+    return null;
+  } catch (error) {
+    console.error('Erreur reverse geocoding REST:', error);
+    return null;
+  }
+};
+```
+
+**2. `src/pages/FieldDetail.tsx`** -- Utiliser la nouvelle approche REST
+
+Modifier le `useEffect` (lignes 86-95) pour :
+- Utiliser `reverseGeocodeREST` directement (pas besoin de charger le SDK Google Maps complet)
+- Ajouter du logging pour diagnostiquer les echecs
+- Garder un fallback propre
 
 ```typescript
-// Import
-import { reverseGeocode, loadGoogleMaps } from '@/utils/googleMapsUtils';
-
-// State
-const [resolvedAddress, setResolvedAddress] = useState<string | null>(null);
-
-// useEffect
 useEffect(() => {
   if (!field?.latitude || !field?.longitude) return;
   let cancelled = false;
-  loadGoogleMaps().then(() => {
-    reverseGeocode(field.latitude!, field.longitude!).then(addr => {
-      if (!cancelled && addr) setResolvedAddress(addr);
-    });
-  });
+  
+  const fetchAddress = async () => {
+    try {
+      const addr = await reverseGeocodeREST(field.latitude!, field.longitude!);
+      if (!cancelled && addr) {
+        setResolvedAddress(addr);
+      }
+    } catch (err) {
+      console.error('Reverse geocoding echoue:', err);
+    }
+  };
+  
+  fetchAddress();
   return () => { cancelled = true; };
 }, [field?.latitude, field?.longitude]);
-
-// Affichage (ligne 246)
-{resolvedAddress || field.location || `${field.address}, ${field.city}`}
 ```
 
-Le lien Google Maps restera base sur les coordonnees GPS (il fonctionne deja correctement -- le blocage vu en apercu est normal dans l'iframe Lovable, il marchera sur le site publie).
+**3. `src/components/forms/EditFieldForm.tsx`** -- Meme correction pour les formulaires
 
-### Fichier a modifier
+Remplacer l'appel a `reverseGeocode` par `reverseGeocodeREST` dans le `useEffect` existant pour l'affichage de l'adresse resolue.
 
-- `src/pages/FieldDetail.tsx` uniquement
+**4. `src/components/FieldForm.tsx`** -- Idem
+
+### Pourquoi cette approche
+
+- L'API REST Geocoding fonctionne avec un simple `fetch`, pas besoin de charger le SDK JS complet
+- Si la cle API n'a pas le Geocoding API active, l'API REST renverra un message d'erreur clair (`REQUEST_DENIED`) qu'on pourra logger
+- Pas de probleme de timing avec le chargement du SDK
+- Permet de diagnostiquer immediatement la cause de l'echec grace aux logs
+
+### Fichiers a modifier
+
+1. `src/utils/googleMapsUtils.ts` -- ajouter `reverseGeocodeREST`
+2. `src/pages/FieldDetail.tsx` -- utiliser `reverseGeocodeREST` au lieu de `loadGoogleMaps + reverseGeocode`
+3. `src/components/forms/EditFieldForm.tsx` -- meme modification
+4. `src/components/FieldForm.tsx` -- meme modification
