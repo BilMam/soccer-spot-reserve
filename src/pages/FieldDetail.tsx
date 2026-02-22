@@ -19,7 +19,7 @@ import { useActivePromosForField } from '@/hooks/useActivePromosForField';
 import PromoInfoChip from '@/components/promotions/PromoInfoChip';
 import { useCreateBookingWithPayment } from '@/hooks/useCreateBookingWithPayment';
 import { calculateNetFromPublic } from '@/utils/publicPricing';
-import { reverseGeocode, loadGoogleMaps } from '@/utils/googleMapsUtils';
+import { reverseGeocodeREST } from '@/utils/googleMapsUtils';
 
 interface Field {
   id: string;
@@ -82,15 +82,19 @@ const FieldDetail = () => {
     }
   });
 
-  // Reverse geocoding pour obtenir l'adresse exacte
+  // Reverse geocoding REST pour obtenir l'adresse exacte
   useEffect(() => {
     if (!field?.latitude || !field?.longitude) return;
     let cancelled = false;
-    loadGoogleMaps().then(() => {
-      reverseGeocode(field.latitude!, field.longitude!).then(addr => {
-        if (!cancelled && addr) setResolvedAddress(addr);
-      });
-    }).catch(err => console.warn('Reverse geocoding failed:', err));
+
+    const fetchAddress = async () => {
+      const addr = await reverseGeocodeREST(field.latitude!, field.longitude!);
+      if (!cancelled && addr) {
+        setResolvedAddress(addr);
+      }
+    };
+
+    fetchAddress();
     return () => { cancelled = true; };
   }, [field?.latitude, field?.longitude]);
 

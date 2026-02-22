@@ -204,6 +204,32 @@ export const reverseGeocode = async (latitude: number, longitude: number): Promi
   }
 };
 
+// Fonction de reverse geocoding via l'API REST (plus fiable que le SDK JS)
+export const reverseGeocodeREST = async (
+  latitude: number,
+  longitude: number
+): Promise<string | null> => {
+  try {
+    console.log('🔍 Reverse geocoding REST pour:', { latitude, longitude });
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&language=fr&key=${GOOGLE_MAPS_API_KEY}`
+    );
+    const data = await response.json();
+
+    if (data.status === 'OK' && data.results?.length > 0) {
+      const addr = data.results[0].formatted_address;
+      console.log('✅ Reverse geocoding REST réussi:', addr);
+      return addr;
+    }
+
+    console.warn('⚠️ Reverse geocoding REST échoué:', data.status, data.error_message);
+    return null;
+  } catch (error) {
+    console.error('❌ Erreur reverse geocoding REST:', error);
+    return null;
+  }
+};
+
 // Fonction pour créer un marqueur personnalisé
 export const createCustomMarker = (field: any) => {
   // Vérification que Google Maps est disponible
