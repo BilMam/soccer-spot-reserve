@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import ReviewsList from '@/components/ReviewsList';
 import FavoriteButton from '@/components/FavoriteButton';
 import FieldCalendar from '@/components/FieldCalendar';
+import FieldMediaCarousel from '@/components/FieldMediaCarousel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -143,24 +144,16 @@ const FieldDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Images */}
-            <div className="relative h-96 rounded-2xl overflow-hidden">
-              <img
-                src={field.images?.[0] || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'}
-                alt={field.name}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-4 left-4">
-                <Badge className="bg-green-600 hover:bg-green-700">
-                  {getFieldTypeLabel(field.field_type)}
-                </Badge>
-              </div>
-              <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-2 flex items-center space-x-1">
-                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                <span className="font-medium">{field.rating}</span>
-                <span className="text-gray-500">({field.total_reviews})</span>
-              </div>
-            </div>
+            {/* Images/Videos Carousel */}
+            <FieldMediaCarousel
+              images={field.images}
+              fallback="https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+              fieldName={field.name}
+              fieldType={field.field_type}
+              rating={field.rating}
+              totalReviews={field.total_reviews}
+              getFieldTypeLabel={getFieldTypeLabel}
+            />
 
             {/* Field Info */}
             <Card>
