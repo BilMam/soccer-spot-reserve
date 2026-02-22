@@ -222,8 +222,14 @@ const FieldDetail = () => {
       <div className="container mx-auto px-4 py-8">
         <Button 
           variant="ghost" 
-          onClick={() => navigate(-1)}
-          className="mb-6 flex items-center space-x-2"
+          onClick={() => {
+            if (window.history.length > 1) {
+              navigate(-1);
+            } else {
+              navigate('/search');
+            }
+          }}
+          className="mb-6 flex items-center space-x-2 px-3 py-2"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Retour</span>
