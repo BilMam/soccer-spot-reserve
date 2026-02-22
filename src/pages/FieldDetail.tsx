@@ -251,7 +251,7 @@ const FieldDetail = () => {
                 </div>
                 
                 <div className="flex items-center text-gray-600 mb-4">
-                  <MapPin className="w-5 h-5 mr-2" />
+                  <MapPin className="w-5 h-5 mr-2 text-blue-600" />
                   <a
                     href={field.latitude && field.longitude
                       ? `https://www.google.com/maps?q=${field.latitude},${field.longitude}`
@@ -259,7 +259,7 @@ const FieldDetail = () => {
                     }
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
+                    className="text-gray-700 hover:underline hover:text-blue-600 transition-colors"
                   >
                     {resolvedAddress || field.location || `${field.address}, ${field.city}`}
                   </a>
