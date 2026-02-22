@@ -31,6 +31,8 @@ interface Field {
   availability_start: string;
   availability_end: string;
   owner_id: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 const FieldDetail = () => {
@@ -165,7 +167,17 @@ const FieldDetail = () => {
                 
                 <div className="flex items-center text-gray-600 mb-4">
                   <MapPin className="w-5 h-5 mr-2" />
-                  <span>{field.address}, {field.city}</span>
+                  <a
+                    href={field.latitude && field.longitude
+                      ? `https://www.google.com/maps?q=${field.latitude},${field.longitude}`
+                      : `https://www.google.com/maps/search/${encodeURIComponent(`${field.address}, ${field.city}`)}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {field.address}, {field.city}
+                  </a>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-6">
