@@ -41,7 +41,14 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
     const firstHour = times.reduce((min, t) => t.start < min ? t.start : min, times[0].start);
     const lastHour = times.reduce((max, t) => t.end > max ? t.end : max, times[0].end);
     
-    onHoursChange(firstHour, lastHour);
+    // 00:00 as end_time means midnight (end of day) — detect 24h/24
+    const hasEndMidnight = times.some(t => t.end === '00:00');
+    
+    if (hasEndMidnight && firstHour === '00:00') {
+      onHoursChange('00:00', '00:00');
+    } else {
+      onHoursChange(firstHour, lastHour);
+    }
   }, [availableSlots, onHoursChange]);
 
   return (
