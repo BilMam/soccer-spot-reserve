@@ -1,41 +1,63 @@
 
 
-## Corriger l'affichage "Ouvert 24h/24" sur la fiche terrain
+## Corriger 3 problemes de geolocalisation
 
-### Probleme
+### Probleme 1 : Geocodage automatique qui se relance a chaque visite
 
-Pour un terrain ouvert 24h/24, les creneaux vont de `00:00` a `00:00` (minuit a minuit). Le dernier creneau est `23:30-00:00`.
+Dans `EditFieldForm.tsx` (lignes 191-201), le `useEffect` de geocodage automatique se declenche a chaque fois que `formData.address` et `formData.city` changent -- y compris au chargement initial quand les donnees sont injectees depuis la base. Si le terrain a deja des coordonnees (`latitude`/`longitude`), il ne devrait pas re-geocoder.
 
-Dans `FieldCalendar.tsx`, le calcul de `lastHour` utilise une comparaison de chaines :
-```
-const lastHour = times.reduce((max, t) => t.end > max ? t.end : max, ...)
-```
-
-Le probleme : `"00:00" > "23:30"` est **faux** en comparaison de chaines, donc `lastHour` reste a `"23:30"` au lieu de `"00:00"`.
-
-Resultat : la page affiche "00:00 - 23:30" au lieu de "Ouvert 24h/24".
-
-### Solution
-
-Modifier le calcul dans `FieldCalendar.tsx` (lignes 36-44) pour traiter `00:00` comme cas special pour `end_time` :
-- Si un des creneaux a un `end_time` de `"00:00"` (minuit = fin de journee), alors `lastHour` doit etre `"00:00"`
-- La condition dans `FieldDetail.tsx` (`start === '00:00' && end === '00:00'`) fonctionnera alors correctement et affichera "Ouvert 24h/24"
-
-### Fichier a modifier
-
-**`src/components/FieldCalendar.tsx`** (useEffect lignes 33-45)
-
-Ajouter une detection : si un creneau a `end === '00:00'`, c'est minuit (fin de journee), donc on force `lastHour = '00:00'` directement.
+**Correction** : Ajouter une condition pour ne pas geocoder si le terrain a deja des coordonnees valides.
 
 ```typescript
-const hasEndMidnight = times.some(t => t.end === '00:00');
-
-if (hasEndMidnight && firstHour === '00:00') {
-  onHoursChange('00:00', '00:00'); // 24h/24
-} else {
-  onHoursChange(firstHour, lastHour);
-}
+useEffect(() => {
+  // Ne pas geocoder si les coordonnees existent deja
+  if (!isApiReady || locationSource === 'geolocation' || formData.latitude !== null) return;
+  // ... reste du code
+}, [formData.address, formData.city, isApiReady, performGeocode, locationSource, formData.latitude]);
 ```
 
-Aucune autre modification necessaire car la condition dans `FieldDetail.tsx` et `OccupiedSlotsDisplay.tsx` gere deja le cas `00:00 / 00:00` = "Ouvert 24h/24".
+Meme correction dans `FieldForm.tsx` (creation de terrain) -- la, le geocodage automatique est normal au premier remplissage, mais il faut aussi eviter de re-geocoder si des coordonnees valides existent deja.
+
+---
+
+### Probleme 2 : Afficher une adresse lisible au lieu des coordonnees
+
+Dans `EditFieldForm.tsx` (ligne 405), les coordonnees brutes sont affichees :
+> Terrain localise : 5.349012, -3.982145
+
+**Correction** : Utiliser `reverseGeocode` pour convertir les coordonnees en adresse lisible et l'afficher a la place. Ajouter un state `resolvedAddress` qui est rempli par reverse geocoding quand les coordonnees changent.
+
+Fichiers concernes :
+- `src/components/forms/EditFieldForm.tsx` : ajouter reverse geocoding apres localisation
+- `src/components/FieldForm.tsx` : meme modification
+
+---
+
+### Probleme 3 : Lien cliquable vers Google Maps sur la fiche terrain
+
+Dans `FieldDetail.tsx` (ligne 233-236), l'adresse est affichee en texte simple. Le joueur devrait pouvoir cliquer dessus pour ouvrir Google Maps.
+
+**Correction** : Transformer l'adresse en lien cliquable. Si le terrain a des coordonnees GPS, utiliser `https://www.google.com/maps?q={lat},{lng}`. Sinon, utiliser `https://www.google.com/maps/search/{adresse}`.
+
+```typescript
+<a
+  href={field.latitude && field.longitude
+    ? `https://www.google.com/maps?q=${field.latitude},${field.longitude}`
+    : `https://www.google.com/maps/search/${encodeURIComponent(`${field.address}, ${field.city}`)}`
+  }
+  target="_blank"
+  rel="noopener noreferrer"
+  className="text-blue-600 hover:underline"
+>
+  {field.address}, {field.city}
+</a>
+```
+
+---
+
+### Resume des fichiers a modifier
+
+1. **`src/components/forms/EditFieldForm.tsx`** -- bloquer le geocodage auto si coordonnees existantes + afficher adresse lisible au lieu des coordonnees
+2. **`src/components/FieldForm.tsx`** -- meme correction pour la creation
+3. **`src/pages/FieldDetail.tsx`** -- rendre l'adresse cliquable vers Google Maps
 
