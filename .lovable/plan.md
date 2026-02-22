@@ -1,48 +1,53 @@
 
 
-## Corriger l'adresse lisible et le lien cliquable
+## Afficher l'adresse exacte via reverse geocoding sur la page terrain
 
-### Probleme 1 : Lien cliquable non applique au bon fichier
+### Probleme
 
-La modification pour rendre l'adresse cliquable a ete faite uniquement dans `soccer-spot-reserve/src/pages/FieldDetail.tsx` (le dossier duplique), mais pas dans le fichier principal `src/pages/FieldDetail.tsx` qui est celui utilise par l'application.
+Le terrain "MySport" a ses coordonnees GPS stockees dans les champs `address` ("5.336352") et `city` ("-3.948337") au lieu d'une vraie adresse. Le champ `location` contient "Cocody" (la commune), mais ce n'est pas assez precis.
 
-**Correction dans `src/pages/FieldDetail.tsx` :**
-- Ajouter `latitude` et `longitude` a l'interface `Field` (lignes 23-49)
-- Remplacer le `<span>` de l'adresse (ligne 235) par un lien `<a>` vers Google Maps
+Sur la page `FieldDetail.tsx`, l'affichage montre directement `field.address, field.city` = "5.336352, -3.948337" -- incomprehensible pour un joueur.
 
-### Probleme 2 : Adresse lisible qui ne s'affiche pas (reverse geocoding)
-
-Le code de reverse geocoding dans `EditFieldForm.tsx` et `FieldForm.tsx` est en place mais `reverseGeocode` echoue silencieusement si Google Maps API n'est pas encore charge quand les coordonnees sont deja presentes (cas de l'edition). Le `useEffect` se declenche une fois, `isApiReady` est `false`, puis quand `isApiReady` devient `true`, le `useEffect` ne se relance que si les coordonnees changent aussi.
-
-En realite le `useEffect` a `isApiReady` dans ses dependances (ligne 220), donc il devrait se relancer. Le probleme est probablement que `reverseGeocode` verifie `window.google` mais l'API peut etre en cours de chargement. Il faut ajouter un log pour diagnostiquer, mais surtout s'assurer que le `useEffect` attend bien que `isApiReady` soit `true` avant d'appeler `reverseGeocode` -- ce qui est deja le cas (ligne 211).
-
-Verification supplementaire : s'assurer que `initializeGoogleMaps()` est bien appele dans `EditFieldForm` pour que `isApiReady` passe a `true`.
+La solution : utiliser `reverseGeocode(field.latitude, field.longitude)` pour obtenir l'adresse exacte (ex: "Rue des Jardins, Cocody, Abidjan") et l'afficher a la place.
 
 ### Modifications
 
-**1. `src/pages/FieldDetail.tsx`**
-- Ajouter `latitude: number | null;` et `longitude: number | null;` a l'interface `Field`
-- Ligne 233-236 : remplacer le `<span>` par un `<a>` cliquable vers Google Maps :
-  ```
-  <a href={field.latitude && field.longitude
-      ? `https://www.google.com/maps?q=${field.latitude},${field.longitude}`
-      : `https://www.google.com/maps/search/${encodeURIComponent(field.address + ', ' + field.city)}`}
-    target="_blank" rel="noopener noreferrer"
-    className="text-blue-600 hover:underline">
-    {field.address}, {field.city}
-  </a>
-  ```
+**Fichier : `src/pages/FieldDetail.tsx`**
 
-**2. `src/components/forms/EditFieldForm.tsx`**
-- Verifier que `initializeGoogleMaps()` est appele au montage (ajouter un `useEffect` si manquant)
-- Le reverse geocoding (lignes 210-220) et l'affichage (ligne 424) sont deja en place -- il suffit de s'assurer que l'API est bien initialisee
+1. Importer `reverseGeocode` et `loadGoogleMaps` depuis `@/utils/googleMapsUtils`
+2. Ajouter un state `resolvedAddress` (initialement `null`)
+3. Ajouter un `useEffect` qui :
+   - Verifie que `field.latitude` et `field.longitude` existent
+   - Charge Google Maps API via `loadGoogleMaps()`
+   - Appelle `reverseGeocode(field.latitude, field.longitude)`
+   - Stocke le resultat dans `resolvedAddress`
+4. Modifier l'affichage (ligne 246) : utiliser `resolvedAddress` si disponible, sinon `field.location` comme fallback, sinon `field.address, field.city`
 
-**3. `src/components/FieldForm.tsx`**
-- Meme verification que `initializeGoogleMaps()` est appele
+```typescript
+// Import
+import { reverseGeocode, loadGoogleMaps } from '@/utils/googleMapsUtils';
 
-### Fichiers a modifier
+// State
+const [resolvedAddress, setResolvedAddress] = useState<string | null>(null);
 
-1. `src/pages/FieldDetail.tsx` -- ajouter latitude/longitude a l'interface + lien cliquable
-2. `src/components/forms/EditFieldForm.tsx` -- verifier l'initialisation Google Maps
-3. `src/components/FieldForm.tsx` -- verifier l'initialisation Google Maps
+// useEffect
+useEffect(() => {
+  if (!field?.latitude || !field?.longitude) return;
+  let cancelled = false;
+  loadGoogleMaps().then(() => {
+    reverseGeocode(field.latitude!, field.longitude!).then(addr => {
+      if (!cancelled && addr) setResolvedAddress(addr);
+    });
+  });
+  return () => { cancelled = true; };
+}, [field?.latitude, field?.longitude]);
 
+// Affichage (ligne 246)
+{resolvedAddress || field.location || `${field.address}, ${field.city}`}
+```
+
+Le lien Google Maps restera base sur les coordonnees GPS (il fonctionne deja correctement -- le blocage vu en apercu est normal dans l'iframe Lovable, il marchera sur le site publie).
+
+### Fichier a modifier
+
+- `src/pages/FieldDetail.tsx` uniquement
