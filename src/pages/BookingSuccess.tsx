@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Calendar, Clock, MapPin, Mail, Smartphone } from 'lucide-react';
+import { CheckCircle, Calendar, Clock, MapPin, Mail, Smartphone, Shield } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -36,12 +36,16 @@ const BookingSuccess = () => {
       if (error) throw error;
 
       // Marquer le paiement comme confirmé si ce n'est pas déjà fait
-      if (data.payment_status !== 'paid') {
+      const isDeposit = data.payment_type === 'deposit';
+      const expectedStatus = isDeposit ? 'deposit_paid' : 'paid';
+
+      if (data.payment_status !== expectedStatus && data.payment_status !== 'paid') {
         await supabase
           .from('bookings')
-          .update({ 
-            payment_status: 'paid',
+          .update({
+            payment_status: expectedStatus,
             status: 'confirmed',
+            ...(isDeposit ? { deposit_paid: true } : {}),
             updated_at: new Date().toISOString()
           })
           .eq('id', data.id);
@@ -104,23 +108,37 @@ const BookingSuccess = () => {
     );
   }
 
+  const isDeposit = booking.payment_type === 'deposit';
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      
+
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           {/* Confirmation de succès */}
           <Card className="mb-8">
             <CardContent className="p-8 text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-green-600" />
+              <div className={`w-16 h-16 ${isDeposit ? 'bg-emerald-100' : 'bg-green-100'} rounded-full flex items-center justify-center mx-auto mb-4`}>
+                {isDeposit ? (
+                  <Shield className="w-8 h-8 text-emerald-600" />
+                ) : (
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                )}
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Réservation confirmée !
+                {isDeposit ? 'Terrain bloqué !' : 'Réservation confirmée !'}
               </h1>
+              {isDeposit && (
+                <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 text-sm font-medium px-3 py-1 rounded-full mb-3">
+                  <Shield className="w-4 h-4" />
+                  Garantie Terrain Bloqué
+                </span>
+              )}
               <p className="text-gray-600">
-                Votre paiement a été traité avec succès et votre réservation est confirmée.
+                {isDeposit
+                  ? 'Votre acompte a été payé avec succès. Le terrain est bloqué pour vous.'
+                  : 'Votre paiement a été traité avec succès et votre réservation est confirmée.'}
               </p>
             </CardContent>
           </Card>
@@ -152,23 +170,42 @@ const BookingSuccess = () => {
               </div>
 
               <div className="border-t pt-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Prix total payé</span>
-                  <span className="text-xl font-bold text-green-600">
-                    {Math.round(booking.total_price).toLocaleString()} XOF
-                  </span>
-                </div>
-                {booking.platform_fee && (
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <div className="flex justify-between">
-                      <span>Montant terrain :</span>
-                      <span>{Math.round(booking.owner_amount || 0).toLocaleString()} XOF</span>
+                {isDeposit ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">Acompte payé en ligne</span>
+                      <span className="text-xl font-bold text-emerald-600">
+                        {Math.round(booking.deposit_public_price || booking.total_price).toLocaleString()} XOF
+                      </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Commission plateforme :</span>
-                      <span>{Math.round(booking.platform_fee).toLocaleString()} XOF</span>
+                    <div className="flex items-center justify-between bg-orange-50 p-3 rounded-lg">
+                      <span className="font-medium text-orange-700">Solde à régler sur place</span>
+                      <span className="text-xl font-bold text-orange-600">
+                        {Math.round(booking.balance_due || 0).toLocaleString()} XOF
+                      </span>
                     </div>
-                  </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">Prix total payé</span>
+                      <span className="text-xl font-bold text-green-600">
+                        {Math.round(booking.total_price).toLocaleString()} XOF
+                      </span>
+                    </div>
+                    {booking.platform_fee && (
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <div className="flex justify-between">
+                          <span>Montant terrain :</span>
+                          <span>{Math.round(booking.owner_amount || 0).toLocaleString()} XOF</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Commission plateforme :</span>
+                          <span>{Math.round(booking.platform_fee).toLocaleString()} XOF</span>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -190,6 +227,14 @@ const BookingSuccess = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              {isDeposit && (
+                <div className="flex items-start space-x-3 bg-orange-50 p-3 rounded-lg">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <p className="text-orange-800 font-medium">
+                    Présentez-vous au terrain et réglez le solde de {Math.round(booking.balance_due || 0).toLocaleString()} XOF directement au propriétaire.
+                  </p>
+                </div>
+              )}
               <div className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
                 <p className="text-gray-700">
@@ -215,12 +260,14 @@ const BookingSuccess = () => {
                   Paiement sécurisé traité par PayDunya (Mobile Money & cartes bancaires)
                 </p>
               </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
-                <p className="text-gray-700">
-                  Le propriétaire recevra automatiquement 95% du montant
-                </p>
-              </div>
+              {!isDeposit && (
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
+                  <p className="text-gray-700">
+                    Le propriétaire recevra automatiquement 95% du montant
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

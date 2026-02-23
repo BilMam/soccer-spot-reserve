@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, MapPin, Locate } from 'lucide-react';
+import { Loader, MapPin, Locate, Shield, CreditCard, Info } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ImageUpload from '@/components/ImageUpload';
 import FieldBasicInfoForm from './FieldBasicInfoForm';
 import FieldScheduleForm from './FieldScheduleForm';
@@ -17,7 +19,7 @@ import ErrorAlert from '@/components/ErrorAlert';
 import { useGeocodingService } from '@/hooks/useGeocodingService';
 import { reverseGeocodeREST } from '@/utils/googleMapsUtils';
 import { toast } from 'sonner';
-import { calculatePublicPrice } from '@/utils/publicPricing';
+import { calculatePublicPrice, calculateGuaranteeBreakdown } from '@/utils/publicPricing';
 
 interface EditFieldFormProps {
   fieldId: string;
@@ -45,7 +47,11 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
     images: [] as string[],
     latitude: null as number | null,
     longitude: null as number | null,
-    payout_account_id: '' as string
+    payout_account_id: '' as string,
+    // Garantie Terrain Bloqué
+    guarantee_enabled: false,
+    guarantee_percentage: '20',
+    full_payment_enabled: true
   });
   
   const [isLoading, setIsLoading] = useState(true);
@@ -90,7 +96,10 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
             net_price_2h,
             public_price_1h,
             public_price_1h30,
-            public_price_2h
+            public_price_2h,
+            guarantee_enabled,
+            guarantee_percentage,
+            payment_mode
           `)
           .eq('id', fieldId)
           .maybeSingle();
@@ -133,7 +142,11 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
           images: data.images || [],
           latitude: data.latitude || null,
           longitude: data.longitude || null,
-          payout_account_id: data.payout_account_id || ''
+          payout_account_id: data.payout_account_id || '',
+          // Garantie Terrain Bloqué
+          guarantee_enabled: data.guarantee_enabled || false,
+          guarantee_percentage: (data.guarantee_percentage || 20).toString(),
+          full_payment_enabled: data.payment_mode !== 'guarantee'
         });
 
         // Définir la source de localisation si les coordonnées existent
@@ -287,7 +300,17 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
       const publicPrice1h30 = netPrice1h30 ? calculatePublicPrice(netPrice1h30) : null;
       const publicPrice2h = netPrice2h ? calculatePublicPrice(netPrice2h) : null;
 
-      const updateData = {
+      // Calculer le payment_mode
+      let paymentMode: 'full' | 'guarantee' | 'both' = 'full';
+      if (formData.full_payment_enabled && formData.guarantee_enabled) {
+        paymentMode = 'both';
+      } else if (!formData.full_payment_enabled && formData.guarantee_enabled) {
+        paymentMode = 'guarantee';
+      } else {
+        paymentMode = 'full';
+      }
+
+      const updateData: Record<string, any> = {
         name: formData.name,
         description: formData.description,
         location: formData.location,
@@ -314,6 +337,10 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
         latitude: formData.latitude,
         longitude: formData.longitude,
         payout_account_id: formData.payout_account_id || null,
+        // Garantie Terrain Bloqué
+        guarantee_enabled: formData.guarantee_enabled,
+        guarantee_percentage: parseInt(formData.guarantee_percentage),
+        payment_mode: paymentMode,
         updated_at: new Date().toISOString()
       };
 
@@ -463,10 +490,125 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
             onAmenityChange={handleAmenityChange} 
           />
 
-          <FieldPayoutAccountForm 
+          <FieldPayoutAccountForm
             payoutAccountId={formData.payout_account_id}
             onPayoutAccountChange={handlePayoutAccountChange}
           />
+
+          {/* Section Garantie Terrain Bloqué */}
+          <div className="space-y-4 border-t pt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="w-5 h-5 text-green-600" />
+              <h3 className="text-lg font-semibold">Mode de paiement</h3>
+            </div>
+
+            {/* Toggle Paiement complet */}
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center gap-3">
+                <CreditCard className="w-5 h-5 text-gray-500" />
+                <div>
+                  <Label className="text-sm font-medium">Paiement complet en ligne</Label>
+                  <p className="text-xs text-gray-500">Le joueur paie 100% en ligne</p>
+                </div>
+              </div>
+              <Switch
+                checked={formData.full_payment_enabled}
+                onCheckedChange={(checked) => {
+                  // Ne pas permettre de désactiver les deux
+                  if (!checked && !formData.guarantee_enabled) return;
+                  setFormData(prev => ({ ...prev, full_payment_enabled: checked }));
+                }}
+              />
+            </div>
+
+            {/* Toggle Garantie */}
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center gap-3">
+                <Shield className="w-5 h-5 text-green-600" />
+                <div>
+                  <Label className="text-sm font-medium">Garantie Terrain Bloqué</Label>
+                  <p className="text-xs text-gray-500">Le joueur paie un acompte en ligne puis le solde en cash sur place</p>
+                </div>
+              </div>
+              <Switch
+                checked={formData.guarantee_enabled}
+                onCheckedChange={(checked) => {
+                  // Ne pas permettre de désactiver les deux
+                  if (!checked && !formData.full_payment_enabled) return;
+                  setFormData(prev => ({ ...prev, guarantee_enabled: checked }));
+                }}
+              />
+            </div>
+
+            {/* Erreur si aucun mode actif */}
+            {!formData.full_payment_enabled && !formData.guarantee_enabled && (
+              <p className="text-sm text-red-600">Au moins un mode de paiement doit être actif.</p>
+            )}
+
+            {/* Options garantie si activée */}
+            {formData.guarantee_enabled && (
+              <div className="ml-4 p-4 bg-green-50 border border-green-200 rounded-lg space-y-4">
+                <div>
+                  <Label className="text-sm font-medium">Pourcentage d'acompte</Label>
+                  <Select
+                    value={formData.guarantee_percentage}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, guarantee_percentage: value }))}
+                  >
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10%</SelectItem>
+                      <SelectItem value="20">20% (recommandé)</SelectItem>
+                      <SelectItem value="30">30%</SelectItem>
+                      <SelectItem value="50">50%</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Récapitulatif dynamique */}
+                {formData.price_per_hour && (
+                  <div className="p-3 bg-white border rounded text-sm space-y-1">
+                    {(() => {
+                      const netPrice = parseFloat(formData.price_per_hour);
+                      if (!netPrice || netPrice <= 0) return null;
+                      const pct = parseInt(formData.guarantee_percentage) / 100;
+                      const breakdown = calculateGuaranteeBreakdown(netPrice, pct);
+                      return (
+                        <>
+                          <p className="font-medium text-gray-700 mb-2">Exemple pour 1h (net {netPrice.toLocaleString()} XOF) :</p>
+                          <div className="flex justify-between text-gray-600">
+                            <span>Acompte en ligne :</span>
+                            <span className="font-medium">{breakdown.depositPublic.toLocaleString()} XOF</span>
+                          </div>
+                          <div className="flex justify-between text-gray-600">
+                            <span>Frais opérateurs (3%) :</span>
+                            <span>{breakdown.operatorFee.toLocaleString()} XOF</span>
+                          </div>
+                          <div className="flex justify-between text-green-700 font-medium">
+                            <span>Total débité en ligne :</span>
+                            <span>{breakdown.totalOnline.toLocaleString()} XOF</span>
+                          </div>
+                          <div className="flex justify-between text-orange-600 font-medium">
+                            <span>Solde cash sur place :</span>
+                            <span>{breakdown.balanceCash.toLocaleString()} XOF</span>
+                          </div>
+                          <div className="flex justify-between text-gray-700 font-bold border-t pt-1 mt-1">
+                            <span>Vous recevez au total :</span>
+                            <span>{netPrice.toLocaleString()} XOF</span>
+                          </div>
+                          <div className="flex items-start gap-1.5 mt-2 text-xs text-blue-600">
+                            <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                            <span>Commission PISport : {breakdown.depositCommission.toLocaleString()} XOF (sur l'acompte uniquement)</span>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="space-y-4">
             <Label>Photos du terrain</Label>
