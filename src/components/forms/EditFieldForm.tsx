@@ -576,30 +576,49 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
                       const breakdown = calculateGuaranteeBreakdown(netPrice, pct);
                       return (
                         <>
-                          <p className="font-medium text-gray-700 mb-2">Exemple pour 1h (net {netPrice.toLocaleString()} XOF) :</p>
-                          <div className="flex justify-between text-gray-600">
-                            <span>Avance en ligne :</span>
+                          <p className="font-medium text-gray-700 mb-3">Exemple pour 1h (prix net : {netPrice.toLocaleString()} XOF)</p>
+
+                          <div className="flex justify-between text-gray-700">
+                            <span>Avance nette (ce que vous recevez) :</span>
+                            <span className="font-medium">{breakdown.depositNet.toLocaleString()} XOF</span>
+                          </div>
+                          <div className="flex justify-between text-gray-500">
+                            <span>Commission PISport (10%) :</span>
+                            <span>{breakdown.depositCommission.toLocaleString()} XOF</span>
+                          </div>
+
+                          <div className="border-t my-2" />
+
+                          <div className="flex justify-between text-gray-700">
+                            <span>Prix avance affiché au joueur :</span>
                             <span className="font-medium">{breakdown.depositPublic.toLocaleString()} XOF</span>
                           </div>
-                          <div className="flex justify-between text-gray-600">
+                          <div className="flex justify-between text-gray-500">
                             <span>Frais opérateurs (3%) :</span>
                             <span>{breakdown.operatorFee.toLocaleString()} XOF</span>
                           </div>
+
+                          <div className="border-t border-double border-gray-400 my-2" />
+
                           <div className="flex justify-between text-green-700 font-medium">
-                            <span>Total débité en ligne :</span>
+                            <span>Total débité au joueur en ligne :</span>
                             <span>{breakdown.totalOnline.toLocaleString()} XOF</span>
                           </div>
                           <div className="flex justify-between text-orange-600 font-medium">
-                            <span>Solde cash sur place :</span>
+                            <span>Solde à régler en cash sur place :</span>
                             <span>{breakdown.balanceCash.toLocaleString()} XOF</span>
                           </div>
-                          <div className="flex justify-between text-gray-700 font-bold border-t pt-1 mt-1">
+
+                          <div className="border-t my-2" />
+
+                          <div className="flex justify-between text-gray-800 font-bold">
                             <span>Vous recevez au total :</span>
                             <span>{netPrice.toLocaleString()} XOF</span>
                           </div>
-                          <div className="flex items-start gap-1.5 mt-2 text-xs text-blue-600">
+
+                          <div className="flex items-start gap-1.5 mt-3 text-xs text-blue-600 bg-blue-50 p-2 rounded">
                             <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                            <span>Commission PISport : {breakdown.depositCommission.toLocaleString()} XOF (sur l'avance uniquement)</span>
+                            <span>La commission PISport de 10% s'applique uniquement sur l'avance en ligne.</span>
                           </div>
                         </>
                       );
