@@ -544,7 +544,7 @@ serve(async (req) => {
       console.log('[paydunya-ipn] ✅ Paiement confirmé - Mise à jour de la réservation');
 
       // Vérifier si c'est un paiement de type deposit (Garantie Terrain Bloqué)
-      const isDeposit = booking.payment_type === 'deposit';
+      const isDepositPayment = booking.payment_type === 'deposit';
 
       // Mettre à jour la réservation selon le type de paiement
       const updateData: Record<string, any> = {
@@ -553,7 +553,7 @@ serve(async (req) => {
         updated_at: new Date().toISOString()
       };
 
-      if (isDeposit) {
+      if (isDepositPayment) {
         // Mode Garantie : statut deposit_paid, pas 'paid'
         updateData.payment_status = 'deposit_paid';
         updateData.deposit_paid = true;
@@ -572,7 +572,7 @@ serve(async (req) => {
         console.error('[paydunya-ipn] ❌ Erreur mise à jour booking:', updateError);
       } else {
         bookingStatus = 'confirmed';
-        paymentStatus = isDeposit ? 'deposit_paid' : 'paid';
+        paymentStatus = isDepositPayment ? 'deposit_paid' : 'paid';
 
         // Déclencher le payout automatique
         // En mode deposit, le payout est UNIQUEMENT pour le montant de l'acompte
@@ -584,7 +584,7 @@ serve(async (req) => {
           if (payoutError) {
             console.error('[paydunya-ipn] ⚠️ Erreur déclenchement payout:', payoutError);
           } else {
-            console.log(`[paydunya-ipn] 💰 Payout déclenché avec succès${isDeposit ? ' (acompte partiel)' : ''}`);
+            console.log(`[paydunya-ipn] 💰 Payout déclenché avec succès${isDepositPayment ? ' (avance partielle)' : ''}`);
             payoutTriggered = true;
           }
         } catch (payoutErr) {
