@@ -108,7 +108,7 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
           ) : (
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">
-                {paymentType === 'deposit' ? 'Acompte en ligne :' : 'Sous-total :'}
+                {paymentType === 'deposit' ? 'Avance en ligne :' : 'Sous-total :'}
               </span>
               <span className="text-sm">{subtotal.toLocaleString()} XOF</span>
             </div>

@@ -557,7 +557,7 @@ serve(async (req) => {
         // Mode Garantie : statut deposit_paid, pas 'paid'
         updateData.payment_status = 'deposit_paid';
         updateData.deposit_paid = true;
-        console.log('[paydunya-ipn] 🔒 Mode Garantie - Acompte confirmé');
+        console.log('[paydunya-ipn] 🔒 Mode Garantie - Avance confirmée');
       } else {
         // Mode Plein : comportement existant
         updateData.payment_status = 'paid';

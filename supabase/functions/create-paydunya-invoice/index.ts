@@ -465,7 +465,7 @@ serve(async (req) => {
       'https://app.paydunya.com/api/v1/checkout-invoice/create';
 
     const invoiceDescription = isDeposit
-      ? `Acompte Garantie - ${field?.name || field_name} - ${date} ${time}`
+      ? `Avance Garantie - ${field?.name || field_name} - ${date} ${time}`
       : `Réservation ${field?.name || field_name} - ${date} ${time}`;
 
     const paydunyaData = {

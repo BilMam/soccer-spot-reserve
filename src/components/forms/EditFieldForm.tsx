@@ -527,7 +527,7 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
                 <Shield className="w-5 h-5 text-green-600" />
                 <div>
                   <Label className="text-sm font-medium">Garantie Terrain Bloqué</Label>
-                  <p className="text-xs text-gray-500">Le joueur paie un acompte en ligne puis le solde en cash sur place</p>
+                  <p className="text-xs text-gray-500">Le joueur paie une avance en ligne puis le solde en cash sur place</p>
                 </div>
               </div>
               <Switch
@@ -549,7 +549,7 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
             {formData.guarantee_enabled && (
               <div className="ml-4 p-4 bg-green-50 border border-green-200 rounded-lg space-y-4">
                 <div>
-                  <Label className="text-sm font-medium">Pourcentage d'acompte</Label>
+                  <Label className="text-sm font-medium">Pourcentage d'avance</Label>
                   <Select
                     value={formData.guarantee_percentage}
                     onValueChange={(value) => setFormData(prev => ({ ...prev, guarantee_percentage: value }))}
@@ -578,7 +578,7 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
                         <>
                           <p className="font-medium text-gray-700 mb-2">Exemple pour 1h (net {netPrice.toLocaleString()} XOF) :</p>
                           <div className="flex justify-between text-gray-600">
-                            <span>Acompte en ligne :</span>
+                            <span>Avance en ligne :</span>
                             <span className="font-medium">{breakdown.depositPublic.toLocaleString()} XOF</span>
                           </div>
                           <div className="flex justify-between text-gray-600">
@@ -599,7 +599,7 @@ const EditFieldForm: React.FC<EditFieldFormProps> = ({ fieldId }) => {
                           </div>
                           <div className="flex items-start gap-1.5 mt-2 text-xs text-blue-600">
                             <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                            <span>Commission PISport : {breakdown.depositCommission.toLocaleString()} XOF (sur l'acompte uniquement)</span>
+                            <span>Commission PISport : {breakdown.depositCommission.toLocaleString()} XOF (sur l'avance uniquement)</span>
                           </div>
                         </>
                       );

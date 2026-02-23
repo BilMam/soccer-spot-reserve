@@ -119,7 +119,7 @@ export function useCreateBookingWithPayment() {
         booking_id: booking.id,
         amount: totalWithFees,
         field_name: paymentType === 'deposit'
-          ? `Acompte Garantie - ${fieldName}`
+          ? `Avance Garantie - ${fieldName}`
           : fieldName,
         date: bookingDate.toLocaleDateString('fr-FR'),
         time: `${startTime} - ${endTime}`,

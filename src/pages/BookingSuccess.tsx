@@ -137,7 +137,7 @@ const BookingSuccess = () => {
               )}
               <p className="text-gray-600">
                 {isDeposit
-                  ? 'Votre acompte a été payé avec succès. Le terrain est bloqué pour vous.'
+                  ? 'Votre avance a été payée avec succès. Le terrain est bloqué pour vous.'
                   : 'Votre paiement a été traité avec succès et votre réservation est confirmée.'}
               </p>
             </CardContent>
@@ -173,7 +173,7 @@ const BookingSuccess = () => {
                 {isDeposit ? (
                   <>
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">Acompte payé en ligne</span>
+                      <span className="font-medium">Avance payée en ligne</span>
                       <span className="text-xl font-bold text-emerald-600">
                         {Math.round(booking.deposit_public_price || booking.total_price).toLocaleString()} XOF
                       </span>

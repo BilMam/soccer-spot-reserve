@@ -36,7 +36,7 @@ const PaymentTypeSelector: React.FC<PaymentTypeSelectorProps> = ({
           </div>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-600">Acompte en ligne :</span>
+              <span className="text-gray-600">Avance en ligne :</span>
               <span className="font-medium">{guarantee.depositPublic.toLocaleString()} XOF</span>
             </div>
             <div className="flex justify-between">
@@ -115,7 +115,7 @@ const PaymentTypeSelector: React.FC<PaymentTypeSelectorProps> = ({
             <div className="flex-1">
               <div className="font-medium text-sm">Garantie Terrain Bloqué</div>
               <div className="text-xs text-gray-500">
-                Acompte {Math.round(guaranteePercentage * 100)}% en ligne + solde cash sur place
+                Avance {Math.round(guaranteePercentage * 100)}% en ligne + solde cash sur place
               </div>
             </div>
             <span className="font-bold text-sm">{guarantee.totalOnline.toLocaleString()} XOF</span>
@@ -125,7 +125,7 @@ const PaymentTypeSelector: React.FC<PaymentTypeSelectorProps> = ({
           {selectedType === 'deposit' && (
             <div className="mt-3 ml-7 space-y-1.5 text-xs border-t pt-3">
               <div className="flex justify-between text-gray-600">
-                <span>Acompte en ligne :</span>
+                <span>Avance en ligne :</span>
                 <span>{guarantee.depositPublic.toLocaleString()} XOF</span>
               </div>
               <div className="flex justify-between text-gray-600">
