@@ -25,6 +25,32 @@ const PaymentTypeSelector: React.FC<PaymentTypeSelectorProps> = ({
 
   const guarantee = calculateGuaranteeBreakdown(netPriceOwner, guaranteePercentage);
 
+  // Bloc détail garantie réutilisable
+  const guaranteeDetail = (
+    <div className="space-y-2 text-sm">
+      <div className="flex justify-between">
+        <span className="text-gray-600">Avance en ligne :</span>
+        <span className="font-medium">{guarantee.depositPublic.toLocaleString()} XOF</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-gray-600">Frais opérateurs (3%) :</span>
+        <span className="text-gray-600">{guarantee.operatorFee.toLocaleString()} XOF</span>
+      </div>
+      <div className="flex justify-between border-t pt-2">
+        <span className="font-medium text-gray-700">Total à payer maintenant :</span>
+        <span className="font-bold text-green-700">{guarantee.totalOnline.toLocaleString()} XOF</span>
+      </div>
+      <div className="flex justify-between mt-1">
+        <span className="text-orange-600 font-medium">Solde à régler sur place :</span>
+        <span className="font-bold text-orange-600">{guarantee.balanceCash.toLocaleString()} XOF</span>
+      </div>
+      <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700 flex items-start gap-1.5">
+        <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+        <span>Présentez-vous au terrain et réglez le solde directement au propriétaire.</span>
+      </div>
+    </div>
+  );
+
   // Si mode 'guarantee' uniquement, afficher juste le détail
   if (paymentMode === 'guarantee') {
     return (
@@ -34,28 +60,7 @@ const PaymentTypeSelector: React.FC<PaymentTypeSelectorProps> = ({
             <Shield className="w-5 h-5 text-green-600" />
             <span className="font-semibold text-green-800">Garantie Terrain Bloqué</span>
           </div>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Avance en ligne :</span>
-              <span className="font-medium">{guarantee.depositPublic.toLocaleString()} XOF</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Frais opérateurs (3%) :</span>
-              <span className="text-gray-600">{guarantee.operatorFee.toLocaleString()} XOF</span>
-            </div>
-            <div className="flex justify-between border-t pt-2">
-              <span className="text-gray-600">Total débité en ligne :</span>
-              <span className="font-bold text-green-700">{guarantee.totalOnline.toLocaleString()} XOF</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Solde à régler sur place :</span>
-              <span className="font-bold text-orange-600">{guarantee.balanceCash.toLocaleString()} XOF</span>
-            </div>
-          </div>
-          <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700 flex items-start gap-1.5">
-            <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-            <span>Le solde de {guarantee.balanceCash.toLocaleString()} XOF est à régler directement au propriétaire sur place.</span>
-          </div>
+          {guaranteeDetail}
         </CardContent>
       </Card>
     );
@@ -123,27 +128,8 @@ const PaymentTypeSelector: React.FC<PaymentTypeSelectorProps> = ({
 
           {/* Détail visible quand sélectionné */}
           {selectedType === 'deposit' && (
-            <div className="mt-3 ml-7 space-y-1.5 text-xs border-t pt-3">
-              <div className="flex justify-between text-gray-600">
-                <span>Avance en ligne :</span>
-                <span>{guarantee.depositPublic.toLocaleString()} XOF</span>
-              </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Frais opérateurs (3%) :</span>
-                <span>{guarantee.operatorFee.toLocaleString()} XOF</span>
-              </div>
-              <div className="flex justify-between font-medium text-green-700">
-                <span>Total débité en ligne :</span>
-                <span>{guarantee.totalOnline.toLocaleString()} XOF</span>
-              </div>
-              <div className="flex justify-between font-medium text-orange-600">
-                <span>Solde à régler sur place (cash) :</span>
-                <span>{guarantee.balanceCash.toLocaleString()} XOF</span>
-              </div>
-              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-700 flex items-start gap-1.5">
-                <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                <span>Le solde de {guarantee.balanceCash.toLocaleString()} XOF est à régler directement au propriétaire sur place.</span>
-              </div>
+            <div className="mt-3 ml-7 border-t pt-3">
+              {guaranteeDetail}
             </div>
           )}
         </CardContent>
