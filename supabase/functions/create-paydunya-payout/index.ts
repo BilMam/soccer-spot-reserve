@@ -151,12 +151,12 @@ serve(async (req) => {
     console.log(`[${timestamp}] Payout account found - Phone: ${ownerPhone}, Owner: ${payoutAccount.owner_id}`);
 
     // Déterminer le montant du payout selon le type de paiement
-    const isDeposit = bookingData.payment_type === 'deposit';
-    const payoutAmount = isDeposit
+    const isDepositPayment = bookingData.payment_type === 'deposit';
+    const payoutAmount = isDepositPayment
       ? (bookingData.deposit_amount || bookingData.owner_amount)
       : bookingData.owner_amount;
 
-    console.log(`[${timestamp}] Payout mode: ${isDeposit ? 'GARANTIE (acompte partiel)' : 'PLEIN'}, Amount: ${payoutAmount} XOF`);
+    console.log(`[${timestamp}] Payout mode: ${isDepositPayment ? 'GARANTIE (avance partielle)' : 'PLEIN'}, Amount: ${payoutAmount} XOF`);
 
     // Step 2: Check for existing payout (idempotency robuste)
     const { data: existingPayout } = await supabase
@@ -229,7 +229,7 @@ serve(async (req) => {
       };
       transferId = transferResult.transaction_id;
 
-      console.log(`[${timestamp}] ⚠️ TEST MODE: Simulated PayDunya transfer of ${payoutAmount} XOF${isDeposit ? ' (acompte garantie)' : ''}`);
+      console.log(`[${timestamp}] ⚠️ TEST MODE: Simulated PayDunya transfer of ${payoutAmount} XOF${isDepositPayment ? ' (avance garantie)' : ''}`);
     } else {
       // Real PayDunya Direct Pay v2 transfer
       try {
@@ -252,7 +252,7 @@ serve(async (req) => {
         console.log(`[${timestamp}] 📱 Provider détecté: ${withdrawMode}`);
 
         // ÉTAPE 1 : Créer l'invoice de déboursement
-        console.log(`[${timestamp}] 💸 Création invoice déboursement: ${payoutAmount} XOF vers ${normalizedPhone}${isDeposit ? ' (acompte garantie)' : ''}`);
+        console.log(`[${timestamp}] 💸 Création invoice déboursement: ${payoutAmount} XOF vers ${normalizedPhone}${isDepositPayment ? ' (avance garantie)' : ''}`);
 
         const getInvoicePayload = {
           account_alias: normalizedPhone,
@@ -400,7 +400,7 @@ serve(async (req) => {
     // Return response
     const response: PayoutResponse = {
       success: transferResult.success,
-      message: transferResult.response_text || `Payout ${newStatus}${isDeposit ? ' (acompte garantie)' : ''}`,
+      message: transferResult.response_text || `Payout ${newStatus}${isDepositPayment ? ' (avance garantie)' : ''}`,
       payout_id: payoutId,
       amount: payoutAmount,
       paydunya_transfer_id: transferId
