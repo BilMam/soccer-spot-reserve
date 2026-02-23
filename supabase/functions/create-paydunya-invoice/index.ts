@@ -187,7 +187,7 @@ serve(async (req) => {
     const amountCheckout = amount;
 
     // Vérifier si c'est une réservation avec garantie (deposit)
-    const isDeposit = existingBooking.payment_type === 'deposit';
+    const isDepositPayment = existingBooking.payment_type === 'deposit';
 
     // Extraire le prix public (subtotal) et les frais opérateurs
     // finalTotal = publicPrice + (publicPrice * 0.03)
@@ -203,20 +203,21 @@ serve(async (req) => {
     // Détecte si une promo est appliquée sur cette réservation
     const hasPromo = !!existingBooking.promo_code_id;
 
-    if (isDeposit) {
-      // ✅ MODE GARANTIE (DEPOSIT) : Utiliser les valeurs pré-calculées
+    if (isDepositPayment) {
+      // ✅ MODE GARANTIE (DEPOSIT) : Utiliser les valeurs pré-calculées dans la booking
       console.log(`[${timestamp}] [create-paydunya-invoice] 🔒 Mode Garantie détecté - Utilisation des valeurs pré-calculées`);
 
-      ownerAmount = existingBooking.deposit_amount || 0;
-      platformFeeOwner = (existingBooking.deposit_public_price || 0) - ownerAmount;
-      netPriceOwner = ownerAmount;
+      ownerAmount = existingBooking.owner_amount || 0;
+      platformFeeOwner = existingBooking.platform_fee_owner || 0;
+      netPriceOwner = existingBooking.field_price || ownerAmount;
 
       console.log(`[${timestamp}] [create-paydunya-invoice] Guarantee amounts:`, {
+        owner_amount: ownerAmount,
+        platform_fee_owner: platformFeeOwner,
+        net_price_owner: netPriceOwner,
         deposit_amount: existingBooking.deposit_amount,
         deposit_public_price: existingBooking.deposit_public_price,
         balance_due: existingBooking.balance_due,
-        owner_amount: ownerAmount,
-        platform_fee_owner: platformFeeOwner,
         guarantee_commission_rate: existingBooking.guarantee_commission_rate
       });
 
@@ -301,8 +302,8 @@ serve(async (req) => {
       platformFeeOwner = publicPrice - ownerAmount;
     }
 
-    // Validation : la plateforme ne doit jamais perdre d'argent
-    if (platformFeeOwner < 0) {
+    // Validation : la plateforme ne doit jamais perdre d'argent (skip pour deposit car valeurs pré-calculées)
+    if (!isDepositPayment && platformFeeOwner < 0) {
       console.error(`[${timestamp}] [create-paydunya-invoice] Negative platform fee:`, {
         public_price: publicPrice,
         owner_amount: ownerAmount,
@@ -376,11 +377,12 @@ serve(async (req) => {
     // ========== Update conditionnel de la booking ==========
     let bookingUpdate: Record<string, any>;
 
-    if (isDeposit) {
-      // Mode Garantie : Ne mettre à jour QUE le statut (montants déjà corrects)
+    if (isDepositPayment) {
+      // Mode Garantie : Statut + total_price (montants déjà corrects)
       bookingUpdate = {
         payment_status: 'pending',
-        payout_sent: false
+        payout_sent: false,
+        total_price: amountCheckout
       };
     } else if (hasPromo) {
       // Avec promo : Ne mettre à jour QUE le statut
@@ -464,7 +466,7 @@ serve(async (req) => {
       'https://app.paydunya.com/sandbox-api/v1/checkout-invoice/create' : 
       'https://app.paydunya.com/api/v1/checkout-invoice/create';
 
-    const invoiceDescription = isDeposit
+    const invoiceDescription = isDepositPayment
       ? `Avance Garantie - ${field?.name || field_name} - ${date} ${time}`
       : `Réservation ${field?.name || field_name} - ${date} ${time}`;
 
