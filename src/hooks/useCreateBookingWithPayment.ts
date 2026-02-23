@@ -16,6 +16,12 @@ interface CreateBookingParams {
   discountAmount?: number;
   netPriceOwner: number; // Montant net pour le propriétaire
   platformCommission: number; // Commission plateforme
+  // Champs Garantie Terrain Bloqué
+  paymentType?: 'full' | 'deposit';
+  depositAmount?: number;
+  depositPublicPrice?: number;
+  balanceDue?: number;
+  guaranteeCommissionRate?: number;
 }
 
 /**
@@ -38,7 +44,12 @@ export function useCreateBookingWithPayment() {
         promoId,
         discountAmount = 0,
         netPriceOwner,
-        platformCommission
+        platformCommission,
+        paymentType = 'full',
+        depositAmount,
+        depositPublicPrice,
+        balanceDue,
+        guaranteeCommissionRate
       } = params;
 
       console.log('🔄 Creating booking with params:', params);
@@ -47,38 +58,48 @@ export function useCreateBookingWithPayment() {
       const serviceFee = Math.ceil(publicPrice * 0.03);
       const totalWithFees = publicPrice + serviceFee;
 
+      // Construire l'objet d'insertion
+      const bookingInsert: Record<string, any> = {
+        field_id: fieldId,
+        user_id: userId,
+        booking_date: bookingDate.toISOString().split('T')[0],
+        start_time: startTime,
+        end_time: endTime,
+
+        // ✅ MODÈLE OWNER-FUNDED :
+        total_price: publicPrice,
+        field_price: netPriceOwner,
+        platform_fee_user: 0,
+        platform_fee_owner: platformCommission,
+        owner_amount: netPriceOwner,
+
+        // Champs promo
+        promo_code_id: promoId || null,
+        public_before_discount: promoId ? publicPriceBeforePromo : null,
+        discount_amount: discountAmount,
+        public_after_discount: promoId ? publicPrice : null,
+
+        status: 'pending',
+        payment_status: 'pending',
+        currency: 'XOF',
+        payment_provider: 'paydunya',
+
+        // Champs Garantie Terrain Bloqué
+        payment_type: paymentType,
+        ...(paymentType === 'deposit' ? {
+          deposit_amount: depositAmount,
+          deposit_public_price: depositPublicPrice,
+          balance_due: balanceDue,
+          deposit_paid: false,
+          balance_paid: false,
+          guarantee_commission_rate: guaranteeCommissionRate
+        } : {})
+      };
+
       // Créer la réservation
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
-        .insert({
-          field_id: fieldId,
-          user_id: userId,
-          booking_date: bookingDate.toISOString().split('T')[0],
-          start_time: startTime,
-          end_time: endTime,
-
-          // ✅ MODÈLE OWNER-FUNDED :
-          // total_price = Prix public APRÈS promo (ce que voit le client AVANT frais opérateurs)
-          // field_price = Net propriétaire APRÈS promo (extrait du prix public via formule inverse)
-          // platform_fee_owner = Commission APRÈS promo (Prix public APRÈS - Net APRÈS)
-          // owner_amount = Net propriétaire APRÈS promo (montant garanti)
-          total_price: publicPrice, // Prix public APRÈS promo
-          field_price: netPriceOwner, // Net propriétaire APRÈS promo
-          platform_fee_user: 0, // Pas de frais user séparés
-          platform_fee_owner: platformCommission, // Commission APRÈS promo
-          owner_amount: netPriceOwner, // Net APRÈS promo (garanti)
-
-          // Champs promo (traçabilité complète)
-          promo_code_id: promoId || null,
-          public_before_discount: promoId ? publicPriceBeforePromo : null,
-          discount_amount: discountAmount,
-          public_after_discount: promoId ? publicPrice : null,
-
-          status: 'pending',
-          payment_status: 'pending',
-          currency: 'XOF',
-          payment_provider: 'paydunya'
-        })
+        .insert(bookingInsert)
         .select()
         .single();
 
@@ -96,8 +117,10 @@ export function useCreateBookingWithPayment() {
       // Créer le paiement PayDunya avec le montant FINAL (avec frais opérateurs)
       const paymentRequestData = {
         booking_id: booking.id,
-        amount: totalWithFees, // Montant final avec frais opérateurs
-        field_name: fieldName,
+        amount: totalWithFees,
+        field_name: paymentType === 'deposit'
+          ? `Acompte Garantie - ${fieldName}`
+          : fieldName,
         date: bookingDate.toLocaleDateString('fr-FR'),
         time: `${startTime} - ${endTime}`,
         return_url: returnUrl,
