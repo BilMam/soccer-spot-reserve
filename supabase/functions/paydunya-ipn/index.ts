@@ -410,8 +410,17 @@ serve(async (req) => {
         collected_amount: contributeResult.collected_amount,
         progress_pct: contributeResult.progress_pct,
         hold_expires_at: contributeResult.hold_expires_at,
+        field_availability_rows_updated: contributeResult.field_availability_rows_updated,
         cagnotte_id: customData.cagnotte_id
       });
+
+      // Alerte si HOLD activé mais aucune ligne field_availability mise à jour
+      if (contributeResult.cagnotte_status === 'HOLD' && contributeResult.field_availability_rows_updated === 0) {
+        console.error('[paydunya-ipn] ⚠️ ALERTE: HOLD activé mais 0 lignes field_availability mises à jour!', {
+          cagnotte_id: customData.cagnotte_id,
+          hold_expires_at: contributeResult.hold_expires_at
+        });
+      }
 
       return new Response(
         JSON.stringify({
