@@ -105,6 +105,7 @@ serve(async (req) => {
     console.log(`[${timestamp}] Processing PayDunya payout for booking: ${booking_id}`);
 
     // Step 1: Get booking with payout account info
+    // Accepter 'paid' ET 'deposit_paid' comme statuts valides
     const { data: bookingData, error: bookingError } = await supabase
       .from('bookings')
       .select(`
@@ -112,6 +113,8 @@ serve(async (req) => {
         owner_amount,
         payment_status,
         payout_sent,
+        payment_type,
+        deposit_amount,
         fields!inner (
           id,
           name,
@@ -125,7 +128,7 @@ serve(async (req) => {
         )
       `)
       .eq('id', booking_id)
-      .eq('payment_status', 'paid')
+      .in('payment_status', ['paid', 'deposit_paid'])
       .maybeSingle();
 
     if (bookingError || !bookingData) {
@@ -146,6 +149,14 @@ serve(async (req) => {
     }
 
     console.log(`[${timestamp}] Payout account found - Phone: ${ownerPhone}, Owner: ${payoutAccount.owner_id}`);
+
+    // Déterminer le montant du payout selon le type de paiement
+    const isDeposit = bookingData.payment_type === 'deposit';
+    const payoutAmount = isDeposit
+      ? (bookingData.deposit_amount || bookingData.owner_amount)
+      : bookingData.owner_amount;
+
+    console.log(`[${timestamp}] Payout mode: ${isDeposit ? 'GARANTIE (acompte partiel)' : 'PLEIN'}, Amount: ${payoutAmount} XOF`);
 
     // Step 2: Check for existing payout (idempotency robuste)
     const { data: existingPayout } = await supabase
@@ -187,8 +198,8 @@ serve(async (req) => {
         .insert({
           booking_id: booking_id,
           owner_id: payoutAccount.owner_id,
-          amount: bookingData.owner_amount,
-          amount_net: bookingData.owner_amount,
+          amount: payoutAmount,
+          amount_net: payoutAmount,
           status: 'pending',
           platform_fee_owner: 0
         })
@@ -214,11 +225,11 @@ serve(async (req) => {
         success: true,
         response_text: 'Transfer completed successfully (test mode)',
         transaction_id: `test_paydunya_transfer_${payoutId}`,
-        amount: bookingData.owner_amount
+        amount: payoutAmount
       };
       transferId = transferResult.transaction_id;
-      
-      console.log(`[${timestamp}] ⚠️ TEST MODE: Simulated PayDunya transfer of ${bookingData.owner_amount} XOF`);
+
+      console.log(`[${timestamp}] ⚠️ TEST MODE: Simulated PayDunya transfer of ${payoutAmount} XOF${isDeposit ? ' (acompte garantie)' : ''}`);
     } else {
       // Real PayDunya Direct Pay v2 transfer
       try {
@@ -241,11 +252,11 @@ serve(async (req) => {
         console.log(`[${timestamp}] 📱 Provider détecté: ${withdrawMode}`);
 
         // ÉTAPE 1 : Créer l'invoice de déboursement
-        console.log(`[${timestamp}] 💸 Création invoice déboursement: ${bookingData.owner_amount} XOF vers ${normalizedPhone}`);
-        
+        console.log(`[${timestamp}] 💸 Création invoice déboursement: ${payoutAmount} XOF vers ${normalizedPhone}${isDeposit ? ' (acompte garantie)' : ''}`);
+
         const getInvoicePayload = {
           account_alias: normalizedPhone,
-          amount: Math.round(bookingData.owner_amount),
+          amount: Math.round(payoutAmount),
           withdraw_mode: withdrawMode,
           callback_url: `${supabaseUrl}/functions/v1/paydunya-ipn`
         };
@@ -340,7 +351,7 @@ serve(async (req) => {
           response_code: respCode,
           response_text: disbursementData.response_text || `Payout ${payStatus}`,
           transaction_id: transferId,
-          amount: bookingData.owner_amount
+          amount: payoutAmount
         };
 
         console.log(`[${timestamp}] PayDunya Direct Pay v2 response:`, transferResult);
@@ -389,9 +400,9 @@ serve(async (req) => {
     // Return response
     const response: PayoutResponse = {
       success: transferResult.success,
-      message: transferResult.response_text || `Payout ${newStatus}`,
+      message: transferResult.response_text || `Payout ${newStatus}${isDeposit ? ' (acompte garantie)' : ''}`,
       payout_id: payoutId,
-      amount: bookingData.owner_amount,
+      amount: payoutAmount,
       paydunya_transfer_id: transferId
     };
 

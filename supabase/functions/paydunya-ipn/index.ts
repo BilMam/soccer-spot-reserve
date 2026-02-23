@@ -543,24 +543,39 @@ serve(async (req) => {
     if (successStatuses.includes(normalizedStatus)) {
       console.log('[paydunya-ipn] ✅ Paiement confirmé - Mise à jour de la réservation');
 
-      // Mettre à jour la réservation
+      // Vérifier si c'est un paiement de type deposit (Garantie Terrain Bloqué)
+      const isDeposit = booking.payment_type === 'deposit';
+
+      // Mettre à jour la réservation selon le type de paiement
+      const updateData: Record<string, any> = {
+        status: 'confirmed',
+        paid_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      if (isDeposit) {
+        // Mode Garantie : statut deposit_paid, pas 'paid'
+        updateData.payment_status = 'deposit_paid';
+        updateData.deposit_paid = true;
+        console.log('[paydunya-ipn] 🔒 Mode Garantie - Acompte confirmé');
+      } else {
+        // Mode Plein : comportement existant
+        updateData.payment_status = 'paid';
+      }
+
       const { error: updateError } = await supabaseClient
         .from('bookings')
-        .update({
-          status: 'confirmed',
-          payment_status: 'paid',
-          paid_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', booking.id);
 
       if (updateError) {
         console.error('[paydunya-ipn] ❌ Erreur mise à jour booking:', updateError);
       } else {
         bookingStatus = 'confirmed';
-        paymentStatus = 'paid';
+        paymentStatus = isDeposit ? 'deposit_paid' : 'paid';
 
         // Déclencher le payout automatique
+        // En mode deposit, le payout est UNIQUEMENT pour le montant de l'acompte
         try {
           const { error: payoutError } = await supabaseClient.functions.invoke('create-paydunya-payout', {
             body: { booking_id: booking.id }
@@ -569,7 +584,7 @@ serve(async (req) => {
           if (payoutError) {
             console.error('[paydunya-ipn] ⚠️ Erreur déclenchement payout:', payoutError);
           } else {
-            console.log('[paydunya-ipn] 💰 Payout déclenché avec succès');
+            console.log(`[paydunya-ipn] 💰 Payout déclenché avec succès${isDeposit ? ' (acompte partiel)' : ''}`);
             payoutTriggered = true;
           }
         } catch (payoutErr) {
