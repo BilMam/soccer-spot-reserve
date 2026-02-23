@@ -1,10 +1,21 @@
 #!/bin/bash
 REPO="$HOME/MySport/soccer-spot-reserve"
 LOG="$HOME/MySport/pisport-sync.log"
+LOCKFILE="/tmp/pisport-autosync.lock"
+
+# Eviter les instances multiples
+if [ -f "$LOCKFILE" ]; then
+    OLD_PID=$(cat "$LOCKFILE")
+    if kill -0 "$OLD_PID" 2>/dev/null; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Déjà en cours (PID $OLD_PID) — sortie" >> "$LOG"
+        exit 0
+    fi
+fi
+echo $$ > "$LOCKFILE"
+trap 'rm -f $LOCKFILE' EXIT
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG"; }
-
-log "PISport Auto-Sync v4 démarré"
+log "PISport Auto-Sync v5 démarré (PID $$)"
 
 do_push() {
     cd "$REPO" || return
