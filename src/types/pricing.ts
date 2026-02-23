@@ -17,4 +17,9 @@ export interface FieldPricing {
   price_per_hour?: number;
   price_1h30?: number | null;
   price_2h?: number | null;
+
+  // Garantie Terrain Bloqué
+  guarantee_enabled?: boolean;
+  guarantee_percentage?: number;
+  payment_mode?: 'full' | 'guarantee' | 'both';
 }

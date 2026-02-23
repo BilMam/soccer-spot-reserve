@@ -10,15 +10,21 @@ import { normalizeTime } from '@/utils/timeUtils';
 interface FieldCalendarProps {
   fieldId: string;
   pricing: FieldPricing;
-  onTimeSlotSelect: (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => void;
+  onTimeSlotSelect: (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number, ...args: any[]) => void;
   onHoursChange?: (start: string, end: string) => void;
+  guaranteeEnabled?: boolean;
+  guaranteePercentage?: number;
+  paymentMode?: 'full' | 'guarantee' | 'both';
 }
 
 const FieldCalendar: React.FC<FieldCalendarProps> = ({
   fieldId,
   pricing,
   onTimeSlotSelect,
-  onHoursChange
+  onHoursChange,
+  guaranteeEnabled,
+  guaranteePercentage,
+  paymentMode
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
@@ -66,6 +72,9 @@ const FieldCalendar: React.FC<FieldCalendarProps> = ({
           availableSlots={availableSlots}
           isLoading={isLoading}
           onTimeSlotSelect={onTimeSlotSelect}
+          guaranteeEnabled={guaranteeEnabled}
+          guaranteePercentage={guaranteePercentage}
+          paymentMode={paymentMode}
         />
       )}
     </div>

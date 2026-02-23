@@ -20,7 +20,7 @@ function calculateRawPrice(netPriceOwner: number): number {
 /**
  * Arrondit selon la règle commerciale (.500 ou .000)
  */
-function roundToCommercialPrice(amount: number): number {
+export function roundToCommercialPrice(amount: number): number {
   const rounded = Math.ceil(amount);
   const base = Math.floor(rounded / 1000);
   const remainder = rounded - base * 1000;
@@ -83,4 +83,45 @@ export function getCommissionRate(): number {
  */
 export function getCommissionRatePercent(): string {
   return `${(COMMISSION_RATE * 100).toFixed(0)}%`;
+}
+
+// ========== GARANTIE TERRAIN BLOQUÉ ==========
+
+export const GUARANTEE_COMMISSION_RATE = 0.10; // 10%
+
+/**
+ * Calcule le prix public de l'acompte garantie (avec commission 10% + arrondi commercial)
+ */
+export function calculateGuaranteePublicPrice(netDepositAmount: number): number {
+  if (!netDepositAmount || netDepositAmount <= 0) return 0;
+  const rawPrice = netDepositAmount / (1 - GUARANTEE_COMMISSION_RATE);
+  return roundToCommercialPrice(rawPrice);
+}
+
+/**
+ * Calcule le détail complet de la garantie terrain bloqué
+ *
+ * @param netPriceOwner - Prix NET du terrain (ce que le proprio veut toucher au total)
+ * @param guaranteePercentage - Pourcentage d'acompte (0.10, 0.20, 0.30 ou 0.50)
+ * @returns Breakdown complet : acompte, solde, commissions, frais
+ */
+export function calculateGuaranteeBreakdown(netPriceOwner: number, guaranteePercentage: number = 0.20) {
+  const depositNet = Math.floor(netPriceOwner * guaranteePercentage);
+  const depositPublic = calculateGuaranteePublicPrice(depositNet);
+  const depositCommission = depositPublic - depositNet;
+  const balanceCash = netPriceOwner - depositNet;
+  const operatorFee = Math.ceil(depositPublic * 0.03);
+  const totalOnline = depositPublic + operatorFee;
+
+  return {
+    depositNet,        // Ce que le proprio reçoit sur l'acompte
+    depositPublic,     // Prix affiché au joueur (avant frais opérateurs)
+    depositCommission, // Commission PISport sur l'acompte
+    balanceCash,       // Solde cash sur place
+    operatorFee,       // 3% frais opérateurs sur l'acompte
+    totalOnline,       // Total débité en ligne (acompte + frais)
+    totalOwner: netPriceOwner, // Le proprio reçoit toujours son net total
+    guaranteeRate: GUARANTEE_COMMISSION_RATE,
+    guaranteePercentage
+  };
 }

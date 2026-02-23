@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Info } from 'lucide-react';
 
 interface PromoInfo {
   discountLabel: string;
@@ -21,6 +21,9 @@ interface BookingSummaryProps {
   durationDisplay: string;
   promo?: PromoInfo | null;
   originalSubtotal?: number;
+  paymentType?: 'full' | 'deposit';
+  depositPublic?: number;
+  balanceCash?: number;
 }
 
 const BookingSummary: React.FC<BookingSummaryProps> = ({
@@ -36,7 +39,10 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
   rangeIsAvailable,
   durationDisplay,
   promo,
-  originalSubtotal
+  originalSubtotal,
+  paymentType = 'full',
+  depositPublic,
+  balanceCash
 }) => {
   if (!selectedStartTime || !selectedEndTime) return null;
 
@@ -101,11 +107,21 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
             </>
           ) : (
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Sous-total :</span>
+              <span className="text-sm text-gray-600">
+                {paymentType === 'deposit' ? 'Acompte en ligne :' : 'Sous-total :'}
+              </span>
               <span className="text-sm">{subtotal.toLocaleString()} XOF</span>
             </div>
           )}
-          
+
+          {/* Solde cash si mode deposit */}
+          {paymentType === 'deposit' && balanceCash != null && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-orange-600 font-medium">Solde à régler sur place (cash) :</span>
+              <span className="text-sm font-bold text-orange-600">{balanceCash.toLocaleString()} XOF</span>
+            </div>
+          )}
+
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">
               Frais opérateurs (3%) – paiement sécurisé :
@@ -115,11 +131,21 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
             </span>
           </div>
           <div className="flex justify-between items-center border-t pt-2">
-            <span className="text-sm text-gray-600">Prix total :</span>
+            <span className="text-sm text-gray-600">
+              {paymentType === 'deposit' ? 'Total débité en ligne :' : 'Prix total :'}
+            </span>
             <span className="text-lg font-bold text-green-600">
               {total.toLocaleString()} XOF
             </span>
           </div>
+
+          {/* Info-box solde cash */}
+          {paymentType === 'deposit' && balanceCash != null && (
+            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700 flex items-start gap-1.5">
+              <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>Le solde de {balanceCash.toLocaleString()} XOF est à régler directement au propriétaire sur place.</span>
+            </div>
+          )}
         </div>
 
         {!rangeIsAvailable && (

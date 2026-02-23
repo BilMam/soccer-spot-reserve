@@ -24,7 +24,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { getBaseUrl } from '@/lib/config';
 import type { FieldPricing } from '@/types/pricing';
-import { calculatePublicPrice } from '@/utils/publicPricing';
+import { calculatePublicPrice, calculateGuaranteeBreakdown } from '@/utils/publicPricing';
+import PaymentTypeSelector from './PaymentTypeSelector';
 
 interface AvailabilitySlot {
   id: string;
@@ -46,7 +47,10 @@ interface SlotBookingInterfaceProps {
   pricing: FieldPricing;
   availableSlots: AvailabilitySlot[];
   isLoading: boolean;
-  onTimeSlotSelect: (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number) => void;
+  onTimeSlotSelect: (date: Date, startTime: string, endTime: string, subtotal: number, serviceFee: number, total: number, promoId?: string, discountAmount?: number, paymentType?: 'full' | 'deposit', guaranteeBreakdown?: ReturnType<typeof calculateGuaranteeBreakdown>) => void;
+  guaranteeEnabled?: boolean;
+  guaranteePercentage?: number;
+  paymentMode?: 'full' | 'guarantee' | 'both';
 }
 
 const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
@@ -55,7 +59,10 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   pricing,
   availableSlots,
   isLoading,
-  onTimeSlotSelect
+  onTimeSlotSelect,
+  guaranteeEnabled = false,
+  guaranteePercentage = 20,
+  paymentMode = 'full'
 }) => {
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
   const [selectedEndTime, setSelectedEndTime] = useState<string>('');
@@ -63,6 +70,10 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
   const [occupiedSlots, setOccupiedSlots] = useState<string[]>([]);
   const [isCreatingCagnotte, setIsCreatingCagnotte] = useState(false);
   const [showCagnotteConfig, setShowCagnotteConfig] = useState(false);
+  // État du type de paiement : 'full' ou 'deposit'
+  const [paymentType, setPaymentType] = useState<'full' | 'deposit'>(
+    paymentMode === 'guarantee' ? 'deposit' : 'full'
+  );
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -163,6 +174,21 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
       })()
     : '0h';
 
+  // Calculer le prix NET propriétaire (pour la garantie)
+  const netPriceOwner = pricing.net_price_1h
+    ? (() => {
+        if (durationMinutes === 60) return pricing.net_price_1h!;
+        if (durationMinutes === 90 && pricing.net_price_1h30) return pricing.net_price_1h30;
+        if (durationMinutes === 120 && pricing.net_price_2h) return pricing.net_price_2h;
+        return Math.floor(pricing.net_price_1h! * durationHoursFloat);
+      })()
+    : 0;
+
+  // Calcul de la garantie si applicable
+  const guaranteeBreakdown = (paymentMode !== 'full' && netPriceOwner > 0)
+    ? calculateGuaranteeBreakdown(netPriceOwner, guaranteePercentage / 100)
+    : null;
+
   // Vérifier si aucun créneau n'a été créé pour ce jour
   const hasNoSlots = availableSlots.length === 0;
   
@@ -221,9 +247,9 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
             <BookingSummary
               selectedStartTime={selectedStartTime}
               selectedEndTime={selectedEndTime}
-              subtotal={publicPrice}
-              serviceFee={operatorFee}
-              total={finalTotal}
+              subtotal={paymentType === 'deposit' && guaranteeBreakdown ? guaranteeBreakdown.depositPublic : publicPrice}
+              serviceFee={paymentType === 'deposit' && guaranteeBreakdown ? guaranteeBreakdown.operatorFee : operatorFee}
+              total={paymentType === 'deposit' && guaranteeBreakdown ? guaranteeBreakdown.totalOnline : finalTotal}
               fieldPrice={
                 pricing.public_price_1h ?? (pricing.price_per_hour ? calculatePublicPrice(pricing.price_per_hour) : 0)
               }
@@ -241,7 +267,22 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
                 savings: promoResult.customerSavings
               } : null}
               originalSubtotal={promoResult.isEligible ? promoResult.publicPriceBefore : undefined}
+              paymentType={paymentType}
+              depositPublic={guaranteeBreakdown?.depositPublic}
+              balanceCash={guaranteeBreakdown?.balanceCash}
             />
+
+            {/* Sélecteur de mode de paiement (visible si 'both' ou 'guarantee') */}
+            {paymentMode !== 'full' && selectedStartTime && selectedEndTime && rangeIsAvailable && guaranteeBreakdown && (
+              <PaymentTypeSelector
+                paymentMode={paymentMode}
+                guaranteePercentage={guaranteePercentage / 100}
+                netPriceOwner={netPriceOwner}
+                publicPrice={publicPrice}
+                onPaymentTypeChange={setPaymentType}
+                selectedType={paymentType}
+              />
+            )}
 
             <SlotBookingActions
               selectedDate={selectedDate}
@@ -263,6 +304,8 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               promoDiscount={promoResult.isEligible ? promoResult.customerSavings : 0}
               promoId={promoResult.isEligible ? promoResult.promo?.id : undefined}
               onTimeSlotSelect={onTimeSlotSelect}
+              paymentType={paymentType}
+              guaranteeBreakdown={guaranteeBreakdown}
             />
 
             {/* Bouton Créer une cagnotte */}

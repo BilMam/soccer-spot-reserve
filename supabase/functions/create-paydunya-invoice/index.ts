@@ -116,10 +116,10 @@ serve(async (req) => {
 
     console.log(`[${timestamp}] [create-paydunya-invoice] Payment data:`, paymentData);
 
-    // Get booking from database - MODIFICATION 1: Récupérer les champs promo
+    // Get booking from database - Récupérer les champs promo + garantie
     const { data: existingBooking, error: bookingFetchError } = await supabaseClient
       .from('bookings')
-      .select('field_id, user_id, field_price, platform_fee_owner, owner_amount, promo_code_id, booking_date, start_time, end_time')
+      .select('field_id, user_id, field_price, platform_fee_owner, owner_amount, promo_code_id, booking_date, start_time, end_time, payment_type, deposit_amount, deposit_public_price, balance_due, guarantee_commission_rate')
       .eq('id', booking_id)
       .maybeSingle();
 
@@ -185,14 +185,17 @@ serve(async (req) => {
 
     // Le montant reçu est déjà le finalTotal (prix public + frais opérateurs 3%)
     const amountCheckout = amount;
-    
+
+    // Vérifier si c'est une réservation avec garantie (deposit)
+    const isDeposit = existingBooking.payment_type === 'deposit';
+
     // Extraire le prix public (subtotal) et les frais opérateurs
     // finalTotal = publicPrice + (publicPrice * 0.03)
     // donc publicPrice = finalTotal / 1.03
     const publicPrice = Math.round(amountCheckout / 1.03);
     const operatorFee = amountCheckout - publicPrice;
-    
-    // ========== MODIFICATION 2: LOGIQUE HYBRIDE : PROMO vs SANS PROMO ==========
+
+    // ========== LOGIQUE HYBRIDE : DEPOSIT / PROMO / SANS PROMO ==========
     let netPriceOwner: number;
     let ownerAmount: number;
     let platformFeeOwner: number;
@@ -200,7 +203,24 @@ serve(async (req) => {
     // Détecte si une promo est appliquée sur cette réservation
     const hasPromo = !!existingBooking.promo_code_id;
 
-    if (hasPromo) {
+    if (isDeposit) {
+      // ✅ MODE GARANTIE (DEPOSIT) : Utiliser les valeurs pré-calculées
+      console.log(`[${timestamp}] [create-paydunya-invoice] 🔒 Mode Garantie détecté - Utilisation des valeurs pré-calculées`);
+
+      ownerAmount = existingBooking.deposit_amount || 0;
+      platformFeeOwner = (existingBooking.deposit_public_price || 0) - ownerAmount;
+      netPriceOwner = ownerAmount;
+
+      console.log(`[${timestamp}] [create-paydunya-invoice] Guarantee amounts:`, {
+        deposit_amount: existingBooking.deposit_amount,
+        deposit_public_price: existingBooking.deposit_public_price,
+        balance_due: existingBooking.balance_due,
+        owner_amount: ownerAmount,
+        platform_fee_owner: platformFeeOwner,
+        guarantee_commission_rate: existingBooking.guarantee_commission_rate
+      });
+
+    } else if (hasPromo) {
       // ✅ AVEC PROMO : Utiliser les valeurs déjà calculées dans la booking
       // Ces valeurs ont été calculées côté frontend avec la logique owner-funded
       console.log(`[${timestamp}] [create-paydunya-invoice] 🎉 Promo détectée - Utilisation des valeurs pré-calculées`);
@@ -353,24 +373,33 @@ serve(async (req) => {
       });
     }
 
-    // ========== MODIFICATION 3: Update conditionnel de la booking ==========
-    // Si une promo est appliquée, on ne met à jour QUE le statut
-    // Les montants ont déjà été calculés correctement côté frontend
-    const bookingUpdate = hasPromo ? {
-      // Avec promo : Ne mettre à jour QUE le statut de paiement
-      // Les valeurs field_price, platform_fee_owner, owner_amount sont déjà correctes
-      payment_status: 'pending',
-      payout_sent: false
-    } : {
+    // ========== Update conditionnel de la booking ==========
+    let bookingUpdate: Record<string, any>;
+
+    if (isDeposit) {
+      // Mode Garantie : Ne mettre à jour QUE le statut (montants déjà corrects)
+      bookingUpdate = {
+        payment_status: 'pending',
+        payout_sent: false
+      };
+    } else if (hasPromo) {
+      // Avec promo : Ne mettre à jour QUE le statut
+      bookingUpdate = {
+        payment_status: 'pending',
+        payout_sent: false
+      };
+    } else {
       // Sans promo : Mettre à jour tous les montants (logique initiale)
-      field_price: publicPrice,
-      platform_fee_user: operatorFee,
-      platform_fee_owner: platformFeeOwner,
-      owner_amount: ownerAmount,
-      total_price: amountCheckout,
-      payment_status: 'pending',
-      payout_sent: false
-    };
+      bookingUpdate = {
+        field_price: publicPrice,
+        platform_fee_user: operatorFee,
+        platform_fee_owner: platformFeeOwner,
+        owner_amount: ownerAmount,
+        total_price: amountCheckout,
+        payment_status: 'pending',
+        payout_sent: false
+      };
+    }
 
     console.log(`[${timestamp}] [create-paydunya-invoice] Booking update strategy:`, {
       has_promo: hasPromo,
@@ -435,10 +464,14 @@ serve(async (req) => {
       'https://app.paydunya.com/sandbox-api/v1/checkout-invoice/create' : 
       'https://app.paydunya.com/api/v1/checkout-invoice/create';
 
+    const invoiceDescription = isDeposit
+      ? `Acompte Garantie - ${field?.name || field_name} - ${date} ${time}`
+      : `Réservation ${field?.name || field_name} - ${date} ${time}`;
+
     const paydunyaData = {
       invoice: {
         total_amount: amountCheckout,
-        description: `Réservation ${field?.name || field_name} - ${date} ${time}`,
+        description: invoiceDescription,
       },
       store: {
         name: "PISport",

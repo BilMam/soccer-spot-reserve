@@ -6,7 +6,8 @@ import { SlotValidationLogic } from './SlotValidationLogic';
 import { SlotPriceCalculator } from './SlotPriceCalculator';
 import { format } from 'date-fns';
 import type { FieldPricing } from '@/types/pricing';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Shield } from 'lucide-react';
+import type { calculateGuaranteeBreakdown } from '@/utils/publicPricing';
 
 interface AvailabilitySlot {
   id: string;
@@ -33,8 +34,10 @@ interface SlotBookingActionsProps {
   fieldPrice: number;
   price1h30?: number | null;
   price2h?: number | null;
-  promoDiscount?: number; // Montant de la réduction
-  promoId?: string; // ID de la promo appliquée
+  promoDiscount?: number;
+  promoId?: string;
+  paymentType?: 'full' | 'deposit';
+  guaranteeBreakdown?: ReturnType<typeof calculateGuaranteeBreakdown> | null;
   onTimeSlotSelect: (
     date: Date,
     startTime: string,
@@ -43,7 +46,9 @@ interface SlotBookingActionsProps {
     serviceFee: number,
     total: number,
     promoId?: string,
-    discountAmount?: number
+    discountAmount?: number,
+    paymentType?: 'full' | 'deposit',
+    guaranteeBreakdown?: ReturnType<typeof calculateGuaranteeBreakdown>
   ) => void;
 }
 
@@ -60,6 +65,8 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
   price2h,
   promoDiscount = 0,
   promoId,
+  paymentType = 'full',
+  guaranteeBreakdown,
   onTimeSlotSelect
 }) => {
   const { toast } = useToast();
@@ -115,17 +122,34 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
     const operatorFee = Math.ceil(publicPrice * PAYMENT_OPERATOR_FEE_RATE);
     const finalTotal = publicPrice + operatorFee;
 
-    // subtotal = prix public après promo, serviceFee = frais opérateurs, total = final
-    onTimeSlotSelect(
-      selectedDate,
-      selectedStartTime,
-      selectedEndTime,
-      publicPrice,
-      operatorFee,
-      finalTotal,
-      promoId,
-      promoDiscount
-    );
+    // En mode deposit, utiliser les montants de la garantie
+    if (paymentType === 'deposit' && guaranteeBreakdown) {
+      onTimeSlotSelect(
+        selectedDate,
+        selectedStartTime,
+        selectedEndTime,
+        guaranteeBreakdown.depositPublic,
+        guaranteeBreakdown.operatorFee,
+        guaranteeBreakdown.totalOnline,
+        promoId,
+        promoDiscount,
+        'deposit',
+        guaranteeBreakdown
+      );
+    } else {
+      // subtotal = prix public après promo, serviceFee = frais opérateurs, total = final
+      onTimeSlotSelect(
+        selectedDate,
+        selectedStartTime,
+        selectedEndTime,
+        publicPrice,
+        operatorFee,
+        finalTotal,
+        promoId,
+        promoDiscount,
+        'full'
+      );
+    }
   };
 
   const rangeIsAvailable = validator.isRangeAvailable(selectedStartTime, selectedEndTime);
@@ -136,6 +160,11 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
   const PAYMENT_OPERATOR_FEE_RATE = 0.03;
   const operatorFee = Math.ceil(publicPrice * PAYMENT_OPERATOR_FEE_RATE);
   const finalTotal = publicPrice + operatorFee;
+
+  // Montant affiché sur le bouton
+  const displayTotal = paymentType === 'deposit' && guaranteeBreakdown
+    ? guaranteeBreakdown.totalOnline
+    : finalTotal;
 
   return (
     <Button
@@ -149,8 +178,13 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           Préparation du paiement...
         </>
+      ) : paymentType === 'deposit' ? (
+        <>
+          <Shield className="w-4 h-4 mr-2" />
+          Bloquer le terrain {selectedStartTime && selectedEndTime && `(${displayTotal.toLocaleString()} XOF)`}
+        </>
       ) : (
-        <>Réserver {selectedStartTime && selectedEndTime && `(${finalTotal.toLocaleString()} XOF)`}</>
+        <>Réserver {selectedStartTime && selectedEndTime && `(${displayTotal.toLocaleString()} XOF)`}</>
       )}
     </Button>
   );

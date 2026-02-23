@@ -18,7 +18,8 @@ import { getFieldTypeLabel } from '@/utils/fieldUtils';
 import { useActivePromosForField } from '@/hooks/useActivePromosForField';
 import PromoInfoChip from '@/components/promotions/PromoInfoChip';
 import { useCreateBookingWithPayment } from '@/hooks/useCreateBookingWithPayment';
-import { calculateNetFromPublic } from '@/utils/publicPricing';
+import { calculateNetFromPublic, calculateGuaranteeBreakdown, GUARANTEE_COMMISSION_RATE } from '@/utils/publicPricing';
+import type { calculateGuaranteeBreakdown as GuaranteeBreakdownType } from '@/utils/publicPricing';
 import { reverseGeocodeREST } from '@/utils/googleMapsUtils';
 
 interface Field {
@@ -49,6 +50,9 @@ interface Field {
   owner_id: string;
   latitude: number | null;
   longitude: number | null;
+  guarantee_enabled?: boolean;
+  guarantee_percentage?: number;
+  payment_mode?: 'full' | 'guarantee' | 'both';
 }
 
 const FieldDetail = () => {
@@ -71,7 +75,10 @@ const FieldDetail = () => {
           net_price_2h,
           public_price_1h,
           public_price_1h30,
-          public_price_2h
+          public_price_2h,
+          guarantee_enabled,
+          guarantee_percentage,
+          payment_mode
         `)
         .eq('id', id)
         .eq('is_active', true)
@@ -123,7 +130,9 @@ const FieldDetail = () => {
     serviceFee: number,
     total: number,
     promoId?: string,
-    discountAmount?: number
+    discountAmount?: number,
+    paymentType?: 'full' | 'deposit',
+    guaranteeBreakdown?: ReturnType<typeof calculateGuaranteeBreakdown>
   ) => {
     console.log('🎯 Sélection créneau dans FieldDetail:', {
       date: date.toISOString(),
@@ -133,7 +142,9 @@ const FieldDetail = () => {
       serviceFee,
       total,
       promoId,
-      discountAmount
+      discountAmount,
+      paymentType,
+      guaranteeBreakdown
     });
 
     if (!user) {
@@ -155,25 +166,38 @@ const FieldDetail = () => {
       return;
     }
 
-    // Calculer la durée et les montants
-    const [startHour, startMin] = startTime.split(':').map(Number);
-    const [endHour, endMin] = endTime.split(':').map(Number);
-    const durationMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+    // Mode DEPOSIT (Garantie Terrain Bloqué)
+    if (paymentType === 'deposit' && guaranteeBreakdown) {
+      const netPriceOwner = guaranteeBreakdown.depositNet;
+      const platformCommission = guaranteeBreakdown.depositCommission;
 
-    // Prix PUBLIC
-    const publicPriceAfterPromo = subtotal; // Prix après promo (si applicable)
-    const publicPriceBeforePromo = discountAmount ? subtotal + discountAmount : subtotal; // Prix avant promo
+      createBookingMutation.mutate({
+        fieldId: field.id,
+        fieldName: field.name,
+        userId: user.id,
+        bookingDate: date,
+        startTime,
+        endTime,
+        publicPrice: guaranteeBreakdown.depositPublic,
+        netPriceOwner,
+        platformCommission,
+        // Champs spécifiques garantie
+        paymentType: 'deposit',
+        depositAmount: guaranteeBreakdown.depositNet,
+        depositPublicPrice: guaranteeBreakdown.depositPublic,
+        balanceDue: guaranteeBreakdown.balanceCash,
+        guaranteeCommissionRate: GUARANTEE_COMMISSION_RATE
+      });
+      return;
+    }
 
-    // ✅ VRAIE LOGIQUE OWNER-FUNDED :
-    // Le NET propriétaire est extrait depuis le prix public APRÈS promo
-    // Car la promo réduit le NET, puis le prix public est recalculé depuis le nouveau NET
+    // Mode FULL (comportement existant inchangé)
+    const publicPriceAfterPromo = subtotal;
+    const publicPriceBeforePromo = discountAmount ? subtotal + discountAmount : subtotal;
+
     const netPriceOwner = calculateNetFromPublic(publicPriceAfterPromo);
-
-    // La commission PISport est calculée sur le prix APRÈS promo
-    // Commission = Prix public APRÈS - Net APRÈS
     const platformCommission = publicPriceAfterPromo - netPriceOwner;
 
-    // Créer la réservation et initialiser le paiement
     createBookingMutation.mutate({
       fieldId: field.id,
       fieldName: field.name,
@@ -181,8 +205,8 @@ const FieldDetail = () => {
       bookingDate: date,
       startTime,
       endTime,
-      publicPrice: publicPriceAfterPromo, // Prix final payé par le client (après promo si applicable)
-      publicPriceBeforePromo: publicPriceBeforePromo, // Prix de base (toujours passé pour calcul cohérent)
+      publicPrice: publicPriceAfterPromo,
+      publicPriceBeforePromo: publicPriceBeforePromo,
       promoId,
       discountAmount,
       netPriceOwner,
@@ -341,6 +365,9 @@ const FieldDetail = () => {
               }}
               onTimeSlotSelect={handleTimeSlotSelect}
               onHoursChange={(start, end) => setDynamicHours({ start, end })}
+              guaranteeEnabled={field.guarantee_enabled}
+              guaranteePercentage={field.guarantee_percentage}
+              paymentMode={field.payment_mode}
             />
             </div>
           </div>
