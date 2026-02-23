@@ -168,9 +168,6 @@ const FieldDetail = () => {
 
     // Mode DEPOSIT (Garantie Terrain Bloqué)
     if (paymentType === 'deposit' && guaranteeBreakdown) {
-      const netPriceOwner = guaranteeBreakdown.depositNet;
-      const platformCommission = guaranteeBreakdown.depositCommission;
-
       createBookingMutation.mutate({
         fieldId: field.id,
         fieldName: field.name,
@@ -178,9 +175,11 @@ const FieldDetail = () => {
         bookingDate: date,
         startTime,
         endTime,
+        // publicPrice = montant public de l'avance (envoyé à PayDunya avec les frais opérateurs)
         publicPrice: guaranteeBreakdown.depositPublic,
-        netPriceOwner,
-        platformCommission,
+        // netPriceOwner / owner_amount = prix NET TOTAL du terrain (avance + solde cash)
+        netPriceOwner: guaranteeBreakdown.totalOwner,
+        platformCommission: guaranteeBreakdown.depositCommission,
         // Champs spécifiques garantie
         paymentType: 'deposit',
         depositAmount: guaranteeBreakdown.depositNet,
