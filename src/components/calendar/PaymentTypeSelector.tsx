@@ -39,7 +39,7 @@ const PaymentTypeSelector: React.FC<PaymentTypeSelectorProps> = ({
   // Mode 'both' : afficher les deux options en radio
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium text-gray-700">Choisissez votre mode de paiement :</p>
+      <p className="text-base font-medium text-gray-700">Choisissez votre mode de paiement :</p>
 
       {/* Option 1 : Paiement complet */}
       <Card
@@ -59,10 +59,10 @@ const PaymentTypeSelector: React.FC<PaymentTypeSelectorProps> = ({
             </div>
             <CreditCard className={`w-5 h-5 ${selectedType === 'full' ? 'text-green-600' : 'text-gray-400'}`} />
             <div className="flex-1">
-              <div className="font-medium text-sm">Paiement complet en ligne</div>
-              <div className="text-xs text-gray-500">Tout régler maintenant</div>
+              <div className="font-medium text-base">Paiement complet en ligne</div>
+              <div className="text-sm text-gray-500">Tout régler maintenant</div>
             </div>
-            <span className="font-bold text-sm">{fullTotal.toLocaleString()} XOF</span>
+            <span className="font-bold text-base">{fullTotal.toLocaleString()} XOF</span>
           </div>
         </CardContent>
       </Card>
@@ -85,12 +85,12 @@ const PaymentTypeSelector: React.FC<PaymentTypeSelectorProps> = ({
             </div>
             <Shield className={`w-5 h-5 ${selectedType === 'deposit' ? 'text-green-600' : 'text-gray-400'}`} />
             <div className="flex-1">
-              <div className="font-medium text-sm">Garantie Terrain Bloqué</div>
-              <div className="text-xs text-gray-500">
+              <div className="font-medium text-base">Garantie Terrain Bloqué</div>
+              <div className="text-sm text-gray-500">
                 Avance {Math.round(guaranteePercentage * 100)}% en ligne + solde cash sur place
               </div>
             </div>
-            <span className="font-bold text-sm">{depositTotal.toLocaleString()} XOF</span>
+            <span className="font-bold text-base">{depositTotal.toLocaleString()} XOF</span>
           </div>
         </CardContent>
       </Card>
