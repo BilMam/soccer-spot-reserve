@@ -134,7 +134,7 @@ function BookingInterface() {
           <CreditCard className="" style={{ color: paymentType === "full" ? "#16a34a" : "#9ca3af" }} />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: "14px", fontWeight: "600", color: "#111827" }}>Paiement complet</div>
-            <div style={{ fontSize: "12px", color: "#6b7280" }}>Tout régler en ligne</div>
+            <div style={{ fontSize: "12px", color: "#6b7280" }}>Tout régler maintenant</div>
           </div>
           <span style={{ fontSize: "14px", fontWeight: "700", color: "#111827" }}>14 420 XOF</span>
         </div>

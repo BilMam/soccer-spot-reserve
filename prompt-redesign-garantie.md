@@ -13,7 +13,7 @@ Quand l'utilisateur sélectionne un créneau et choisit "Garantie Terrain Bloqu�
 
 ### Ce que je veux
 
-**1. Supprimer la ligne "Créneau" du BookingSummary** (déjà visible dans les sélecteurs d'heure au-dessus). **Garder "Durée" et "Tarif appliqué"** car ils apportent un contexte utile au récapitulatif.
+**1. Garder les lignes "Durée", "Créneau" et "Tarif appliqué"** dans le récapitulatif car ils apportent un contexte utile.
 
 **2. Fusionner BookingSummary et PaymentTypeSelector en un seul bloc cohérent.** L'ordre doit être :
 - D'abord le sélecteur de mode de paiement (Paiement complet vs Garantie Terrain Bloqué) sous forme de 2 cartes radio cliquables
