@@ -76,7 +76,10 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
               {getPriceLabel()}
             </span>
           </div>
-          
+
+          {/* Séparateur entre infos communes et pricing */}
+          <div className="border-t my-2" />
+
           {/* Affichage avec promo */}
           {promo && originalSubtotal ? (
             <>
@@ -114,14 +117,6 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
             </div>
           )}
 
-          {/* Solde cash si mode deposit */}
-          {paymentType === 'deposit' && balanceCash != null && (
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-orange-600 font-medium">Solde à régler sur place (cash) :</span>
-              <span className="text-sm font-bold text-orange-600">{balanceCash.toLocaleString()} XOF</span>
-            </div>
-          )}
-
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">
               Frais opérateurs (3%) – paiement sécurisé :
@@ -132,12 +127,20 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
           </div>
           <div className="flex justify-between items-center border-t pt-2">
             <span className="text-sm text-gray-600">
-              {paymentType === 'deposit' ? 'Total débité en ligne :' : 'Prix total :'}
+              {paymentType === 'deposit' ? 'Total à payer maintenant :' : 'Prix total :'}
             </span>
             <span className="text-lg font-bold text-green-600">
               {total.toLocaleString()} XOF
             </span>
           </div>
+
+          {/* Solde cash si mode deposit (après le total) */}
+          {paymentType === 'deposit' && balanceCash != null && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-orange-600 font-medium">Solde à régler sur place (cash) :</span>
+              <span className="text-sm font-bold text-orange-600">{balanceCash.toLocaleString()} XOF</span>
+            </div>
+          )}
 
           {/* Info-box solde cash */}
           {paymentType === 'deposit' && balanceCash != null && (
