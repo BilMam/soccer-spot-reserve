@@ -208,8 +208,8 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
                           <statusInfo.icon className="w-4 h-4" />
                           {statusInfo.badge}
                           {booking.payment_type === 'deposit' && booking.payment_status === 'deposit_paid' && (
-                            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                              <Shield className="w-3 h-3" /> Garantie
+                            <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                              <Shield className="w-3.5 h-3.5" /> Garantie
                             </span>
                           )}
                         </div>
@@ -244,10 +244,10 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
                         <div>
                           {booking.payment_type === 'deposit' && booking.payment_status === 'deposit_paid' ? (
                             <>
-                              <div className="text-sm font-semibold text-emerald-600">
+                              <div className="text-base font-semibold text-emerald-600">
                                 Avance payée : {Math.round(booking.deposit_public_price || booking.total_price).toLocaleString()} XOF
                               </div>
-                              <div className="text-xs font-medium text-orange-600">
+                              <div className="text-sm font-medium text-orange-600">
                                 Solde restant : {Math.round(booking.balance_due || 0).toLocaleString()} XOF (cash sur place)
                               </div>
                             </>
