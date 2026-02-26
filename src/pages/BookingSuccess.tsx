@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Calendar, Clock, MapPin, Mail, Smartphone, Shield } from 'lucide-react';
+import { CheckCircle, Calendar, Clock, MapPin, Shield } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
