@@ -18,17 +18,17 @@ Quand l'utilisateur sélectionne un créneau et choisit "Garantie Terrain Bloqu�
 **2. Fusionner BookingSummary et PaymentTypeSelector en un seul bloc cohérent.** L'ordre doit être :
 - D'abord le sélecteur de mode de paiement (Paiement complet vs Garantie Terrain Bloqué) sous forme de 2 cartes radio cliquables
 - Puis EN DESSOUS, un seul récapitulatif de prix qui s'adapte dynamiquement selon le mode sélectionné
-- Le récapitulatif commence par Durée + Tarif appliqué (communs aux deux modes, séparés par un trait fin)
+- Le récapitulatif commence par Durée + Créneau + Tarif appliqué (communs aux deux modes, séparés par un trait fin)
 - Puis les lignes de prix spécifiques au mode choisi
 - Une seule info-box bleue pour le solde cash (uniquement visible en mode Garantie)
 
 **3. Le récapitulatif de prix (unique, pas dupliqué) doit afficher :**
-- **En-tête commun** : Durée → Tarif appliqué (séparé par un trait fin du reste)
+- **En-tête commun** : Durée → Créneau → Tarif appliqué (séparé par un trait fin du reste)
 - En mode "Paiement complet" : Sous-total → Frais opérateurs (3%) → **Total**
 - En mode "Garantie" : Avance en ligne → Frais opérateurs (3%) → **Total à payer maintenant** → Solde à régler sur place (en orange) → Info-box bleue
 
 **4. Les cartes radio du sélecteur doivent rester simples :**
-- Carte "Paiement complet" : icône CreditCard + label + prix total en gras à droite
+- Carte "Paiement complet" : icône CreditCard + label + sous-label "Tout régler maintenant" (NE PAS changer ce texte) + prix total en gras à droite
 - Carte "Garantie Terrain Bloqué" : icône Shield + label + sous-label "Avance X% + solde cash" + prix avance en gras à droite
 - PAS de détail déplié dans les cartes radio elles-mêmes — le détail est dans le récapitulatif en dessous
 
