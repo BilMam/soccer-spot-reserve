@@ -28,10 +28,12 @@ const MesReservations = () => {
           .single();
 
         if (booking) {
-          if (booking.status === 'confirmed' && booking.payment_status === 'paid') {
+          if (booking.status === 'confirmed' && (booking.payment_status === 'paid' || booking.payment_status === 'deposit_paid')) {
             toast({
-              title: "✅ Paiement confirmé !",
-              description: `Votre réservation pour ${booking.fields?.name} est confirmée.`,
+              title: booking.payment_status === 'deposit_paid' ? "✅ Terrain bloqué !" : "✅ Paiement confirmé !",
+              description: booking.payment_status === 'deposit_paid'
+                ? `Votre acompte pour ${booking.fields?.name} a été payé. Le terrain est bloqué.`
+                : `Votre réservation pour ${booking.fields?.name} est confirmée.`,
               duration: 5000,
             });
           } else if (booking.status === 'provisional') {
