@@ -22,6 +22,11 @@ interface Booking {
   confirmation_window_type?: string;
   confirmation_deadline?: string;
   auto_action?: string;
+  payment_type?: string;
+  payment_status?: string;
+  deposit_amount?: number;
+  deposit_public_price?: number;
+  balance_due?: number;
   fields: {
     id: string;
     name: string;
@@ -202,6 +207,11 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
                         <div className="flex items-center space-x-2">
                           <statusInfo.icon className="w-4 h-4" />
                           {statusInfo.badge}
+                          {booking.payment_type === 'deposit' && booking.payment_status === 'deposit_paid' && (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                              <Shield className="w-3 h-3" /> Garantie
+                            </span>
+                          )}
                         </div>
                       </div>
 
