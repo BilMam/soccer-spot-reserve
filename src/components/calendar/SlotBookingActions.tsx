@@ -170,7 +170,7 @@ const SlotBookingActions: React.FC<SlotBookingActionsProps> = ({
     <Button
       onClick={handleConfirmBooking}
       disabled={!selectedStartTime || !selectedEndTime || !rangeIsAvailable || isBooking}
-      className={`w-full ${paymentType === 'deposit' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-green-600 hover:bg-green-700'}`}
+      className="w-full bg-green-600 hover:bg-green-700"
       size="lg"
     >
       {isBooking ? (
