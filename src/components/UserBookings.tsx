@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, MapPin, Clock, Users, Star, X, Clock4, CheckCircle } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, Star, X, Clock4, CheckCircle, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import EnhancedReviewDialog from '@/components/EnhancedReviewDialog';
 import SmartConfirmationInfo from './SmartConfirmationInfo';
