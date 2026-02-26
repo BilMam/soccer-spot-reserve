@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Shield, CreditCard, Info } from 'lucide-react';
-import { calculateGuaranteeBreakdown } from '@/utils/publicPricing';
+import { Shield, CreditCard } from 'lucide-react';
 
 interface PaymentTypeSelectorProps {
   paymentMode: 'full' | 'guarantee' | 'both';
@@ -10,6 +9,8 @@ interface PaymentTypeSelectorProps {
   publicPrice: number;
   onPaymentTypeChange: (type: 'full' | 'deposit') => void;
   selectedType: 'full' | 'deposit';
+  fullTotal: number;
+  depositTotal: number;
 }
 
 const PaymentTypeSelector: React.FC<PaymentTypeSelectorProps> = ({
@@ -18,58 +19,24 @@ const PaymentTypeSelector: React.FC<PaymentTypeSelectorProps> = ({
   netPriceOwner,
   publicPrice,
   onPaymentTypeChange,
-  selectedType
+  selectedType,
+  fullTotal,
+  depositTotal
 }) => {
   // Ne rien afficher si le mode est 'full' uniquement
   if (paymentMode === 'full') return null;
 
-  const guarantee = calculateGuaranteeBreakdown(netPriceOwner, guaranteePercentage);
+  // Si mode 'guarantee' uniquement, auto-sélectionner deposit et ne rien afficher
+  // (le BookingSummary en dessous gère l'affichage)
+  useEffect(() => {
+    if (paymentMode === 'guarantee') {
+      onPaymentTypeChange('deposit');
+    }
+  }, [paymentMode, onPaymentTypeChange]);
 
-  // Bloc détail garantie réutilisable
-  const guaranteeDetail = (
-    <div className="space-y-2 text-sm">
-      <div className="flex justify-between">
-        <span className="text-gray-600">Avance en ligne :</span>
-        <span className="font-medium">{guarantee.depositPublic.toLocaleString()} XOF</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-gray-600">Frais opérateurs (3%) :</span>
-        <span className="text-gray-600">{guarantee.operatorFee.toLocaleString()} XOF</span>
-      </div>
-      <div className="flex justify-between border-t pt-2">
-        <span className="font-medium text-gray-700">Total à payer maintenant :</span>
-        <span className="font-bold text-green-700">{guarantee.totalOnline.toLocaleString()} XOF</span>
-      </div>
-      <div className="flex justify-between mt-1">
-        <span className="text-orange-600 font-medium">Solde à régler sur place :</span>
-        <span className="font-bold text-orange-600">{guarantee.balanceCash.toLocaleString()} XOF</span>
-      </div>
-      <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700 flex items-start gap-1.5">
-        <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-        <span>Présentez-vous au terrain et réglez le solde directement au propriétaire.</span>
-      </div>
-    </div>
-  );
-
-  // Si mode 'guarantee' uniquement, afficher juste le détail
-  if (paymentMode === 'guarantee') {
-    return (
-      <Card className="border-2 border-green-200 bg-green-50">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Shield className="w-5 h-5 text-green-600" />
-            <span className="font-semibold text-green-800">Garantie Terrain Bloqué</span>
-          </div>
-          {guaranteeDetail}
-        </CardContent>
-      </Card>
-    );
-  }
+  if (paymentMode === 'guarantee') return null;
 
   // Mode 'both' : afficher les deux options en radio
-  const operatorFeeFull = Math.ceil(publicPrice * 0.03);
-  const totalFull = publicPrice + operatorFeeFull;
-
   return (
     <div className="space-y-3">
       <p className="text-sm font-medium text-gray-700">Choisissez votre mode de paiement :</p>
@@ -95,7 +62,7 @@ const PaymentTypeSelector: React.FC<PaymentTypeSelectorProps> = ({
               <div className="font-medium text-sm">Paiement complet en ligne</div>
               <div className="text-xs text-gray-500">Tout régler maintenant</div>
             </div>
-            <span className="font-bold text-sm">{totalFull.toLocaleString()} XOF</span>
+            <span className="font-bold text-sm">{fullTotal.toLocaleString()} XOF</span>
           </div>
         </CardContent>
       </Card>
@@ -123,15 +90,8 @@ const PaymentTypeSelector: React.FC<PaymentTypeSelectorProps> = ({
                 Avance {Math.round(guaranteePercentage * 100)}% en ligne + solde cash sur place
               </div>
             </div>
-            <span className="font-bold text-sm">{guarantee.totalOnline.toLocaleString()} XOF</span>
+            <span className="font-bold text-sm">{depositTotal.toLocaleString()} XOF</span>
           </div>
-
-          {/* Détail visible quand sélectionné */}
-          {selectedType === 'deposit' && (
-            <div className="mt-3 ml-7 border-t pt-3">
-              {guaranteeDetail}
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
