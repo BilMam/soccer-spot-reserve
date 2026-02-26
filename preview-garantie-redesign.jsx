@@ -178,10 +178,14 @@ function BookingInterface() {
           padding: "16px",
           marginBottom: "16px"
         }}>
-          {/* Durée + Tarif (communs aux deux modes) */}
+          {/* Durée + Créneau + Tarif (communs aux deux modes) */}
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "4px" }}>
             <span style={{ color: "#6b7280" }}>Durée :</span>
             <span style={{ fontWeight: "600", color: "#111827" }}>1h</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "4px" }}>
+            <span style={{ color: "#6b7280" }}>Créneau :</span>
+            <span style={{ fontWeight: "600", color: "#111827" }}>05:00 - 06:00</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "8px", paddingBottom: "8px", borderBottom: "1px solid #e5e7eb" }}>
             <span style={{ color: "#6b7280" }}>Tarif appliqué :</span>
