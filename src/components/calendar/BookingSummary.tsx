@@ -63,16 +63,16 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
       <CardContent className="p-4">
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Durée :</span>
-            <span className="font-medium">{durationDisplay}</span>
+            <span className="text-base text-gray-600">Durée :</span>
+            <span className="text-base font-medium">{durationDisplay}</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Créneau :</span>
-            <span className="font-medium">{selectedStartTime} - {selectedEndTime}</span>
+            <span className="text-base text-gray-600">Créneau :</span>
+            <span className="text-base font-medium">{selectedStartTime} - {selectedEndTime}</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Tarif appliqué :</span>
-            <span className="text-sm font-medium text-green-700">
+            <span className="text-base text-gray-600">Tarif appliqué :</span>
+            <span className="text-base font-medium text-green-700">
               {getPriceLabel()}
             </span>
           </div>
@@ -90,20 +90,20 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
                     Promo appliquée !
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-xs text-orange-600">
+                <div className="flex justify-between items-center text-sm text-orange-600">
                   <span>Réduction {promo.discountLabel}</span>
                   <span className="font-bold">-{promo.savings.toLocaleString()} XOF</span>
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Prix initial :</span>
-                <span className="text-sm line-through text-muted-foreground">
+                <span className="text-base text-gray-600">Prix initial :</span>
+                <span className="text-base line-through text-muted-foreground">
                   {originalSubtotal.toLocaleString()} XOF
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Prix avec promo :</span>
-                <span className="text-sm font-bold text-green-600">
+                <span className="text-base text-gray-600">Prix avec promo :</span>
+                <span className="text-base font-bold text-green-600">
                   {subtotal.toLocaleString()} XOF
                 </span>
               </div>
