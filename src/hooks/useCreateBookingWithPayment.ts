@@ -111,7 +111,9 @@ export function useCreateBookingWithPayment() {
       console.log('✅ Booking created:', booking.id);
 
       // Construire les URLs de retour
-      const returnUrl = buildUrl('/mes-reservations');
+      const returnUrl = paymentType === 'deposit'
+        ? buildUrl(`/booking-success?session_id=booking_${booking.id}`)
+        : buildUrl('/mes-reservations');
       const cancelUrl = buildUrl('/mes-reservations');
 
       // Créer le paiement PayDunya avec le montant FINAL (avec frais opérateurs)
