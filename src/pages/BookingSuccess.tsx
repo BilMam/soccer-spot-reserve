@@ -216,57 +216,15 @@ const BookingSuccess = () => {
                   <p className="text-gray-600">{booking.special_requests}</p>
                 </div>
               )}
-            </CardContent>
-          </Card>
 
-          {/* Informations importantes */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Mail className="w-5 h-5" />
-                <span>Informations importantes</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+              {/* Instruction solde pour deposit */}
               {isDeposit && (
-                <div className="flex items-start space-x-3 bg-orange-50 p-3 rounded-lg">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <p className="text-orange-800 font-medium">
-                    Présentez-vous au terrain et réglez le solde de {Math.round(booking.balance_due || 0).toLocaleString()} XOF directement au propriétaire.
-                  </p>
-                </div>
-              )}
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
-                <p className="text-gray-700">
-                  Un email de confirmation a été envoyé à votre adresse email
-                </p>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
-                <p className="text-gray-700">
-                  Vous recevrez un rappel 24h avant votre réservation
-                </p>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
-                <p className="text-gray-700">
-                  En cas de besoin, contactez le propriétaire via votre profil
-                </p>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
-                <p className="text-gray-700">
-                  <Smartphone className="w-4 h-4 inline mr-1" />
-                  Paiement sécurisé traité par PayDunya (Mobile Money & cartes bancaires)
-                </p>
-              </div>
-              {!isDeposit && (
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
-                  <p className="text-gray-700">
-                    Le propriétaire recevra automatiquement 95% du montant
-                  </p>
+                <div className="border-t pt-4">
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                    <p className="text-sm text-orange-800 font-medium">
+                      Présentez-vous et réglez le solde de {Math.round(booking.balance_due || 0).toLocaleString()} XOF directement au propriétaire.
+                    </p>
+                  </div>
                 </div>
               )}
             </CardContent>
