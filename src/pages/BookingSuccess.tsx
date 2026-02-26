@@ -175,13 +175,13 @@ const BookingSuccess = () => {
                   <>
                     <div className="flex items-center justify-between">
                       <span className="font-medium">Avance payée en ligne</span>
-                      <span className="text-xl font-bold text-emerald-600">
+                      <span className="text-2xl font-bold text-emerald-600">
                         {Math.round(booking.deposit_public_price || booking.total_price).toLocaleString()} XOF
                       </span>
                     </div>
                     <div className="flex items-center justify-between bg-orange-50 p-3 rounded-lg">
                       <span className="font-medium text-orange-700">Solde à régler sur place</span>
-                      <span className="text-xl font-bold text-orange-600">
+                      <span className="text-2xl font-bold text-orange-600">
                         {Math.round(booking.balance_due || 0).toLocaleString()} XOF
                       </span>
                     </div>
@@ -190,12 +190,12 @@ const BookingSuccess = () => {
                   <>
                     <div className="flex items-center justify-between">
                       <span className="font-medium">Prix total payé</span>
-                      <span className="text-xl font-bold text-green-600">
+                      <span className="text-2xl font-bold text-green-600">
                         {Math.round(booking.total_price).toLocaleString()} XOF
                       </span>
                     </div>
                     {booking.platform_fee && (
-                      <div className="text-sm text-gray-600 space-y-1">
+                      <div className="text-base text-gray-600 space-y-1">
                         <div className="flex justify-between">
                           <span>Montant terrain :</span>
                           <span>{Math.round(booking.owner_amount || 0).toLocaleString()} XOF</span>
@@ -221,7 +221,7 @@ const BookingSuccess = () => {
               {isDeposit && (
                 <div className="border-t pt-4">
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                    <p className="text-sm text-orange-800 font-medium">
+                    <p className="text-base text-orange-800 font-medium">
                       Présentez-vous et réglez le solde de {Math.round(booking.balance_due || 0).toLocaleString()} XOF directement au propriétaire.
                     </p>
                   </div>
