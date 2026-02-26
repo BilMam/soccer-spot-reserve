@@ -109,6 +109,7 @@ const BookingSuccess = () => {
   }
 
   const isDeposit = booking.payment_type === 'deposit';
+  const formatTime = (t: string) => t.slice(0, 5);
 
   return (
     <div className="min-h-screen bg-gray-50">
