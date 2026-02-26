@@ -241,8 +241,21 @@ const UserBookings: React.FC<UserBookingsProps> = ({ userId }) => {
 
 
                       <div className="flex justify-between items-center">
-                        <div className="text-lg font-semibold text-green-600">
-                          {booking.total_price.toLocaleString()} XOF
+                        <div>
+                          {booking.payment_type === 'deposit' && booking.payment_status === 'deposit_paid' ? (
+                            <>
+                              <div className="text-sm font-semibold text-emerald-600">
+                                Avance payée : {Math.round(booking.deposit_public_price || booking.total_price).toLocaleString()} XOF
+                              </div>
+                              <div className="text-xs font-medium text-orange-600">
+                                Solde restant : {Math.round(booking.balance_due || 0).toLocaleString()} XOF (cash sur place)
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-lg font-semibold text-green-600">
+                              {booking.total_price.toLocaleString()} XOF
+                            </div>
+                          )}
                         </div>
                         <div className="flex space-x-2">
                           {/* Bouton Contacter pour les réservations confirmées */}
