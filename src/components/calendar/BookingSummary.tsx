@@ -110,26 +110,26 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
             </>
           ) : (
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">
+              <span className="text-base text-gray-600">
                 {paymentType === 'deposit' ? 'Avance en ligne :' : 'Sous-total :'}
               </span>
-              <span className="text-sm">{subtotal.toLocaleString()} XOF</span>
+              <span className="text-base">{subtotal.toLocaleString()} XOF</span>
             </div>
           )}
 
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">
+            <span className="text-base text-gray-600">
               Frais opérateurs (3%) :
             </span>
-            <span className="text-sm text-gray-600">
+            <span className="text-base text-gray-600">
               {serviceFee.toLocaleString()} XOF
             </span>
           </div>
           <div className="flex justify-between items-center border-t pt-2">
-            <span className="text-sm text-gray-600">
+            <span className="text-base text-gray-600">
               {paymentType === 'deposit' ? 'Total à payer maintenant :' : 'Prix total :'}
             </span>
-            <span className="text-lg font-bold text-green-600">
+            <span className="text-xl font-bold text-green-600">
               {total.toLocaleString()} XOF
             </span>
           </div>
@@ -137,8 +137,8 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
           {/* Solde cash si mode deposit (après le total) */}
           {paymentType === 'deposit' && balanceCash != null && (
             <div className="flex justify-between items-center">
-              <span className="text-sm text-orange-600 font-medium">Solde à régler sur place (cash) :</span>
-              <span className="text-sm font-bold text-orange-600">{balanceCash.toLocaleString()} XOF</span>
+              <span className="text-base text-orange-600 font-medium">Solde à régler sur place (cash) :</span>
+              <span className="text-base font-bold text-orange-600">{balanceCash.toLocaleString()} XOF</span>
             </div>
           )}
 
