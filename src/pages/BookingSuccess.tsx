@@ -131,7 +131,7 @@ const BookingSuccess = () => {
                 {isDeposit ? 'Terrain bloqué !' : 'Réservation confirmée !'}
               </h1>
               {isDeposit && (
-                <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 text-sm font-medium px-3 py-1 rounded-full mb-3">
+                <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 text-base font-medium px-3 py-1 rounded-full mb-3">
                   <Shield className="w-4 h-4" />
                   Garantie Terrain Bloqué
                 </span>
@@ -154,7 +154,7 @@ const BookingSuccess = () => {
                 <MapPin className="w-5 h-5 text-gray-500" />
                 <div>
                   <div className="font-medium">{booking.fields.name}</div>
-                  <div className="text-gray-600 text-sm">{booking.fields.location}</div>
+                  <div className="text-gray-600 text-base">{booking.fields.location}</div>
                 </div>
               </div>
 

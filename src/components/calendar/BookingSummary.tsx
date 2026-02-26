@@ -144,8 +144,8 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
 
           {/* Info-box solde cash */}
           {paymentType === 'deposit' && balanceCash != null && (
-            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700 flex items-start gap-1.5">
-              <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700 flex items-start gap-1.5">
+              <Info className="w-4 h-4 mt-0.5 shrink-0" />
               <span>Le solde de {balanceCash.toLocaleString()} XOF est à régler directement au propriétaire sur place.</span>
             </div>
           )}
