@@ -13,14 +13,17 @@ Quand l'utilisateur sélectionne un créneau et choisit "Garantie Terrain Bloqu�
 
 ### Ce que je veux
 
-**1. Supprimer les lignes "Durée", "Créneau" et "Tarif appliqué" du BookingSummary.** Ces informations sont déjà visibles dans les sélecteurs d'heure au-dessus et n'apportent rien au résumé de paiement.
+**1. Supprimer la ligne "Créneau" du BookingSummary** (déjà visible dans les sélecteurs d'heure au-dessus). **Garder "Durée" et "Tarif appliqué"** car ils apportent un contexte utile au récapitulatif.
 
 **2. Fusionner BookingSummary et PaymentTypeSelector en un seul bloc cohérent.** L'ordre doit être :
 - D'abord le sélecteur de mode de paiement (Paiement complet vs Garantie Terrain Bloqué) sous forme de 2 cartes radio cliquables
 - Puis EN DESSOUS, un seul récapitulatif de prix qui s'adapte dynamiquement selon le mode sélectionné
+- Le récapitulatif commence par Durée + Tarif appliqué (communs aux deux modes, séparés par un trait fin)
+- Puis les lignes de prix spécifiques au mode choisi
 - Une seule info-box bleue pour le solde cash (uniquement visible en mode Garantie)
 
 **3. Le récapitulatif de prix (unique, pas dupliqué) doit afficher :**
+- **En-tête commun** : Durée → Tarif appliqué (séparé par un trait fin du reste)
 - En mode "Paiement complet" : Sous-total → Frais opérateurs (3%) → **Total**
 - En mode "Garantie" : Avance en ligne → Frais opérateurs (3%) → **Total à payer maintenant** → Solde à régler sur place (en orange) → Info-box bleue
 
