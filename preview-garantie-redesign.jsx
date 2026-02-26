@@ -178,6 +178,16 @@ function BookingInterface() {
           padding: "16px",
           marginBottom: "16px"
         }}>
+          {/* Durée + Tarif (communs aux deux modes) */}
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "4px" }}>
+            <span style={{ color: "#6b7280" }}>Durée :</span>
+            <span style={{ fontWeight: "600", color: "#111827" }}>1h</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "8px", paddingBottom: "8px", borderBottom: "1px solid #e5e7eb" }}>
+            <span style={{ color: "#6b7280" }}>Tarif appliqué :</span>
+            <span style={{ fontWeight: "600", color: "#16a34a" }}>14 000 XOF/h</span>
+          </div>
+
           {paymentType === "full" ? (
             // MODE PAIEMENT COMPLET
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
