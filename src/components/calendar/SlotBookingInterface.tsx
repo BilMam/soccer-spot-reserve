@@ -244,6 +244,20 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               recurringSlots={recurringSlots}
             />
 
+            {/* Sélecteur de mode de paiement (visible si 'both' ou 'guarantee') */}
+            {paymentMode !== 'full' && selectedStartTime && selectedEndTime && rangeIsAvailable && guaranteeBreakdown && (
+              <PaymentTypeSelector
+                paymentMode={paymentMode}
+                guaranteePercentage={guaranteePercentage / 100}
+                netPriceOwner={netPriceOwner}
+                publicPrice={publicPrice}
+                onPaymentTypeChange={setPaymentType}
+                selectedType={paymentType}
+                fullTotal={finalTotal}
+                depositTotal={guaranteeBreakdown?.totalOnline || 0}
+              />
+            )}
+
             <BookingSummary
               selectedStartTime={selectedStartTime}
               selectedEndTime={selectedEndTime}
@@ -271,18 +285,6 @@ const SlotBookingInterface: React.FC<SlotBookingInterfaceProps> = ({
               depositPublic={guaranteeBreakdown?.depositPublic}
               balanceCash={guaranteeBreakdown?.balanceCash}
             />
-
-            {/* Sélecteur de mode de paiement (visible si 'both' ou 'guarantee') */}
-            {paymentMode !== 'full' && selectedStartTime && selectedEndTime && rangeIsAvailable && guaranteeBreakdown && (
-              <PaymentTypeSelector
-                paymentMode={paymentMode}
-                guaranteePercentage={guaranteePercentage / 100}
-                netPriceOwner={netPriceOwner}
-                publicPrice={publicPrice}
-                onPaymentTypeChange={setPaymentType}
-                selectedType={paymentType}
-              />
-            )}
 
             <SlotBookingActions
               selectedDate={selectedDate}
