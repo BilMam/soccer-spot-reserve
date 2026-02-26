@@ -119,7 +119,7 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
 
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">
-              Frais opérateurs (3%) – paiement sécurisé :
+              Frais opérateurs (3%) :
             </span>
             <span className="text-sm text-gray-600">
               {serviceFee.toLocaleString()} XOF
