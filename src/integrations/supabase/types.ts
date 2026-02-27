@@ -165,6 +165,7 @@ export type Database = {
           payment_intent_id: string | null
           payment_provider: string | null
           payment_status: string | null
+          payment_type: string | null
           payout_sent: boolean | null
           platform_fee: number | null
           platform_fee_owner: number | null
