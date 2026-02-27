@@ -223,6 +223,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          balance_due?: number | null
+          balance_paid?: boolean | null
           booking_date?: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
@@ -230,10 +232,14 @@ export type Database = {
           confirmation_email_sent?: boolean | null
           created_at?: string | null
           currency?: string | null
+          deposit_amount?: number | null
+          deposit_paid?: boolean | null
+          deposit_public_price?: number | null
           discount_amount?: number | null
           end_time?: string
           field_id?: string
           field_price?: number | null
+          guarantee_commission_rate?: number | null
           id?: string
           owner_amount?: number | null
           paid_at?: string | null
@@ -241,6 +247,7 @@ export type Database = {
           payment_intent_id?: string | null
           payment_provider?: string | null
           payment_status?: string | null
+          payment_type?: string | null
           payout_sent?: boolean | null
           platform_fee?: number | null
           platform_fee_owner?: number | null
