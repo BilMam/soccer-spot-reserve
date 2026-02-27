@@ -727,6 +727,8 @@ export type Database = {
           currency: string | null
           description: string | null
           field_type: string
+          guarantee_enabled: boolean | null
+          guarantee_percentage: number | null
           hold_preset_mode: string
           id: string
           images: string[] | null
