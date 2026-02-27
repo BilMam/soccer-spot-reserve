@@ -1,14 +1,11 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MapPin, RefreshCw, Locate } from 'lucide-react';
-import FieldBasicInfoForm from '@/components/forms/FieldBasicInfoForm';
-import FieldScheduleForm from '@/components/forms/FieldScheduleForm';
-import FieldAmenitiesForm from '@/components/forms/FieldAmenitiesForm';
-import FieldImageForm from '@/components/forms/FieldImageForm';
-import FieldPayoutAccountForm from '@/components/forms/FieldPayoutAccountForm';
-import FieldFormActions from '@/components/forms/FieldFormActions';
+import { MapPin, Banknote, Camera, ChevronLeft, ChevronRight, Loader } from 'lucide-react';
+import { FormStepper } from '@/components/ui/form-stepper';
+import FieldStepTerrain from '@/components/forms/FieldStepTerrain';
+import FieldStepTarifs from '@/components/forms/FieldStepTarifs';
+import FieldStepPhotos from '@/components/forms/FieldStepPhotos';
 import { useGeocodingService } from '@/hooks/useGeocodingService';
 import { reverseGeocode } from '@/utils/googleMapsUtils';
 import { toast } from 'sonner';
@@ -39,7 +36,15 @@ interface FieldFormProps {
   isLoading: boolean;
 }
 
+const STEPS = [
+  { label: 'Le terrain', icon: MapPin },
+  { label: 'Tarifs', icon: Banknote },
+  { label: 'Photos & extras', icon: Camera },
+];
+
 const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
+  const [currentStep, setCurrentStep] = useState(0);
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -64,8 +69,8 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
   const [locationSource, setLocationSource] = useState<'geocoding' | 'geolocation' | null>(null);
   const [resolvedAddress, setResolvedAddress] = useState<string | null>(null);
 
-  const { 
-    geocodeFieldAddress, 
+  const {
+    geocodeFieldAddress,
     getCurrentLocation,
     manualGeocode,
     isLoading: isGeocoding,
@@ -76,20 +81,18 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     clearError
   } = useGeocodingService();
 
-  // Charger Google Maps API au montage du composant
+  // Charger Google Maps API au montage
   useEffect(() => {
     initializeGoogleMaps();
   }, [initializeGoogleMaps]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Effacer les coordonnées et les erreurs quand l'utilisateur modifie l'adresse
+
     if ((field === 'address' || field === 'city') && geocodingError) {
       clearError();
     }
-    
-    // Si l'utilisateur modifie l'adresse après avoir utilisé la géolocalisation, effacer les coordonnées
+
     if ((field === 'address' || field === 'city') && locationSource === 'geolocation') {
       setFormData(prev => ({
         ...prev,
@@ -100,13 +103,12 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     }
   };
 
-  // Fonction de géocodage avec debounce
+  // Geocodage automatique avec debounce
   const performGeocode = useCallback(async (address: string, city: string) => {
     if (!address.trim() || !city.trim()) return;
-    
-    console.log('🔍 Début du géocodage automatique...');
+
     const result = await geocodeFieldAddress(address.trim(), city.trim());
-    
+
     if (result) {
       setFormData(prev => ({
         ...prev,
@@ -114,16 +116,14 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
         longitude: result.longitude
       }));
       setLocationSource('geocoding');
-      toast.success('📍 Adresse localisée avec succès !');
+      toast.success('Adresse localisée avec succès !');
     } else if (geocodingError) {
-      toast.error(`❌ ${geocodingError}`);
+      toast.error(geocodingError);
     }
   }, [geocodeFieldAddress, geocodingError]);
 
-  // Géocodage automatique avec debounce amélioré
   useEffect(() => {
     if (!isApiReady || locationSource === 'geolocation') return;
-    // Ne pas re-geocoder si des coordonnées valides existent déjà
     if (formData.latitude !== null && formData.longitude !== null) return;
 
     const timer = setTimeout(() => {
@@ -135,10 +135,10 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     return () => clearTimeout(timer);
   }, [formData.address, formData.city, isApiReady, performGeocode, locationSource, formData.latitude, formData.longitude]);
 
-  // Reverse geocoding pour afficher une adresse lisible
+  // Reverse geocoding
   useEffect(() => {
     if (!formData.latitude || !formData.longitude || !isApiReady) return;
-    
+
     let cancelled = false;
     reverseGeocode(formData.latitude, formData.longitude).then(address => {
       if (!cancelled && address) {
@@ -148,7 +148,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     return () => { cancelled = true; };
   }, [formData.latitude, formData.longitude, isApiReady]);
 
-  // Géocodage manuel
+  // Geocodage manuel
   const handleManualGeocode = async () => {
     if (!formData.address.trim() || !formData.city.trim()) {
       toast.error('Veuillez saisir une adresse et une ville');
@@ -156,7 +156,7 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     }
 
     const result = await manualGeocode(formData.address.trim(), formData.city.trim());
-    
+
     if (result) {
       setFormData(prev => ({
         ...prev,
@@ -164,25 +164,24 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
         longitude: result.longitude
       }));
       setLocationSource('geocoding');
-      toast.success('📍 Adresse localisée avec succès !');
+      toast.success('Adresse localisée avec succès !');
     }
   };
 
-  // Géolocalisation utilisateur
+  // Geolocalisation utilisateur
   const handleUserGeolocation = async () => {
     const result = await getCurrentLocation();
-    
+
     if (result) {
       setFormData(prev => ({
         ...prev,
         latitude: result.latitude,
         longitude: result.longitude,
-        // Optionnellement pré-remplir l'adresse si elle a été trouvée
         address: result.address.includes(',') ? result.address.split(',')[0].trim() : prev.address,
         city: result.address.includes(',') ? result.address.split(',')[1]?.trim() || prev.city : prev.city
       }));
       setLocationSource('geolocation');
-      toast.success('📍 Position géolocalisée avec succès !');
+      toast.success('Position géolocalisée avec succès !');
     }
   };
 
@@ -203,14 +202,59 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
     setFormData(prev => ({ ...prev, payout_account_id: accountId }));
   };
 
+  // Validation par etape
+  const canProceedToNext = (): boolean => {
+    switch (currentStep) {
+      case 0:
+        return !!(
+          formData.sport_type &&
+          formData.name.trim() &&
+          formData.field_type &&
+          formData.capacity &&
+          formData.location.trim() &&
+          formData.city.trim() &&
+          formData.address.trim() &&
+          formData.latitude &&
+          formData.longitude
+        );
+      case 1:
+        return !!(
+          formData.price_per_hour &&
+          parseFloat(formData.price_per_hour) > 0 &&
+          formData.availability_start &&
+          formData.availability_end
+        );
+      case 2:
+        return true;
+      default:
+        return false;
+    }
+  };
+
+  const handleNext = () => {
+    if (currentStep < STEPS.length - 1) {
+      if (canProceedToNext()) {
+        setCurrentStep(prev => prev + 1);
+      } else if (currentStep === 0 && (!formData.latitude || !formData.longitude)) {
+        toast.error('Veuillez localiser le terrain avant de continuer');
+      }
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentStep > 0) {
+      setCurrentStep(prev => prev - 1);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.latitude || !formData.longitude) {
-      toast.error('📍 Veuillez localiser le terrain en saisissant une adresse valide ou en utilisant votre position');
+      toast.error('Veuillez localiser le terrain en saisissant une adresse valide ou en utilisant votre position');
       return;
     }
-    
+
     const fieldData: FieldFormData = {
       name: formData.name,
       description: formData.description,
@@ -235,122 +279,95 @@ const FieldForm: React.FC<FieldFormProps> = ({ onSubmit, isLoading }) => {
 
   const isLocationLoading = isGeocoding || isGeolocating;
 
+  const geocodingState = {
+    latitude: formData.latitude,
+    longitude: formData.longitude,
+    isGeocoding,
+    isGeolocating,
+    isApiReady,
+    geocodingError,
+    locationSource,
+    resolvedAddress,
+  };
+
   return (
-    <Card className="max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>Informations du terrain</CardTitle>
-        
-        {/* État de l'API Google Maps */}
-        {!isApiReady && (
-          <div className="text-sm text-amber-600 flex items-center space-x-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600"></div>
-            <span>Chargement de Google Maps...</span>
-          </div>
-        )}
+    <Card className="max-w-2xl mx-auto">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg">Nouveau terrain</CardTitle>
+        <FormStepper steps={STEPS} currentStep={currentStep} className="pt-2" />
+      </CardHeader>
 
-        {/* État du géocodage */}
-        {isGeocoding && (
-          <div className="text-sm text-blue-600 flex items-center space-x-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-            <span>Localisation de l'adresse en cours...</span>
-          </div>
-        )}
-
-        {/* État de la géolocalisation */}
-        {isGeolocating && (
-          <div className="text-sm text-purple-600 flex items-center space-x-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-            <span>Géolocalisation en cours...</span>
-          </div>
-        )}
-
-        {/* État de localisation réussie */}
-        {formData.latitude && formData.longitude && (
-          <div className="text-sm text-green-600 flex items-center space-x-2">
-            <MapPin className="w-4 h-4" />
-            <span>
-              ✅ Terrain localisé {locationSource === 'geolocation' ? '(via votre position)' : '(via l\'adresse)'} : {resolvedAddress || `${formData.latitude.toFixed(6)}, ${formData.longitude.toFixed(6)}`}
-            </span>
-          </div>
-        )}
-
-        {/* Erreurs de géocodage */}
-        {geocodingError && (
-          <div className="text-sm text-red-600 flex items-center justify-between p-3 bg-red-50 rounded-md">
-            <span>❌ {geocodingError}</span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleManualGeocode}
-              disabled={isLocationLoading || !isApiReady}
-              className="ml-2"
-            >
-              <RefreshCw className="w-3 h-3 mr-1" />
-              Réessayer
-            </Button>
-          </div>
-        )}
-
-        {/* Boutons de localisation */}
-        {isApiReady && (
-          <div className="flex flex-wrap gap-2">
-            {/* Bouton de géocodage manuel */}
-            {formData.address && formData.city && !formData.latitude && !isLocationLoading && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleManualGeocode}
-                disabled={isLocationLoading}
-              >
-                <MapPin className="w-4 h-4 mr-2" />
-                Localiser l'adresse
-              </Button>
+      <CardContent>
+        <form onSubmit={handleSubmit}>
+          {/* Contenu de l'etape active */}
+          <div className="min-h-[300px]">
+            {currentStep === 0 && (
+              <FieldStepTerrain
+                formData={formData}
+                onInputChange={handleInputChange}
+                geocodingState={geocodingState}
+                onManualGeocode={handleManualGeocode}
+                onUserGeolocation={handleUserGeolocation}
+              />
             )}
 
-            {/* Bouton de géolocalisation */}
+            {currentStep === 1 && (
+              <FieldStepTarifs
+                formData={formData}
+                onInputChange={handleInputChange}
+              />
+            )}
+
+            {currentStep === 2 && (
+              <FieldStepPhotos
+                images={formData.images}
+                onImagesChange={handleImagesChange}
+                amenities={formData.amenities}
+                onAmenityChange={handleAmenityChange}
+                payoutAccountId={formData.payout_account_id}
+                onPayoutAccountChange={handlePayoutAccountChange}
+              />
+            )}
+          </div>
+
+          {/* Navigation */}
+          <div className="flex justify-between pt-6 border-t mt-6">
             <Button
               type="button"
               variant="outline"
-              onClick={handleUserGeolocation}
-              disabled={isLocationLoading || !isApiReady}
-              className="flex items-center"
+              onClick={handlePrev}
+              disabled={currentStep === 0}
             >
-              <Locate className="w-4 h-4 mr-2" />
-              {isGeolocating ? 'Géolocalisation...' : 'Utiliser ma position'}
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Précédent
             </Button>
+
+            {currentStep < STEPS.length - 1 ? (
+              <Button
+                type="button"
+                onClick={handleNext}
+                disabled={!canProceedToNext()}
+              >
+                Suivant
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={isLoading || isLocationLoading}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                    Soumission en cours...
+                  </>
+                ) : (
+                  'Soumettre pour approbation'
+                )}
+              </Button>
+            )}
           </div>
-        )}
-      </CardHeader>
-      
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <FieldBasicInfoForm
-            formData={formData}
-            onInputChange={handleInputChange}
-          />
-
-          <FieldScheduleForm
-            formData={formData}
-            onInputChange={handleInputChange}
-          />
-
-          <FieldAmenitiesForm
-            amenities={formData.amenities}
-            onAmenityChange={handleAmenityChange}
-          />
-
-          <FieldImageForm
-            images={formData.images}
-            onImagesChange={handleImagesChange}
-          />
-
-          <FieldPayoutAccountForm
-            payoutAccountId={formData.payout_account_id}
-            onPayoutAccountChange={handlePayoutAccountChange}
-          />
-
-          <FieldFormActions isLoading={isLoading || isLocationLoading} />
         </form>
       </CardContent>
     </Card>
