@@ -807,6 +807,8 @@ export type Database = {
           currency?: string | null
           description?: string | null
           field_type?: string
+          guarantee_enabled?: boolean | null
+          guarantee_percentage?: number | null
           hold_preset_mode?: string
           id?: string
           images?: string[] | null
@@ -819,6 +821,7 @@ export type Database = {
           net_price_1h30?: number | null
           net_price_2h?: number | null
           owner_id?: string
+          payment_mode?: string | null
           payout_account_id?: string | null
           preset_last_changed_at?: string | null
           price_1h30?: number | null
