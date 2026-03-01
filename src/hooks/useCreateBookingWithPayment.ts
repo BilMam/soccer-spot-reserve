@@ -59,7 +59,7 @@ export function useCreateBookingWithPayment() {
       const totalWithFees = publicPrice + serviceFee;
 
       // Construire l'objet d'insertion
-      const bookingInsert: Record<string, any> = {
+      const bookingInsert = {
         field_id: fieldId,
         user_id: userId,
         booking_date: bookingDate.toISOString().split('T')[0],

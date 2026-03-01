@@ -44,6 +44,9 @@ export interface Field {
   payout_account_id: string | null;
   hold_preset_mode: string;
   preset_last_changed_at: string | null;
+  guarantee_enabled: boolean | null;
+  guarantee_percentage: number | null;
+  payment_mode: string | null;
 }
 
 export interface SearchFilters {
