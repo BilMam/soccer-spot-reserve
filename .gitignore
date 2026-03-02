@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Empêcher la recréation du sous-dossier dupliqué
+soccer-spot-reserve/
