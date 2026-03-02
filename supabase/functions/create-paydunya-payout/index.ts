@@ -136,7 +136,7 @@ serve(async (req) => {
     }
 
     // Access payout_accounts from the nested fields object
-    const fieldsData = bookingData.fields as { id: string; name: string; payout_account_id: string; payout_accounts: { id: string; phone: string; is_active: boolean; owner_id: string }[] | { id: string; phone: string; is_active: boolean; owner_id: string } | null };
+    const fieldsData = bookingData.fields as unknown as { id: string; name: string; payout_account_id: string; payout_accounts: { id: string; phone: string; is_active: boolean; owner_id: string }[] | { id: string; phone: string; is_active: boolean; owner_id: string } | null };
     const payoutAccountRaw = fieldsData?.payout_accounts;
     const payoutAccount = Array.isArray(payoutAccountRaw) ? payoutAccountRaw[0] : payoutAccountRaw;
     const ownerPhone = payoutAccount?.phone;
