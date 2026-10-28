@@ -100,7 +100,7 @@ const FeaturedFields = () => {
               Terrains populaires à Abidjan
             </h2>
             <p className="text-xl text-gray-600">
-              Découvrez les terrains les mieux notés par notre communauté
+              Découvrez les terrains disponibles à Abidjan
             </p>
           </div>
           
@@ -129,7 +129,7 @@ const FeaturedFields = () => {
             Terrains populaires à Abidjan
           </h2>
           <p className="text-xl text-gray-600">
-            Découvrez les terrains les mieux notés par notre communauté
+            Découvrez les terrains disponibles à Abidjan
           </p>
         </div>
 

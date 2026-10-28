@@ -470,10 +470,10 @@ const BecomeOwner = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    Communauté active
+                    Paiement avant le match
                   </h3>
                   <p className="text-gray-600">
-                    Rejoignez des centaines de propriétaires sportifs.
+                    Les joueurs paient en ligne avant de venir.
                   </p>
                 </div>
               </div>
@@ -484,10 +484,10 @@ const BecomeOwner = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    Visibilité maximale
+                    Plus de visibilité
                   </h3>
                   <p className="text-gray-600">
-                    Vos terrains visibles par des milliers de joueurs.
+                    Vos terrains visibles par les joueurs qui cherchent un créneau.
                   </p>
                 </div>
               </div>

@@ -12,7 +12,7 @@ const Hero = () => {
               Trouvez le terrain
               <span className="text-green-600 block">parfait pour jouer</span>
             </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">Réservez des terrains de football, tennis, paddle et basket près de chez vous dans toute la ville d'Abidjan</p>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">Réservez votre terrain de sport à Abidjan et payez par Mobile Money</p>
           </div>
 
           <div className="flex justify-center space-x-8 text-sm text-gray-600">
@@ -22,11 +22,11 @@ const Hero = () => {
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-              <span>Annulation gratuite</span>
+              <span>Paiement Mobile Money</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-              <span>Support 24/7</span>
+              <span>Cagnotte entre amis</span>
             </div>
           </div>
 
